@@ -21,7 +21,11 @@
         "backgroundColor": "#020617"
       },
       "package": "com.billpe.pos",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
@@ -30,6 +34,11 @@
           "cameraPermission": "Allow BillPe to access your camera to scan product barcodes."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "117fc032-8002-4217-8965-7103a3a1838c"
+      }
+    }
   }
 }
