@@ -13,7 +13,6 @@ export default function UpdateAlert() {
 
   const checkForUpdates = async () => {
     try {
-      // Safe guard: Expo Go ya development environment mein crash na ho
       const currentVersion = Application?.nativeApplicationVersion;
       if (!currentVersion) return; 
 
@@ -24,7 +23,7 @@ export default function UpdateAlert() {
         setIsMandatory(data.isMandatory);
       }
     } catch (error) {
-      // Ignore background check failure silently so it doesn't crash the UI
+      console.log('Error fetching version', error);
     }
   };
 
@@ -51,7 +50,7 @@ export default function UpdateAlert() {
           </Text>
           
           <Text style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
-            BillPe ka ek naya version available hai. Naye features aur security updates ke liye app ko update karein.
+            BillPe new version available . New features and security updates.
           </Text>
 
           <View style={{ width: '100%' }}>
