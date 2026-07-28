@@ -1,13 +1,11 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const LAPTOP_IP = '192.168.98.142';
-const PORT = '5000';
-const API_BASE_URL = `http://${LAPTOP_IP}:${PORT}/api`;
+const API_BASE_URL = 'https://billpe-backend.onrender.com/api';
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000, 
   headers: {
     'Content-Type': 'application/json',
   },
