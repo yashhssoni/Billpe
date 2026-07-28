@@ -30,11 +30,6 @@
           "cameraPermission": "Allow BillPe to access your camera to scan product barcodes."
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "your-eas-project-id-here"
-      }
-    }
+    ]
   }
 }
