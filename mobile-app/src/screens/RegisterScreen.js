@@ -4,7 +4,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import axiosInstance from '../api/axiosInstance';
 
 GoogleSignin.configure({
-  webClientId: '333491210133-4ttarhv4f2squs5j9cjc2ahb9k482nrb.apps.googleusercontent.com', 
+  webClientId: '24765415155-16ucb2jnk6v6pc66qovkj9kbvv52.apps.googleusercontent.com', 
 });
 
 export default function RegisterScreen({ navigation }) {
@@ -14,7 +14,7 @@ export default function RegisterScreen({ navigation }) {
   });
   const [loading, setLoading] = useState(false);
 
-const handleEmailFieldPress = async () => {
+  const handleEmailFieldPress = async () => {
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();

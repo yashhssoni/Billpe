@@ -43,7 +43,12 @@
           "cameraPermission": "Allow BillPe to access your camera to scan product barcodes."
         }
       ],
-      "@react-native-google-signin/google-signin"
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.333491210133-4ttarhv4f2squs5j9cjc2ahb9k482nrb"
+        }
+      ]
     ],
     "extra": {
       "eas": {
