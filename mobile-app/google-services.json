@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "333491210133",
+    "project_id": "billpe-91458",
+    "storage_bucket": "billpe-91458.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:333491210133:android:d821e4cd476dd86f82589c",
+        "android_client_info": {
+          "package_name": "com.billpe.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwAmealbEOFNH_MJnhiuqOFFv446xT2dQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

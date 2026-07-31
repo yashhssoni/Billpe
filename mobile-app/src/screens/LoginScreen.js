@@ -37,6 +37,9 @@ export default function LoginScreen({ navigation }) {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          importantForAutofill="yes"
         />
 
         <TextInput
@@ -46,6 +49,9 @@ export default function LoginScreen({ navigation }) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoComplete="password"
+          textContentType="password"
+          importantForAutofill="yes"
         />
 
         <TouchableOpacity onPress={handleLogin} disabled={loading} style={styles.btn}>

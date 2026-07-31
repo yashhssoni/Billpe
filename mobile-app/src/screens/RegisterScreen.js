@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import axiosInstance from '../api/axiosInstance';
+
+GoogleSignin.configure({
+  webClientId: '333491210133-4ttarhv4f2squs5j9cjc2ahb9k482nrb.apps.googleusercontent.com', 
+});
 
 export default function RegisterScreen({ navigation }) {
   const [role, setRole] = useState('admin');
@@ -8,6 +13,35 @@ export default function RegisterScreen({ navigation }) {
     storeName: '', ownerName: '', phone: '', email: '', password: '', address: '', gstin: '', storeId: ''
   });
   const [loading, setLoading] = useState(false);
+
+const handleEmailFieldPress = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      
+      console.log("FULL GOOGLE SIGNIN OBJECT:", JSON.stringify(response, null, 2));
+
+      const user = response?.data?.user || response?.user || response?.data || response;
+      const selectedEmail = user?.email;
+      const selectedName = user?.name;
+
+      console.log("EXTRACTED EMAIL:", selectedEmail);
+      console.log("EXTRACTED NAME:", selectedName);
+
+      if (selectedEmail) {
+        setForm(prevForm => ({
+          ...prevForm,
+          email: selectedEmail,
+          ownerName: prevForm.ownerName ? prevForm.ownerName : (selectedName || '')
+        }));
+      } else {
+        Alert.alert("Notice", "Google account selected, but email was not found in response.");
+      }
+    } catch (error) {
+      console.log("Google Sign-In Detailed Error:", JSON.stringify(error, null, 2));
+      Alert.alert("Google Sign-In Error", error.message || "Failed to sign in with Google.");
+    }
+  };
 
   const handleRegister = async () => {
     const payload = {
@@ -21,7 +55,7 @@ export default function RegisterScreen({ navigation }) {
     };
 
     if (!payload.email || !payload.password || !payload.phone || !payload.ownerName) {
-      Alert.alert('Error', 'Please fill all required fields.');
+      Alert.alert('Error', 'Please fill all required fields and select a valid Google email.');
       return;
     }
 
@@ -122,15 +156,22 @@ export default function RegisterScreen({ navigation }) {
             value={form.phone}
             onChangeText={(val) => setForm({ ...form, phone: val })} 
           />
-          <TextInput 
-            style={styles.input} 
-            placeholder="Email Address" 
-            placeholderTextColor="#64748b" 
-            autoCapitalize="none" 
-            keyboardType="email-address" 
-            value={form.email}
-            onChangeText={(val) => setForm({ ...form, email: val })} 
-          />
+
+          {/* EMAIL FIELD: Clickable Google Picker Trigger */}
+          <TouchableOpacity activeOpacity={0.8} onPress={handleEmailFieldPress}>
+            <View pointerEvents="none">
+              <TextInput 
+                style={styles.input} 
+                placeholder={form.email ? form.email : "Tap to select Google Email 📧"} 
+                placeholderTextColor="#64748b" 
+                value={form.email}
+                editable={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+              />
+            </View>
+          </TouchableOpacity>
+
           <TextInput 
             style={styles.input} 
             placeholder="Password" 
@@ -138,6 +179,9 @@ export default function RegisterScreen({ navigation }) {
             secureTextEntry 
             value={form.password}
             onChangeText={(val) => setForm({ ...form, password: val })} 
+            autoComplete="password-new"
+            textContentType="newPassword"
+            importantForAutofill="yes"
           />
 
           <TouchableOpacity onPress={handleRegister} disabled={loading} style={styles.btn}>
