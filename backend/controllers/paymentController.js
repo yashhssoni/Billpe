@@ -24,7 +24,8 @@ exports.createMonthlyOrder = async (req, res, next) => {
 
 exports.verifyMonthlyPayment = async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const storeId = req.user.storeId; // <-- Token se storeId nikal liya
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(sign.toString()).digest("hex");
@@ -34,6 +35,10 @@ exports.verifyMonthlyPayment = async (req, res, next) => {
     }
 
     const sub = await Subscription.findOne({ storeId });
+    if (!sub) {
+      return res.status(404).json({ success: false, message: "Subscription record not found." });
+    }
+
     const newExpiry = new Date();
     newExpiry.setMonth(newExpiry.getMonth() + 1);
 
@@ -66,7 +71,8 @@ exports.createAddonOrder = async (req, res, next) => {
 
 exports.verifyAddonPayment = async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const storeId = req.user.storeId; // <-- Token se storeId nikal liya
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET).update(sign.toString()).digest("hex");
@@ -75,18 +81,24 @@ exports.verifyAddonPayment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Invalid payment signature." });
     }
 
-    await Subscription.findOneAndUpdate(
+    const updatedSub = await Subscription.findOneAndUpdate(
       { storeId },
-      { $inc: { addonBrBalance: 25 } },
+      { $inc: { addonBrBalance: 25 } }, // Correct spelling match with schema
       { new: true }
     );
+
+    if (!updatedSub) {
+      return res.status(404).json({ success: false, message: "Subscription record not found." });
+    }
 
     res.json({ success: true, message: "Successfully added 25 extra barcode credits!" });
   } catch (error) {
     next(error);
   }
 };
-// Fetch Remaining Quota Status
+
+
+
 exports.getQuotaStatus = async (req, res, next) => {
   try {
     const storeId = req.user.storeId;
