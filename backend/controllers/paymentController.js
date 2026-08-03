@@ -77,7 +77,7 @@ exports.verifyAddonPayment = async (req, res, next) => {
 
     await Subscription.findOneAndUpdate(
       { storeId },
-      { $inc: { addonBRBalance: 25 } },
+      { $inc: { addonBrBalance: 25 } },
       { new: true }
     );
 
