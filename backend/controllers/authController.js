@@ -142,7 +142,10 @@ exports.login = async (req, res, next) => {
       success: true,
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role },
-      storeInfo: user.storeId,
+      storeInfo: {
+        ...user.storeId.toObject(),
+        isSubActive 
+      },
       isSubActive
     });
   } catch (error) {
