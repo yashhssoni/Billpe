@@ -14,7 +14,7 @@ exports.checkout = async (req, res, next) => {
     const storeInfo = await Store.findById(storeId);
     const soldEntries = [];
 
-    const finalCustomerName = customerName && customerName.trim() ? customerName.trim() : 'Cash Sale';
+    const finalCustomerName = customerName && customerName.trim() ? customerName.trim() : 'N/A';
     const finalCustomerPhone = customerPhone && customerPhone.trim() ? customerPhone.trim() : 'N/A';
 
     for (let item of cartItems) {
