@@ -1,14 +1,24 @@
 const Product = require('../models/Product');
 const SoldItem = require('../models/SoldItem'); 
+const { uploadImageToCloudinary } = require('../utils/imageUploader'); // Aapka cloudinary utility
 
 exports.addProduct = async (req, res, next) => {
   try {
     const { 
       productName, barcode, price, stock, category, 
       lowestRate, highestRate, color, description, 
-      weightKg, weightGrams, totalWeightKg, imageUri 
+      weightKg, weightGrams, totalWeightKg 
     } = req.body;
     const storeId = req.user.storeId;
+
+    let imageUrl = req.body.imageUri || '';
+
+    // AGAR FRONTEND SE IMAGE FILE UPLOAD HOKAR AAYI HAI
+    if (req.files && req.files.imageFile) {
+      const file = req.files.imageFile;
+      const uploadDetails = await uploadImageToCloudinary(file, 'billpe_products');
+      imageUrl = uploadDetails.secure_url; // Cloudinary secure URL
+    }
 
     const parsedLowestRate = lowestRate !== undefined && lowestRate !== '' ? Number(lowestRate) : (price !== undefined ? Number(price) : 0);
     const parsedHighestRate = highestRate !== undefined && highestRate !== '' ? Number(highestRate) : parsedLowestRate;
@@ -27,7 +37,10 @@ exports.addProduct = async (req, res, next) => {
       product.weightKg = weightKg !== undefined ? Number(weightKg) : product.weightKg;
       product.weightGrams = weightGrams !== undefined ? Number(weightGrams) : product.weightGrams;
       product.totalWeightKg = totalWeightKg !== undefined ? Number(totalWeightKg) : product.totalWeightKg;
-      product.imageUri = imageUri || product.imageUri;
+      
+      if (imageUrl) {
+        product.imageUri = imageUrl;
+      }
       
       // Stock Reset
       product.stock = stock !== undefined ? Number(stock) : 1;
@@ -38,10 +51,9 @@ exports.addProduct = async (req, res, next) => {
       product.soldAt = null;
 
       await product.save();
-
       await SoldItem.findOneAndDelete({ productId: product._id, storeId });
 
-      return res.status(200).json({
+      return res.serverResponse ? null : res.status(200).json({
         success: true,
         message: "Product reactivated and updated in stock.",
         product
@@ -62,7 +74,7 @@ exports.addProduct = async (req, res, next) => {
       weightKg: weightKg !== undefined ? Number(weightKg) : 0,
       weightGrams: weightGrams !== undefined ? Number(weightGrams) : 0,
       totalWeightKg: totalWeightKg !== undefined ? Number(totalWeightKg) : 0,
-      imageUri: imageUri || '',
+      imageUri: imageUrl, // Cloudinary URL yahan save hoga
       sold: false
     });
 
@@ -98,6 +110,11 @@ exports.updateProduct = async (req, res, next) => {
     const storeId = req.user.storeId;
     const productId = req.params.id;
     const updateData = req.body;
+
+    if (req.files && req.files.imageFile) {
+      const uploadDetails = await uploadImageToCloudinary(req.files.imageFile, 'billpe_products');
+      updateData.imageUri = uploadDetails.secure_url;
+    }
 
     if (updateData.sold === false || (updateData.stock !== undefined && updateData.stock > 0)) {
       await SoldItem.findOneAndDelete({ productId, storeId });

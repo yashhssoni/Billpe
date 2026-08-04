@@ -3,14 +3,25 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const fileUpload = require('express-fileupload');
+const { cloudinaryConnect } = require('./config/cloudinary');
 
 dotenv.config();
 connectDB();
+
+cloudinaryConnect();
 
 const app = express();
 
 app.use(express.json());
 app.use(cors());
+
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: '/tmp',
+  })
+);
 
 app.get('/api/app-version', (req, res) => {
   res.json({
