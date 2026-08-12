@@ -5,6 +5,6 @@ const { getQuotaStatus, requestActivation, adminApprove } = require('../controll
 
 router.get('/quota-status', protect, getQuotaStatus);
 router.post('/request-activation', protect, requestActivation);
-router.post('/admin-approve', adminApprove); // Admin ke liye
+router.post('/admin-approve', adminApprove);
 
 module.exports = router;

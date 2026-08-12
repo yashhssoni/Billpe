@@ -11,20 +11,18 @@ exports.getQuotaStatus = async (req, res, next) => {
     res.json({
       success: true,
       isActive: isSubActive,
-      paymentPending: sub?.paymentPending || false,
-      expiryDate: sub?.expiryDate || null
+      paymentPending: sub ? sub.paymentPending : false,
+      expiryDate: sub ? sub.expiryDate : null
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Dukaandaar jab payment ke baad "Notify Admin" dabayega
 exports.requestActivation = async (req, res, next) => {
   try {
     const storeId = req.user.storeId;
 
-    // upsert: true se agar record nahi hoga toh ban jayega, crash nahi hoga!
     await Subscription.findOneAndUpdate(
       { storeId },
       { paymentPending: true, isActive: false },
@@ -37,7 +35,6 @@ exports.requestActivation = async (req, res, next) => {
   }
 };
 
-// Admin jab payment check karke approve karega (Postman / Admin panel se)
 exports.adminApprove = async (req, res, next) => {
   try {
     const { storeId } = req.body;
@@ -53,11 +50,11 @@ exports.adminApprove = async (req, res, next) => {
     }
 
     const newExpiry = new Date();
-    newExpiry.setMonth(newExpiry.getMonth() + 1); // Exact 1 Month extension
+    newExpiry.setMonth(newExpiry.getMonth() + 1);
 
     sub.expiryDate = newExpiry;
     sub.isActive = true;
-    sub.paymentPending = false; // Pending hata diya
+    sub.paymentPending = false;
     await sub.save();
 
     res.json({ success: true, message: "Subscription approved and activated successfully for 1 month!" });
