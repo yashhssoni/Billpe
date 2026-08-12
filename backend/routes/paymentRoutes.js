@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
-const { 
-  getQuotaStatus, 
-  activateMonthlySubscription 
-} = require('../controllers/paymentController');
+const { getQuotaStatus, requestActivation, adminApprove } = require('../controllers/paymentController');
 
 router.get('/quota-status', protect, getQuotaStatus);
-router.post('/activate-subscription', protect, activateMonthlySubscription);
+router.post('/request-activation', protect, requestActivation);
+router.post('/admin-approve', adminApprove); // Admin ke liye
 
 module.exports = router;
