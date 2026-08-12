@@ -23,18 +23,13 @@ exports.getQuotaStatus = async (req, res, next) => {
 exports.requestActivation = async (req, res, next) => {
   try {
     const storeId = req.user.storeId;
-    let sub = await Subscription.findOne({ storeId });
 
-    if (!sub) {
-      sub = await Subscription.create({
-        storeId,
-        paymentPending: true,
-        isActive: false
-      });
-    } else {
-      sub.paymentPending = true;
-      await sub.save();
-    }
+    // upsert: true se agar record nahi hoga toh ban jayega, crash nahi hoga!
+    await Subscription.findOneAndUpdate(
+      { storeId },
+      { paymentPending: true, isActive: false },
+      { upsert: true, new: true }
+    );
 
     res.json({ success: true, message: "Payment request sent to admin successfully." });
   } catch (error) {
@@ -46,6 +41,11 @@ exports.requestActivation = async (req, res, next) => {
 exports.adminApprove = async (req, res, next) => {
   try {
     const { storeId } = req.body;
+    
+    if (!storeId) {
+      return res.status(400).json({ success: false, message: "Store ID is required." });
+    }
+
     let sub = await Subscription.findOne({ storeId });
 
     if (!sub) {
