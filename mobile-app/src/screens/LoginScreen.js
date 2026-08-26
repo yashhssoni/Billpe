@@ -3,21 +3,21 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Keyb
 import { AuthContext } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
+    if (!identifier.trim() || !password) {
+      Alert.alert('Error', 'Please enter Email/Phone and Password.');
       return;
     }
     setLoading(true);
-    const result = await login(email, password);
+    const result = await login(identifier.trim(), password);
     setLoading(false);
     if (!result.success) {
-      Alert.alert('Login Failed', result.message);
+      Alert.alert('Login Failed', result.message || 'Invalid credentials.');
     }
   };
 
@@ -29,32 +29,30 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.subtitle}>Simple & Smart Billing System</Text>
         </View>
 
+        <Text style={styles.inputLabel}>Email or Mobile Number</Text>
         <TextInput
           style={styles.input}
-          placeholder="Email Address"
+          placeholder="e.g. 9876543210 or user@gmail.com"
           placeholderTextColor="#64748b"
-          value={email}
-          onChangeText={setEmail}
+          value={identifier}
+          onChangeText={setIdentifier}
           autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          textContentType="emailAddress"
-          importantForAutofill="yes"
+          autoCorrect={false}
         />
 
+        <Text style={styles.inputLabel}>Password</Text>
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder="Enter your password"
           placeholderTextColor="#64748b"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          autoComplete="password"
-          textContentType="password"
-          importantForAutofill="yes"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
 
-        <TouchableOpacity onPress={handleLogin} disabled={loading} style={styles.btn}>
+        <TouchableOpacity onPress={handleLogin} disabled={loading} style={styles.btn} activeOpacity={0.8}>
           {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Sign In</Text>}
         </TouchableOpacity>
 
@@ -72,10 +70,11 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', padding: 24 },
   card: { backgroundColor: '#1e293b', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#334155' },
-  header: { alignItems: 'center', marginBottom: 24 },
+  header: { alignItems: 'center', marginBottom: 20 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
   subtitle: { fontSize: 14, color: '#94a3b8' },
-  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 16, fontSize: 15 },
+  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 6, textTransform: 'uppercase' },
+  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 14, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },

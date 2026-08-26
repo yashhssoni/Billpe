@@ -23,7 +23,9 @@ export const AuthProvider = ({ children }) => {
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
-        setStoreInfo(JSON.parse(storedStore));
+        if (storedStore) {
+          setStoreInfo(JSON.parse(storedStore));
+        }
       }
     } catch (error) {
       console.log('Failed to load auth state', error);
@@ -32,9 +34,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  // Login with Email or Phone Number
+  const login = async (identifier, password) => {
     try {
-      const { data } = await axiosInstance.post('/auth/login', { email, password });
+      const { data } = await axiosInstance.post('/auth/login', { 
+        identifier: identifier.trim(),
+        email: identifier.trim(), // Backward compatibility ke liye
+        password 
+      });
+
       if (data.success) {
         const combinedStoreInfo = {
           ...data.storeInfo,
@@ -70,7 +78,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, storeInfo, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, storeInfo, token, isLoading, login, logout, setUser, setStoreInfo }}>
       {children}
     </AuthContext.Provider>
   );

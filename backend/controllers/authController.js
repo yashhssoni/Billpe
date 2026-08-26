@@ -12,9 +12,20 @@ exports.register = async (req, res, next) => {
   try {
     const { storeName, ownerName, phone, email, password, address, gstin, role, storeId } = req.body;
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    const normalizedEmail = email ? email.toLowerCase().trim() : '';
+    const normalizedPhone = phone ? phone.trim() : '';
+
+    // Check if email or phone already exists
+    const existingUser = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { phone: normalizedPhone }
+      ]
+    });
+
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Email already registered." });
+      const field = existingUser.email === normalizedEmail ? "Email" : "Phone number";
+      return res.status(400).json({ success: false, message: `${field} is already registered.` });
     }
 
     let assignedStoreId = storeId;
@@ -28,15 +39,14 @@ exports.register = async (req, res, next) => {
       const store = await Store.create({ 
         storeName: storeName.trim(), 
         ownerName: ownerName.trim(), 
-        phone: phone.trim(), 
-        email: email.toLowerCase().trim(), 
+        phone: normalizedPhone, 
+        email: normalizedEmail, 
         address: address.trim(), 
         gstin: gstin ? gstin.trim() : '' 
       });
       assignedStoreId = store._id;
       storeInfo = store;
 
-      // Safe Subscription creation without validation blocks
       try {
         await Subscription.create({
           storeId: store._id,
@@ -63,9 +73,9 @@ exports.register = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name: ownerName.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password: hashedPassword,
-      phone: phone.trim(),
+      phone: normalizedPhone,
       role: role || 'admin',
       storeId: assignedStoreId
     });
@@ -75,11 +85,11 @@ exports.register = async (req, res, next) => {
     res.status(201).json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
       storeInfo
     });
   } catch (error) {
-    console.error("REGISTRATION ERROR CRASH:", error); // <-- Yeh terminal me exact error print karega
+    console.error("REGISTRATION ERROR CRASH:", error);
     return res.status(500).json({ success: false, message: error.message || "Registration failed due to server error." });
   }
 };
@@ -93,17 +103,27 @@ exports.addEmployee = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Only admin can add employees." });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    const normalizedEmail = email ? email.toLowerCase().trim() : '';
+    const normalizedPhone = phone ? phone.trim() : '';
+
+    const existingUser = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { phone: normalizedPhone }
+      ]
+    });
+
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Employee email already exists." });
+      const field = existingUser.email === normalizedEmail ? "Email" : "Phone number";
+      return res.status(400).json({ success: false, message: `Employee with this ${field} already exists.` });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const employee = await User.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password: hashedPassword,
-      phone: phone.trim(),
+      phone: normalizedPhone,
       role: 'employee',
       storeId
     });
@@ -118,18 +138,33 @@ exports.addEmployee = async (req, res, next) => {
   }
 };
 
+// Single Identifier Login (Email OR Phone Number)
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, identifier, password } = req.body;
+    const loginIdentifier = (identifier || email || '').trim();
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).populate('storeId');
+    if (!loginIdentifier || !password) {
+      return res.status(400).json({ success: false, message: "Please provide Email/Mobile and Password." });
+    }
+
+    const cleanEmail = loginIdentifier.toLowerCase();
+
+    // Query user by either Email OR Phone number
+    const user = await User.findOne({
+      $or: [
+        { email: cleanEmail },
+        { phone: loginIdentifier }
+      ]
+    }).populate('storeId');
+
     if (!user) {
-      return res.status(400).json({ success: false, message: "Invalid email or password." });
+      return res.status(400).json({ success: false, message: "Invalid Email/Mobile or password." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Invalid email or password." });
+      return res.status(400).json({ success: false, message: "Invalid Email/Mobile or password." });
     }
 
     const subscription = await Subscription.findOne({ storeId: user.storeId._id });
@@ -141,7 +176,7 @@ exports.login = async (req, res, next) => {
     res.json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
       storeInfo: {
         ...user.storeId.toObject(),
         isSubActive 

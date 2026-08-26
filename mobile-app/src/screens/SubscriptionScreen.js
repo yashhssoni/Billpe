@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, Linking, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, Linking, Image, ScrollView } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function SubscriptionScreen({ navigation }) {
@@ -29,7 +29,7 @@ export default function SubscriptionScreen({ navigation }) {
     try {
       await axiosInstance.post('/payment/request-activation');
       setStatus(prev => ({ ...prev, paymentPending: true }));
-      Alert.alert('Request Sent ⏳', 'If payment is done, please contact support.');
+      Alert.alert('Request Sent ⏳', 'Approval request sent. Please contact admin.');
     } catch (e) { 
       Alert.alert('Error', 'Request nahi ja payi.'); 
     }
@@ -57,25 +57,40 @@ export default function SubscriptionScreen({ navigation }) {
     );
   }
 
-  // 2. Pending Screen (Force Lock)
+  // 2. Pending Screen (With QR Code + Call Admin Button)
   if (status.paymentPending) {
     return (
-      <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.pendingTitle}>Verification Pending ⏳</Text>
-        <Text style={styles.desc}>You had successfully send the approval request. Please call on below number to get fast approval.</Text>
+        <Text style={styles.desc}>
+          Request sent successfully! If not paid yet, scan below to complete payment and call admin for fast approval.
+        </Text>
+
+        {/* QR Code Box */}
+        <View style={styles.qrBox}>
+          <Text style={styles.planAmountText}>Monthly Plan: ₹600</Text>
+          <Image 
+            source={require('../assets/image.png')} 
+            style={styles.qrImage} 
+          />
+          <Text style={styles.qrSubText}>Scan using GPay / PhonePe / Paytm</Text>
+        </View>
         
+        {/* Call Admin Button */}
         <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+916263634900')}>
           <Text style={styles.callBtnText}>📞 Call Admin: 6263634900</Text>
         </TouchableOpacity>
         
-        <Text style={{color: '#64748b', textAlign: 'center', marginTop: 20, fontSize: 12}}>APp will automatically start after approval from admin</Text>
-      </View>
+        <Text style={styles.autoStartNote}>
+          App will automatically unlock once approved by admin.
+        </Text>
+      </ScrollView>
     );
   }
 
-  // 3. Purchase Plan Screen (Default View with QR & Payment Done Button)
+  // 3. Purchase Plan Screen (Default View)
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Purchase Monthly Plan (₹600)</Text>
       
       <View style={styles.qrBox}>
@@ -83,7 +98,7 @@ export default function SubscriptionScreen({ navigation }) {
           source={require('../assets/image.png')} 
           style={styles.qrImage} 
         />
-        <Text style={{color: '#94a3b8', marginTop: 10, fontSize: 13}}>San using GPay / PhonePe / Paytm </Text>
+        <Text style={styles.qrSubText}>Scan using GPay / PhonePe / Paytm</Text>
       </View>
 
       <TouchableOpacity onPress={handleNotify} disabled={loading} style={styles.btn}>
@@ -93,21 +108,40 @@ export default function SubscriptionScreen({ navigation }) {
           <Text style={styles.btnText}>Payment Done - Notify Admin</Text>
         )}
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 24, justifyContent: 'center' },
+  scrollContainer: { flexGrow: 1, backgroundColor: '#0f172a', padding: 24, justifyContent: 'center' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 20 },
-  qrBox: { height: 280, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center', borderRadius: 20, marginBottom: 20, borderWidth: 2, borderColor: '#10b981', padding: 15 },
+  
+  qrBox: { 
+    backgroundColor: '#1e293b', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderRadius: 20, 
+    marginBottom: 20, 
+    borderWidth: 2, 
+    borderColor: '#10b981', 
+    padding: 16 
+  },
+  planAmountText: { color: '#10b981', fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
   qrImage: { width: 180, height: 180, resizeMode: 'contain' },
+  qrSubText: { color: '#94a3b8', marginTop: 10, fontSize: 13 },
+
   btn: { backgroundColor: '#10b981', padding: 18, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  
   success: { color: '#10b981', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
   sub: { color: '#cbd5e1', fontSize: 15, textAlign: 'center', marginBottom: 20 },
-  pendingTitle: { color: '#f59e0b', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
-  desc: { color: '#cbd5e1', textAlign: 'center', marginBottom: 24, fontSize: 15, lineHeight: 22 },
-  callBtn: { backgroundColor: '#3b82f6', padding: 18, borderRadius: 12, alignItems: 'center' },
-  callBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+  
+  pendingTitle: { color: '#f59e0b', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  desc: { color: '#cbd5e1', textAlign: 'center', marginBottom: 16, fontSize: 14, lineHeight: 20 },
+  
+  callBtn: { backgroundColor: '#3b82f6', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 4 },
+  callBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+  
+  autoStartNote: { color: '#64748b', textAlign: 'center', marginTop: 18, fontSize: 12 }
 });
