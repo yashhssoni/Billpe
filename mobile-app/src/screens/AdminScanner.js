@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Image, Button } from 'react-native';
+import { 
+  View, Text, TextInput, TouchableOpacity, StyleSheet, 
+  Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
+  Platform, Image, Button 
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import axiosInstance from '../api/axiosInstance';
@@ -8,8 +12,9 @@ export default function AdminScanner({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
 
-  const [p, setP] = useState({
+  const initialFormState = {
     barcodeId: '',
     name: '',
     color: '',
@@ -20,7 +25,9 @@ export default function AdminScanner({ navigation }) {
     lowestRate: '',
     highestRate: '',
     imageUri: ''
-  });
+  };
+
+  const [p, setP] = useState(initialFormState);
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -38,11 +45,24 @@ export default function AdminScanner({ navigation }) {
     );
   }
 
+  const hasUnsavedChanges = () => {
+    return (
+      p.name.trim() !== '' ||
+      p.lowestRate.trim() !== '' ||
+      p.highestRate.trim() !== '' ||
+      p.category.trim() !== '' ||
+      p.color.trim() !== '' ||
+      p.kg.trim() !== '' ||
+      p.grams.trim() !== '' ||
+      p.description.trim() !== '' ||
+      p.imageUri !== ''
+    );
+  };
+
   const handleBarCodeScanned = async ({ data }) => {
     setScanner(false);
     
     try {
-      // Check subscription first via products fetch endpoint
       const { data: res } = await axiosInstance.get(`/products?includeSold=true`);
       if (res.success && res.products) {
         const found = res.products.find(item => item.barcode === data);
@@ -54,14 +74,13 @@ export default function AdminScanner({ navigation }) {
               `Product: ${found.productName}\n` +
               `Status: SOLD OUT\n` +
               `Sold Price: ₹${found.soldPrice || found.price}\n` +
-              `Customer: ${found.soldCustomerName || 'Cash Sale'}\n` +
+              `Customer: ${found.soldCustomerName || 'N/A'}\n` +
               `Mobile: ${found.soldCustomerPhone || 'N/A'}\n\n` +
-              `Item already sold , Did you want to add this to Inventory?`,
+              `Item already sold, do you want to restock this to Inventory?`,
               [
                 { text: 'Scan Another', onPress: () => setScanner(true), style: 'cancel' },
                 {
                   text: 'Restock',
-                  pressable: true,
                   onPress: async () => {
                     try {
                       await axiosInstance.put(`/products/${found._id}`, { 
@@ -128,10 +147,8 @@ export default function AdminScanner({ navigation }) {
         setScanner(true);
         return;
       }
-      console.log('Lookup error:', err.message);
     }
 
-    // CASE 3: AGAR ITEM DATABASE ME BILKUL NAHI HAI (New Item)
     setP(prev => ({ ...prev, barcodeId: data }));
   };
 
@@ -172,8 +189,16 @@ export default function AdminScanner({ navigation }) {
   const removeImage = () => setP(prev => ({ ...prev, imageUri: '' }));
 
   const handleSaveProduct = async () => {
-    if (!p.name || !p.lowestRate) {
-      Alert.alert('Error', 'Please fill in Product Name and Lowest Rate.');
+    if (!p.name.trim() || !String(p.lowestRate).trim() || !String(p.highestRate).trim()) {
+      Alert.alert('Incomplete Required Fields ⚠️', 'Please fill Product Name, Lowest Rate, and Highest Rate.');
+      return;
+    }
+
+    const lowestVal = Number(p.lowestRate);
+    const highestVal = Number(p.highestRate);
+
+    if (lowestVal > highestVal) {
+      Alert.alert('Invalid Pricing ⚠️', 'Lowest Rate cannot be higher than Highest Rate.');
       return;
     }
 
@@ -183,31 +208,50 @@ export default function AdminScanner({ navigation }) {
       const weightGramsVal = Number(p.grams) || 0;
       const totalWeightKg = weightKgVal + (weightGramsVal / 1000);
 
-      const payload = {
-        productName: p.name.trim(),
-        barcode: p.barcodeId,
-        price: Number(p.lowestRate),
-        lowestRate: Number(p.lowestRate),
-        highestRate: Number(p.highestRate || p.lowestRate),
-        category: p.category.trim() || 'General',
-        color: p.color.trim(),
-        description: p.description.trim(),
-        weightKg: weightKgVal,
-        weightGrams: weightGramsVal,
-        totalWeightKg: totalWeightKg,
-        imageUri: p.imageUri,
-        stock: 10
-      };
+      const formData = new FormData();
+      formData.append('productName', p.name.trim());
+      formData.append('barcode', p.barcodeId);
+      formData.append('price', lowestVal);
+      formData.append('lowestRate', lowestVal);
+      formData.append('highestRate', highestVal);
+      formData.append('category', p.category.trim() || 'General');
+      formData.append('color', p.color.trim());
+      formData.append('description', p.description.trim());
+      formData.append('weightKg', weightKgVal);
+      formData.append('weightGrams', weightGramsVal);
+      formData.append('totalWeightKg', totalWeightKg);
+      formData.append('stock', 10);
 
-      const { data } = await axiosInstance.post('/products', payload);
+      if (p.imageUri && p.imageUri.startsWith('file://')) {
+        const filename = p.imageUri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+        formData.append('imageFile', {
+          uri: p.imageUri,
+          name: filename,
+          type,
+        });
+      } else if (p.imageUri) {
+        formData.append('imageUri', p.imageUri);
+      }
+
+      const { data } = await axiosInstance.post('/products', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       setLoading(false);
 
       if (data.success || data.product) {
         Alert.alert('Success', data.message || 'Product saved successfully!', [
-          { text: 'Scan Another', onPress: () => {
-            setScanner(true);
-            setP({ barcodeId: '', name: '', color: '', category: '', description: '', kg: '', grams: '', lowestRate: '', highestRate: '', imageUri: '' });
-          }},
+          { 
+            text: 'Scan Next Item', 
+            onPress: () => {
+              setP(initialFormState);
+              setScanner(true);
+            }
+          },
           { text: 'Dashboard', onPress: () => navigation.goBack() }
         ]);
       }
@@ -218,6 +262,20 @@ export default function AdminScanner({ navigation }) {
       } else {
         Alert.alert('Error', err.response?.data?.message || 'Failed to save product.');
       }
+    }
+  };
+
+  // Dynamic Border & Glow Logic for Required Inputs
+  const getRequiredInputStyle = (fieldName, value) => {
+    const isFilled = Boolean(value && String(value).trim().length > 0);
+    const isFocused = focusedField === fieldName;
+
+    if (!isFilled) {
+      // Empty: Red Border + Red Shadow
+      return isFocused ? [styles.input, styles.inputRedActive] : [styles.input, styles.inputRedIdle];
+    } else {
+      // Filled: Green Glow when focused/typing, Clean Neutral when focus moves away
+      return isFocused ? [styles.input, styles.inputGreenActive] : [styles.input, styles.inputFilledClean];
     }
   };
 
@@ -238,84 +296,269 @@ export default function AdminScanner({ navigation }) {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Product Entry Form</Text>
 
-        <Text style={styles.label}>Barcode ID:</Text>
-        <TextInput style={[styles.input, { backgroundColor: '#334155', color: '#94a3b8' }]} value={p.barcodeId} editable={false} />
+        {/* ================= REQUIRED SECTION (ON TOP) ================= */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionHeading}>Mandatory Details (Required *)</Text>
 
-        <Text style={styles.label}>Product Name *:</Text>
-        <TextInput style={styles.input} placeholder="e.g. Patila, Shirt, Rice, etc." placeholderTextColor="#64748b" value={p.name} onChangeText={(t) => setP({ ...p, name: t })} />
+          {/* 1. Barcode ID */}
+          <Text style={styles.label}>Barcode ID:</Text>
+          <TextInput 
+            style={[styles.input, styles.readOnlyInput]} 
+            value={p.barcodeId} 
+            editable={false} 
+          />
 
-        <Text style={styles.label}>Product Type:</Text>
-        <TextInput style={styles.input} placeholder="e.g. Steel, Grocery, Apparel, etc." placeholderTextColor="#64748b" value={p.category} onChangeText={(t) => setP({ ...p, category: t })} />
-
-        <Text style={styles.label}>Product Weight</Text>
-        <View style={styles.weightRow}>
-          <View style={{ flex: 1 }}>
-            <TextInput style={styles.input} placeholder="KG (e.g. 1)" placeholderTextColor="#64748b" keyboardType="numeric" value={p.kg} onChangeText={(t) => setP({ ...p, kg: t })} />
+          {/* 2. Product Name */}
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Product Name *</Text>
+            {!p.name.trim() && <Text style={styles.requiredTag}>Required</Text>}
           </View>
-          <View style={{ flex: 1 }}>
-            <TextInput style={styles.input} placeholder="Grams (e.g. 200)" placeholderTextColor="#64748b" keyboardType="numeric" value={p.grams} onChangeText={(t) => setP({ ...p, grams: t })} />
+          <TextInput 
+            style={getRequiredInputStyle('name', p.name)} 
+            placeholder="e.g. Steel Patila, Formal Shirt, Basmati Rice" 
+            placeholderTextColor="#64748b" 
+            value={p.name} 
+            onFocus={() => setFocusedField('name')}
+            onBlur={() => setFocusedField(null)}
+            onChangeText={(t) => setP({ ...p, name: t })} 
+          />
+
+          {/* 3. Lowest Rate & Highest Rate (Both Required) */}
+          <View style={styles.rateRow}>
+            {/* Lowest Rate */}
+            <View style={{ flex: 1 }}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Lowest Rate *</Text>
+                {!String(p.lowestRate).trim() && <Text style={styles.requiredTag}>Required</Text>}
+              </View>
+              <TextInput 
+                style={getRequiredInputStyle('lowestRate', p.lowestRate)} 
+                placeholder="Min Price (e.g. 400)" 
+                placeholderTextColor="#64748b" 
+                value={String(p.lowestRate)} 
+                onFocus={() => setFocusedField('lowestRate')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(t) => setP({ ...p, lowestRate: t })} 
+                keyboardType="numeric" 
+              />
+            </View>
+
+            {/* Highest Rate */}
+            <View style={{ flex: 1 }}>
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Highest Rate *</Text>
+                {!String(p.highestRate).trim() && <Text style={styles.requiredTag}>Required</Text>}
+              </View>
+              <TextInput 
+                style={getRequiredInputStyle('highestRate', p.highestRate)} 
+                placeholder="Max Price (e.g. 550)" 
+                placeholderTextColor="#64748b" 
+                value={String(p.highestRate)} 
+                onFocus={() => setFocusedField('highestRate')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(t) => setP({ ...p, highestRate: t })} 
+                keyboardType="numeric" 
+              />
+            </View>
           </View>
         </View>
 
-        <Text style={styles.label}>Color:</Text>
-        <TextInput style={styles.input} placeholder="Color" placeholderTextColor="#64748b" value={p.color} onChangeText={(t) => setP({ ...p, color: t })} />
+        {/* ================= OPTIONAL SECTION ================= */}
+        <View style={[styles.sectionCard, { marginTop: 16 }]}>
+          <Text style={styles.sectionHeadingOptional}>Additional Details (Optional)</Text>
 
-        <Text style={styles.label}>Description:</Text>
-        <TextInput style={styles.input} placeholder="Size, Quality, etc." placeholderTextColor="#64748b" value={p.description} onChangeText={(t) => setP({ ...p, description: t })} />
+          {/* Product Type / Category */}
+          <Text style={styles.label}>Product Type / Category:</Text>
+          <TextInput 
+            style={styles.inputOptional} 
+            placeholder="e.g. Steel, Grocery, Apparel, etc." 
+            placeholderTextColor="#64748b" 
+            value={p.category} 
+            onChangeText={(t) => setP({ ...p, category: t })} 
+          />
 
-        <Text style={styles.label}>Lowest Rate *:</Text>
-        <TextInput style={styles.input} placeholder="Lowest Price" placeholderTextColor="#64748b" value={String(p.lowestRate)} onChangeText={(t) => setP({ ...p, lowestRate: t })} keyboardType="numeric" />
-
-        <Text style={styles.label}>Highest Rate *:</Text>
-        <TextInput style={styles.input} placeholder="Highest Price" placeholderTextColor="#64748b" value={String(p.highestRate)} onChangeText={(t) => setP({ ...p, highestRate: t })} keyboardType="numeric" />
-
-        <Text style={styles.label}>Product Photo :</Text>
-        {p.imageUri ? (
-          <View style={{ marginBottom: 15 }}>
-            <Image source={{ uri: p.imageUri }} style={styles.preview} />
-            <View style={{ marginTop: 8 }}>
-              <Button title="Remove Photo" onPress={removeImage} color="#B71C1C" />
+          {/* Product Weight */}
+          <Text style={styles.label}>Product Weight:</Text>
+          <View style={styles.weightRow}>
+            <View style={{ flex: 1 }}>
+              <TextInput 
+                style={styles.inputOptional} 
+                placeholder="KG (e.g. 1)" 
+                placeholderTextColor="#64748b" 
+                keyboardType="numeric" 
+                value={p.kg} 
+                onChangeText={(t) => setP({ ...p, kg: t })} 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <TextInput 
+                style={styles.inputOptional} 
+                placeholder="Grams (e.g. 200)" 
+                placeholderTextColor="#64748b" 
+                keyboardType="numeric" 
+                value={p.grams} 
+                onChangeText={(t) => setP({ ...p, grams: t })} 
+              />
             </View>
           </View>
-        ) : (
-          <View style={styles.photoButtonsRow}>
-            <View style={{ flex: 1, marginRight: 6 }}>
-              <Button title="📸 Click Photo" onPress={takePhoto} color="#2E7D32" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 6 }}>
-              <Button title="🖼️ Open Gallery" onPress={pickImage} color="#1E88E5" />
-            </View>
-          </View>
-        )}
 
-        <TouchableOpacity onPress={handleSaveProduct} disabled={loading} style={styles.saveBtn}>
+          {/* Color */}
+          <Text style={styles.label}>Color:</Text>
+          <TextInput 
+            style={styles.inputOptional} 
+            placeholder="Color" 
+            placeholderTextColor="#64748b" 
+            value={p.color} 
+            onChangeText={(t) => setP({ ...p, color: t })} 
+          />
+
+          {/* Description */}
+          <Text style={styles.label}>Description:</Text>
+          <TextInput 
+            style={styles.inputOptional} 
+            placeholder="Size, Quality, etc." 
+            placeholderTextColor="#64748b" 
+            value={p.description} 
+            onChangeText={(t) => setP({ ...p, description: t })} 
+          />
+
+          {/* Product Photo */}
+          <Text style={styles.label}>Product Photo:</Text>
+          {p.imageUri ? (
+            <View style={{ marginBottom: 12 }}>
+              <Image source={{ uri: p.imageUri }} style={styles.preview} />
+              <View style={{ marginTop: 8 }}>
+                <Button title="Remove Photo" onPress={removeImage} color="#B71C1C" />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.photoButtonsRow}>
+              <View style={{ flex: 1, marginRight: 6 }}>
+                <Button title="📸 Click Photo" onPress={takePhoto} color="#2E7D32" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 6 }}>
+                <Button title="🖼️ Open Gallery" onPress={pickImage} color="#1E88E5" />
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Save Button */}
+        <TouchableOpacity onPress={handleSaveProduct} disabled={loading} style={styles.saveBtn} activeOpacity={0.8}>
           {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>Save / Update Product</Text>}
         </TouchableOpacity>
 
-        <View style={{ marginTop: 10 }} />
-        <Button title="Scan Another" onPress={() => setScanner(true)} color="orange" />
-        <View style={{ marginTop: 10 }} />
-        <Button title="Back" onPress={() => navigation.goBack()} color="red" />
+        {/* Back Button */}
+        <View style={{ marginTop: 12 }}>
+          <Button 
+            title="Back" 
+            onPress={() => {
+              if (hasUnsavedChanges()) {
+                Alert.alert('Discard Changes?', 'You have unsaved details. Are you sure you want to go back?', [
+                  { text: 'Stay', style: 'cancel' },
+                  { text: 'Discard & Go Back', style: 'destructive', onPress: () => navigation.goBack() }
+                ]);
+              } else {
+                navigation.goBack();
+              }
+            }} 
+            color="#ef4444" 
+          />
+        </View>
+
+        {/* Android Navigation Bar Safe Spacing */}
+        <View style={styles.androidNavSpace} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingTop: 40, backgroundColor: '#0f172a', flexGrow: 1 },
+  container: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#0f172a' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 20, textAlign: 'center' },
-  label: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1' },
-  input: { borderWidth: 1, padding: 12, marginBottom: 15, borderRadius: 8, borderColor: '#334155', backgroundColor: '#1e293b', color: '#fff' },
+  title: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
+
+  sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
+  sectionHeading: { fontSize: 13, fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+  sectionHeadingOptional: { fontSize: 13, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  label: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1', fontSize: 13 },
+  requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
+
+  // Base Required Input
+  input: { 
+    borderWidth: 1.5, 
+    padding: 12, 
+    marginBottom: 14, 
+    borderRadius: 12, 
+    backgroundColor: '#0f172a', 
+    color: '#fff', 
+    fontSize: 14 
+  },
+  readOnlyInput: { backgroundColor: '#334155', color: '#94a3b8', borderColor: '#475569' },
+
+  // 🔴 Required Empty State (Red Border + Shadow)
+  inputRedIdle: { 
+    borderColor: 'rgba(239, 68, 68, 0.7)', 
+    shadowColor: '#ef4444', 
+    shadowOffset: { width: 0, height: 0 }, 
+    shadowOpacity: 0.35, 
+    shadowRadius: 4, 
+    elevation: 2 
+  },
+  inputRedActive: { 
+    borderColor: '#ef4444', 
+    borderWidth: 2, 
+    shadowColor: '#ef4444', 
+    shadowOffset: { width: 0, height: 0 }, 
+    shadowOpacity: 0.6, 
+    shadowRadius: 8, 
+    elevation: 4 
+  },
+
+  // 🟢 Required Active Filled Typing State (Green Glow)
+  inputGreenActive: { 
+    borderColor: '#10b981', 
+    borderWidth: 2, 
+    shadowColor: '#10b981', 
+    shadowOffset: { width: 0, height: 0 }, 
+    shadowOpacity: 0.6, 
+    shadowRadius: 8, 
+    elevation: 4 
+  },
+
+  // ⚪ Required Filled (Focus Moved Away)
+  inputFilledClean: { 
+    borderColor: '#334155', 
+    borderWidth: 1.5 
+  },
+
+  // Optional Input Styling
+  inputOptional: { 
+    borderWidth: 1, 
+    padding: 12, 
+    marginBottom: 14, 
+    borderRadius: 12, 
+    borderColor: '#334155', 
+    backgroundColor: '#0f172a', 
+    color: '#fff', 
+    fontSize: 14 
+  },
+
+  rateRow: { flexDirection: 'row', gap: 10 },
   weightRow: { flexDirection: 'row', gap: 10 },
-  photoButtonsRow: { flexDirection: 'row', marginBottom: 15 },
+  photoButtonsRow: { flexDirection: 'row', marginBottom: 12 },
   backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
-  preview: { width: '100%', height: 200, borderRadius: 8, resizeMode: 'cover' },
-  saveBtn: { backgroundColor: '#10b981', paddingVertical: 15, borderRadius: 10, alignItems: 'center', marginTop: 5 },
-  saveBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  preview: { width: '100%', height: 180, borderRadius: 10, resizeMode: 'cover' },
+
+  saveBtn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 18, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
+  saveBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  androidNavSpace: { height: 45 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 }

@@ -36,13 +36,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await axiosInstance.post('/auth/login', { email, password });
       if (data.success) {
+        const combinedStoreInfo = {
+          ...data.storeInfo,
+          isSubActive: data.storeInfo?.isSubActive ?? data.isSubActive ?? false
+        };
+
         setToken(data.token);
         setUser(data.user);
-        setStoreInfo(data.storeInfo);
+        setStoreInfo(combinedStoreInfo);
 
         await AsyncStorage.setItem('billpe_token', data.token);
         await AsyncStorage.setItem('billpe_user', JSON.stringify(data.user));
-        await AsyncStorage.setItem('billpe_store', JSON.stringify(data.storeInfo));
+        await AsyncStorage.setItem('billpe_store', JSON.stringify(combinedStoreInfo));
         return { success: true };
       }
     } catch (error) {

@@ -4,7 +4,7 @@ const Store = require('../models/Store');
 
 exports.checkout = async (req, res, next) => {
   try {
-    const { cartItems, totalAmount, paymentMode, customerName, customerPhone } = req.body;
+    const { cartItems, totalAmount, paymentMode, customerName, customerPhone, employeeName } = req.body;
     const storeId = req.user.storeId;
 
     if (!cartItems || cartItems.length === 0) {
@@ -16,20 +16,22 @@ exports.checkout = async (req, res, next) => {
 
     const finalCustomerName = customerName && customerName.trim() ? customerName.trim() : 'N/A';
     const finalCustomerPhone = customerPhone && customerPhone.trim() ? customerPhone.trim() : 'N/A';
+    const finalEmployeeName = employeeName && employeeName.trim() ? employeeName.trim() : (req.user.name || 'Employee');
+    const finalPaymentMode = paymentMode || 'Cash';
 
     for (let item of cartItems) {
       const product = await Product.findOne({ _id: item.productId, storeId });
       
-      if (!product || product.stock <= 0 || product.sold === true) {
+      if (!product || product.sold === true) {
         return res.status(400).json({ 
           success: false, 
-          message: `Product already sold or out of stock: ${item.productName}` 
+          message: `Product already sold: ${item.productName}` 
         });
       }
 
       const salePrice = Number(item.agreedPrice || item.price || product.price);
 
-      product.stock = 0;
+      // Barcode-based single unit tracking
       product.sold = true;
       product.soldPrice = salePrice;
       product.soldCustomerName = finalCustomerName;
@@ -41,11 +43,12 @@ exports.checkout = async (req, res, next) => {
         storeId,
         productId: product._id,
         productName: product.productName,
-        quantity: item.quantity || 1,
         price: salePrice,
         customerName: finalCustomerName,
         customerPhone: finalCustomerPhone,
-        soldBy: req.user.id
+        soldBy: req.user.id,
+        soldByName: finalEmployeeName,
+        paymentMode: finalPaymentMode
       });
     }
 
@@ -55,7 +58,13 @@ exports.checkout = async (req, res, next) => {
       success: true,
       message: "Checkout successful, bill generated.",
       storeInfo,
-      billDetails: { items: cartItems, totalAmount, paymentMode, date: new Date() }
+      billDetails: { 
+        items: cartItems, 
+        totalAmount, 
+        paymentMode: finalPaymentMode, 
+        employeeName: finalEmployeeName, 
+        date: new Date() 
+      }
     });
   } catch (error) {
     next(error);

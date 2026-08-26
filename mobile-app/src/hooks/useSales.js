@@ -1,33 +1,29 @@
+// hooks/useSales.js
 import { useState } from 'react';
 import axiosInstance from '../api/axiosInstance';
 
 export const useSales = () => {
   const [loading, setLoading] = useState(false);
 
-  const processCheckout = async (cartItems, totalAmount, paymentMode, customerName, customerPhone) => {
-    setLoading(true);
+  const processCheckout = async (cartItems, totalAmount, paymentMode, customerName, customerPhone, employeeName) => {
     try {
+      setLoading(true);
       const { data } = await axiosInstance.post('/sales/checkout', {
         cartItems,
         totalAmount,
         paymentMode,
         customerName,
-        customerPhone
+        customerPhone,
+        employeeName
       });
-      setLoading(false);
-      if (data.success) {
-        return { 
-          success: true, 
-          storeInfo: data.storeInfo, 
-          billDetails: data.billDetails 
-        };
-      }
-    } catch (err) {
-      setLoading(false);
+      return { success: true, ...data };
+    } catch (error) {
       return { 
         success: false, 
-        message: err.response?.data?.message || 'Checkout failed.' 
+        message: error.response?.data?.message || 'Checkout failed.' 
       };
+    } finally {
+      setLoading(false);
     }
   };
 

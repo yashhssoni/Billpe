@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, Button, TextInput, Alert, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Modal } from 'react-native';
+import React, { useState, useContext, useEffect } from 'react';
+import { View, Text, StyleSheet, Button, TextInput, Alert, FlatList, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
@@ -7,25 +7,40 @@ import { AuthContext } from '../context/AuthContext';
 import { useSales } from '../hooks/useSales';
 
 export default function EmployeeScreen({ navigation }) {
-  const { logout } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const { loading: salesLoading, processCheckout } = useSales();
   const [permission, requestPermission] = useCameraPermissions();
+  
   const [cart, setCart] = useState([]);
   const [currentScanned, setCurrentScanned] = useState(null);
   const [manualPrice, setManualPrice] = useState('');
   const [priceMode, setPriceMode] = useState('manual');
-  const [quantity, setQuantity] = useState('1');
   const [scannerActive, setScannerActive] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Employee & Payment Mode States
+  const [employeeName, setEmployeeName] = useState(user?.name || '');
+  const [paymentMode, setPaymentMode] = useState('Cash'); // 'Cash' | 'Online'
+
+  // Image Zoom Modal States
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState(null);
+
+  // Edit Price Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
-  const [editQty, setEditQty] = useState('');
 
+  // Customer Details
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+
+  useEffect(() => {
+    if (user?.name) {
+      setEmployeeName(user.name);
+    }
+  }, [user]);
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -69,9 +84,9 @@ export default function EmployeeScreen({ navigation }) {
           Alert.alert(
             '⚠️ Item Already Sold',
             `Product Name: ${found.productName}\n` +
-            `Refund Amount: ₹${found.soldPrice || found.price}\n` +
-            `Sold To Customer: ${found.soldCustomerName || 'N/A'}\n` +
-            `Customer Mobile: ${found.soldCustomerPhone || 'N/A'}\n\n` +
+            `Sold Price: ₹${found.soldPrice || found.price}\n` +
+            `Sold To: ${found.soldCustomerName || 'N/A'}\n` +
+            `Mobile: ${found.soldCustomerPhone || 'N/A'}\n\n` +
             `Return / Restock the item?`,
             [
               { text: 'Cancel', style: 'cancel' },
@@ -81,18 +96,14 @@ export default function EmployeeScreen({ navigation }) {
                   try {
                     await axiosInstance.put(`/products/${found._id}`, { 
                       stock: 1, 
-                      sold: false,
+                      sold: false, 
                       soldPrice: null,
                       soldCustomerName: '',
                       soldCustomerPhone: ''
                     });
-                    Alert.alert('Success', 'Item marked as returned and added back to inventory!');
+                    Alert.alert('Success', 'Item returned & added back to inventory!');
                   } catch (e) {
-                    if (e.response && e.response.status === 403) {
-                      Alert.alert('Subscription Expired 🔒', e.response.data.message || 'Store subscription has expired.');
-                    } else {
-                      Alert.alert('Error', 'Stock update failed.');
-                    }
+                    Alert.alert('Error', 'Stock update failed.');
                   }
                 }
               }
@@ -107,11 +118,7 @@ export default function EmployeeScreen({ navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      if (err.response && err.response.status === 403) {
-        Alert.alert('Subscription Expired 🔒', err.response.data.message || 'Store subscription has expired.');
-      } else {
-        Alert.alert('Error', 'Failed to fetch product details.');
-      }
+      Alert.alert('Error', 'Failed to fetch product details.');
     }
   };
 
@@ -133,21 +140,15 @@ export default function EmployeeScreen({ navigation }) {
   };
 
   const handleAddToCart = () => {
-    if (!manualPrice || !quantity) {
-      Alert.alert('Error', 'Please enter price and quantity.');
+    if (!manualPrice) {
+      Alert.alert('Error', 'Please enter agreed selling price.');
       return;
     }
     const enteredPrice = parseFloat(manualPrice);
     const minAllowed = parseFloat(currentScanned?.lowestRate ?? currentScanned?.price ?? 0);
-    const qtyInt = parseInt(quantity);
 
     if (enteredPrice < minAllowed) {
       Alert.alert('Price Too Low', `Minimum allowed price is ₹${minAllowed}`);
-      return;
-    }
-
-    if (qtyInt > currentScanned.stock) {
-      Alert.alert('Stock Exceeded', `Available stock is only ${currentScanned.stock}`);
       return;
     }
 
@@ -156,8 +157,7 @@ export default function EmployeeScreen({ navigation }) {
       productId: currentScanned._id,
       agreedPrice: enteredPrice,
       price: enteredPrice,
-      qty: qtyInt,
-      quantity: qtyInt,
+      quantity: 1,
       cartKey: Date.now().toString() + Math.random().toString(36).slice(2)
     };
 
@@ -165,7 +165,6 @@ export default function EmployeeScreen({ navigation }) {
     setCurrentScanned(null);
     setManualPrice('');
     setPriceMode('manual');
-    setQuantity('1');
   };
 
   const handleRemoveFromCart = (cartKey) => {
@@ -175,18 +174,16 @@ export default function EmployeeScreen({ navigation }) {
   const handleOpenEditCartItem = (item) => {
     setEditingCartItem(item);
     setEditPrice(String(item.agreedPrice));
-    setEditQty(String(item.qty));
     setEditModalVisible(true);
   };
 
   const handleSaveCartEdit = () => {
-    if (!editPrice || !editQty) {
-      Alert.alert('Error', 'Price and Quantity cannot be empty.');
+    if (!editPrice) {
+      Alert.alert('Error', 'Price cannot be empty.');
       return;
     }
 
     const newPrice = parseFloat(editPrice);
-    const newQty = parseInt(editQty);
     const minAllowed = parseFloat(editingCartItem?.lowestRate ?? editingCartItem?.price ?? 0);
 
     if (newPrice < minAllowed) {
@@ -196,7 +193,7 @@ export default function EmployeeScreen({ navigation }) {
 
     setCart(cart.map(item => {
       if (item.cartKey === editingCartItem.cartKey) {
-        return { ...item, agreedPrice: newPrice, price: newPrice, qty: newQty, quantity: newQty };
+        return { ...item, agreedPrice: newPrice, price: newPrice };
       }
       return item;
     }));
@@ -211,48 +208,95 @@ export default function EmployeeScreen({ navigation }) {
       return;
     }
 
-    let totalAmount = cart.reduce((sum, item) => sum + (item.agreedPrice * item.qty), 0);
+    let totalAmount = cart.reduce((sum, item) => sum + item.agreedPrice, 0);
 
     const payloadCart = cart.map(item => ({
       ...item,
-      quantity: item.qty
+      quantity: 1
     }));
 
-    const result = await processCheckout(payloadCart, totalAmount, 'Cash', customerName, customerPhone);
+    const result = await processCheckout(
+      payloadCart, 
+      totalAmount, 
+      paymentMode, 
+      customerName, 
+      customerPhone, 
+      employeeName
+    );
     
     if (result.success) {
+      const invoiceNo = `BP-${Date.now().toString().slice(-6)}`;
       const now = new Date();
+      
+      let hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      const formattedTime = `${hours}:${minutes} ${ampm}`;
+      const formattedDate = now.toLocaleDateString('en-IN');
+
       let rowsHtml = cart.map(item => `
         <tr>
-          <td style="padding: 8px 0; border-bottom: 1px dashed #ccc; text-align: left;">
+          <td style="padding: 6px 0; border-bottom: 1px dotted #ccc; text-align: left; font-size: 13px;">
             <strong>${item.productName}</strong><br>
-            <small style="color: #555;">Color: ${item.color || 'N/A'}</small>
+            <span style="color: #555; font-size: 11px;">Color: ${item.color || 'N/A'} | Wt: ${item.weightKg || 0}kg ${item.weightGrams || 0}g</span>
           </td>
-          <td style="text-align: center; border-bottom: 1px dashed #ccc;">${item.qty}</td>
-          <td style="text-align: left; border-bottom: 1px dashed #ccc;">₹${(item.agreedPrice * item.qty).toFixed(2)}</td>
+          <td style="text-align: right; border-bottom: 1px dotted #ccc; font-size: 13px; vertical-align: top;">₹${item.agreedPrice.toFixed(2)}</td>
         </tr>
       `).join('');
 
       const htmlContent = `
         <html>
-          <body style="padding: 20px; font-family: sans-serif; color: #000;">
-            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px;">
-              <h1 style="margin: 0; font-size: 24px;">${result.storeInfo?.storeName || 'BILLPE RETAIL'}</h1>
-              <p style="margin: 2px 0;">${result.storeInfo?.address || ''}</p>
-              <p style="text-align: right; margin: 5px 0;">Date: ${now.toLocaleDateString('en-IN')}</p>
+          <body style="padding: 15px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; max-width: 350px; margin: auto;">
+            
+            <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
+              <h2 style="margin: 0; font-size: 20px; font-weight: bold; text-transform: uppercase;">${result.storeInfo?.storeName || 'RETAIL STORE'}</h2>
+              <p style="margin: 3px 0; font-size: 12px; color: #444;">${result.storeInfo?.address || ''}</p>
+              <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #222;">Contact: ${result.storeInfo?.phone || result.storeInfo?.ownerPhone || 'N/A'}</p>
             </div>
-            <div style="margin-bottom: 10px;">
-              <p><strong>Customer:</strong> ${customerName || 'Cash Sale'} (${customerPhone || 'N/A'})</p>
+
+            <div style="font-size: 12px; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span><strong>Invoice:</strong> ${invoiceNo}</span>
+                <span><strong>Pay Mode:</strong> <span style="background: #eee; padding: 2px 5px; border-radius: 3px; font-weight: bold;">${paymentMode.toUpperCase()}</span></span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span><strong>Date:</strong> ${formattedDate}</span>
+                <span><strong>Time:</strong> ${formattedTime}</span>
+              </div>
+              <div style="margin-bottom: 6px;">
+                <strong>Billed By:</strong> ${employeeName || 'Staff'}
+              </div>
+
+              <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                <div style="margin-bottom: 3px;"><strong>Customer:</strong> ${customerName ? customerName : 'N/A'}</div>
+                <div style="margin-bottom: 3px;"><strong>Phone:</strong> ${customerPhone ? customerPhone : 'N/A'}</div>
+                <div><strong>Address:</strong> ${customerAddress ? customerAddress : 'N/A'}</div>
+              </div>
             </div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 15px;">
-              <tr style="border-bottom: 2px solid #000;">
-                <th style="text-align: left; padding-bottom: 5px;">Item</th>
-                <th style="text-align: center; padding-bottom: 5px;">Qty</th>
-                <th style="text-align: left; padding-bottom: 5px;">Amount</th>
-              </tr>
-              ${rowsHtml}
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+              <thead>
+                <tr style="border-bottom: 1.5px solid #000; text-align: left; font-size: 12px;">
+                  <th style="padding-bottom: 4px; width: 65%;">Item</th>
+                  <th style="padding-bottom: 4px; text-align: right; width: 35%;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
             </table>
-            <h2 style="text-align: left; margin-top: 20px; font-size: 20px; color: #10b981;">Grand Total: ₹${totalAmount.toFixed(2)}</h2>
+
+            <div style="border-top: 1.5px solid #000; padding-top: 8px; margin-bottom: 15px; text-align: right;">
+              <div style="font-size: 13px; color: #555; margin-bottom: 2px;">Grand Total (${paymentMode})</div>
+              <div style="font-size: 20px; font-weight: bold; color: #000;">₹${totalAmount.toFixed(2)}</div>
+            </div>
+
+            <div style="text-align: center; font-size: 11px; color: #555; border-top: 1px dotted #ccc; padding-top: 8px;">
+              <p style="margin: 2px 0; font-weight: bold;">Thank You for Shopping!</p>
+              <p style="margin: 2px 0;">Please visit again.</p>
+            </div>
+
           </body>
         </html>
       `;
@@ -265,14 +309,14 @@ export default function EmployeeScreen({ navigation }) {
       setCustomerPhone('');
       setCustomerAddress('');
     } else {
-      Alert.alert('Checkout Failed 🔒', result.message || 'Store subscription has expired. Please contact Admin.');
+      Alert.alert('Checkout Failed 🔒', result.message || 'Error completing checkout.');
     }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Text style={styles.header}>Point of Sale (POS)</Text>
+        <Text style={styles.header}>Employee portal</Text>
         <TouchableOpacity onPress={handleLogoutPress} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -286,10 +330,39 @@ export default function EmployeeScreen({ navigation }) {
           </View>
         </View>
       ) : currentScanned ? (
-        <ScrollView contentContainerStyle={styles.billingContainer}>
-          <Text style={styles.productTitle}>Scanned: {currentScanned?.productName}</Text>
-          <Text style={styles.subText}>Available Stock: {currentScanned?.stock}</Text>
-          <Text style={styles.subText}>Category: {currentScanned?.category || 'General'}</Text>
+        <ScrollView contentContainerStyle={styles.billingContainer} showsVerticalScrollIndicator={false}>
+          
+          <View style={styles.productHeaderRow}>
+            {currentScanned?.imageUri ? (
+              <TouchableOpacity onPress={() => { setSelectedImageUri(currentScanned.imageUri); setImageModalVisible(true); }}>
+                <Image source={{ uri: currentScanned.imageUri }} style={styles.thumbnailImg} />
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.thumbnailImg, styles.noImgBox]}><Text style={{fontSize: 9, color: '#94a3b8'}}>No Image</Text></View>
+            )}
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.productTitle}>{currentScanned?.productName}</Text>
+              <Text style={styles.subText}>Category: {currentScanned?.category || 'General'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.metaBadgeContainer}>
+            <View style={styles.metaBadge}>
+              <Text style={styles.metaLabel}>Color:</Text>
+              <Text style={styles.metaVal}>{currentScanned?.color || 'N/A'}</Text>
+            </View>
+            <View style={styles.metaBadge}>
+              <Text style={styles.metaLabel}>Weight:</Text>
+              <Text style={styles.metaVal}>{currentScanned?.weightKg || 0}kg {currentScanned?.weightGrams || 0}g</Text>
+            </View>
+          </View>
+
+          {currentScanned?.description ? (
+            <Text style={styles.descText} numberOfLines={2}>
+              <Text style={{fontWeight: 'bold', color: '#cbd5e1'}}>Desc: </Text>
+              {currentScanned.description}
+            </Text>
+          ) : null}
 
           <View style={styles.priceOptionRow}>
             <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} onPress={selectLowest}>
@@ -308,11 +381,15 @@ export default function EmployeeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Agreed Price Per Item *</Text>
-          <TextInput style={styles.input} placeholder="Enter price" placeholderTextColor="#64748b" value={manualPrice} onChangeText={(t) => { setManualPrice(t); setPriceMode('manual'); }} keyboardType="numeric" />
-
-          <Text style={styles.label}>Quantity *</Text>
-          <TextInput style={styles.input} placeholder="1" placeholderTextColor="#64748b" value={quantity} onChangeText={setQuantity} keyboardType="numeric" />
+          <Text style={styles.label}>Agreed Selling Price *</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="Enter price" 
+            placeholderTextColor="#64748b" 
+            value={manualPrice} 
+            onChangeText={(t) => { setManualPrice(t); setPriceMode('manual'); }} 
+            keyboardType="numeric" 
+          />
 
           <View style={{ marginVertical: 10 }}>
             <Button title="Add to Cart" onPress={handleAddToCart} color="#10b981" />
@@ -320,29 +397,67 @@ export default function EmployeeScreen({ navigation }) {
           <Button title="Cancel Item" onPress={() => setCurrentScanned(null)} color="#64748b" />
         </ScrollView>
       ) : (
-        <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {(loading || salesLoading) && <ActivityIndicator size="small" color="#10b981" style={{ marginBottom: 10 }} />}
           
           <TouchableOpacity style={styles.scanBtn} onPress={() => setScannerActive(true)}>
             <Text style={styles.scanBtnText}>📸 Scan Item Barcode</Text>
           </TouchableOpacity>
 
-          <TextInput style={styles.input} placeholder="Customer Name" placeholderTextColor="#64748b" value={customerName} onChangeText={setCustomerName} />
-          <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
-          <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
+          {/* Employee Name Input (Editable for Multi-Employee Shared Device) */}
+          <View style={styles.cardBox}>
+            <Text style={styles.fieldHeading}>Billed By (Employee Name)</Text>
+            <TextInput 
+              style={styles.input} 
+              placeholder="Employee Name" 
+              placeholderTextColor="#64748b" 
+              value={employeeName} 
+              onChangeText={setEmployeeName} 
+            />
+
+            {/* Payment Mode Selector Buttons */}
+            <Text style={[styles.fieldHeading, { marginTop: 10 }]}>Payment Mode</Text>
+            <View style={styles.paymentToggleRow}>
+              <TouchableOpacity 
+                style={[styles.payModeBtn, paymentMode === 'Cash' && styles.payModeBtnActive]}
+                onPress={() => setPaymentMode('Cash')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 Cash</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.payModeBtn, paymentMode === 'Online' && styles.payModeBtnActive]}
+                onPress={() => setPaymentMode('Online')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 Online / UPI</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Customer Details */}
+          <View style={[styles.cardBox, { marginTop: 12 }]}>
+            <Text style={styles.fieldHeading}>Customer Details (Optional)</Text>
+            <TextInput style={styles.input} placeholder="Customer Name" placeholderTextColor="#64748b" value={customerName} onChangeText={setCustomerName} />
+            <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
+            <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
+          </View>
 
           <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
+          
           <FlatList
             data={cart}
             keyExtractor={(item) => item.cartKey}
-            style={styles.list}
+            style={[styles.list, { maxHeight: 200 }]} 
+            scrollEnabled={true}
             renderItem={({ item }) => (
               <View style={styles.cartItem}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#fff' }}>{item.productName}</Text>
-                  <Text style={{ color: '#94a3b8', fontSize: 13 }}>Qty: {item.qty}  |  ₹{item.agreedPrice} each</Text>
+                  <Text style={{ color: '#94a3b8', fontSize: 12 }}>₹{item.agreedPrice} {item.color ? `| ${item.color}` : ''}</Text>
                 </View>
-                <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>₹{item.agreedPrice * item.qty}</Text>
+                <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>₹{item.agreedPrice}</Text>
                 
                 <TouchableOpacity style={styles.editBtn} onPress={() => handleOpenEditCartItem(item)}>
                   <Text style={styles.editText}>Edit</Text>
@@ -353,33 +468,42 @@ export default function EmployeeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             )}
-            ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 20, color: '#64748b' }}>Your cart is empty.</Text>}
+            ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 10, color: '#64748b' }}>Your cart is empty.</Text>}
           />
 
           {cart.length > 0 && (
-            <View style={{ marginTop: 10 }}>
-              <Button title="Complete Bill & Print" onPress={handleCompleteCheckout} color="#f59e0b" />
+            <View style={{ marginTop: 15, marginBottom: 10 }}>
+              <Button title={`Complete Bill (₹${cart.reduce((sum, item) => sum + item.agreedPrice, 0)}) & Print`} onPress={handleCompleteCheckout} color="#f59e0b" />
             </View>
           )}
-        </View>
+        </ScrollView>
       )}
+
+      {/* Full Screen Image Zoom Modal */}
+      <Modal visible={imageModalVisible} transparent={true} animationType="fade">
+        <View style={styles.imageModalOverlay}>
+          <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
+            <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>✕ Close</Text>
+          </TouchableOpacity>
+          {selectedImageUri && (
+            <Image source={{ uri: selectedImageUri }} style={styles.fullScreenImage} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
 
       {/* Edit Cart Item Modal */}
       {editingCartItem && (
         <Modal visible={editModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Edit Cart Item</Text>
+              <Text style={styles.modalTitle}>Edit Cart Price</Text>
               <Text style={{ color: '#fff', fontWeight: 'bold', marginBottom: 10 }}>{editingCartItem.productName}</Text>
 
               <Text style={styles.label}>Agreed Price (₹)</Text>
               <TextInput style={styles.input} keyboardType="numeric" value={editPrice} onChangeText={setEditPrice} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Quantity</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={editQty} onChangeText={setEditQty} placeholderTextColor="#64748b" />
-
               <TouchableOpacity onPress={handleSaveCartEdit} style={styles.updateBtn}>
-                <Text style={styles.updateBtnText}>Save Changes</Text>
+                <Text style={styles.updateBtnText}>Save Price</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setEditModalVisible(false)} style={{ padding: 10, alignItems: 'center', marginTop: 5 }}>
@@ -398,27 +522,50 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', padding: 20 },
   header: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  subHeader: { fontSize: 15, fontWeight: 'bold', marginVertical: 10, color: '#cbd5e1' },
+  subHeader: { fontSize: 15, fontWeight: 'bold', marginVertical: 8, color: '#cbd5e1' },
   infoText: { textAlign: 'center', color: '#cbd5e1', marginBottom: 15, fontSize: 15 },
   label: { color: '#cbd5e1', fontWeight: '600', fontSize: 13, marginBottom: 4 },
-  input: { backgroundColor: '#1e293b', color: '#fff', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginVertical: 6, fontSize: 14 },
-  billingContainer: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
-  productTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
-  subText: { color: '#cbd5e1', fontSize: 13, marginBottom: 2 },
-  scanBtn: { backgroundColor: '#10b981', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 10 },
+  input: { backgroundColor: '#0f172a', color: '#fff', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginVertical: 4, fontSize: 14 },
+  cardBox: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155' },
+  fieldHeading: { color: '#94a3b8', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
+  
+  paymentToggleRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  payModeBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center' },
+  payModeBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
+  payModeText: { fontSize: 13, fontWeight: 'bold', color: '#94a3b8' },
+  payModeTextActive: { color: '#0f172a' },
+
+  billingContainer: { backgroundColor: '#1e293b', padding: 15, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
+  productHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  thumbnailImg: { width: 50, height: 50, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a' },
+  noImgBox: { justifyContent: 'center', alignItems: 'center' },
+  productTitle: { fontSize: 16, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
+  subText: { color: '#cbd5e1', fontSize: 12 },
+
+  metaBadgeContainer: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  metaBadge: { flexDirection: 'row', backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
+  metaLabel: { color: '#94a3b8', fontSize: 11, marginRight: 4 },
+  metaVal: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  descText: { color: '#94a3b8', fontSize: 12, marginBottom: 10, backgroundColor: '#0f172a', padding: 8, borderRadius: 6 },
+
+  imageModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  closeImageModal: { position: 'absolute', top: 40, right: 20, padding: 10, backgroundColor: '#334155', borderRadius: 8 },
+  fullScreenImage: { width: '100%', height: '80%', resizeMode: 'contain' },
+
+  scanBtn: { backgroundColor: '#10b981', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 12 },
   scanBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
-  priceOptionRow: { flexDirection: 'row', marginVertical: 15, gap: 8 },
+  priceOptionRow: { flexDirection: 'row', marginVertical: 10, gap: 8 },
   priceOptionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center' },
   priceOptionBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   priceOptionLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8' },
   priceOptionValue: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginTop: 2 },
   priceOptionLabelActive: { color: '#0f172a' },
   cameraContainer: { flex: 1, borderRadius: 10, overflow: 'hidden' },
-  cameraOverlay: { position: 'absolute', bottom: 20, alignSelf: 'center' },
-  list: { flex: 1, backgroundColor: '#1e293b', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#334155' },
-  cartItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#334155' },
+  cameraOverlay: { position: 'absolute', bottom: 35, alignSelf: 'center' },
+  list: { backgroundColor: '#1e293b', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#334155' },
+  cartItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#334155' },
   editBtn: { backgroundColor: '#3b82f6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, marginRight: 8 },
   editText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   removeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(239, 68, 68, 0.2)', alignItems: 'center', justifyContent: 'center' },

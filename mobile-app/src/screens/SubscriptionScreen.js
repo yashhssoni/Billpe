@@ -1,154 +1,113 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from 'react-native';
-import RazorpayCheckout from 'react-native-razorpay';
-import { AuthContext } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, Linking, Image } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
 
 export default function SubscriptionScreen({ navigation }) {
-  const { storeInfo } = useContext(AuthContext);
+  const [status, setStatus] = useState({ isActive: false, paymentPending: false, expiryDate: null });
   const [loading, setLoading] = useState(false);
+  const [fetchingStatus, setFetchingStatus] = useState(true);
 
-  const isSubActive = storeInfo?.isSubActive || false;
-
-  const handleMonthlyRenewal = async () => {
+  const fetchStatus = async () => {
     try {
-      setLoading(true);
-      const { data } = await axiosInstance.post('/payment/monthly/order');
-      
-      if (data.success) {
-        const options = {
-          description: "BillPe Monthly Store Subscription (₹500)",
-          image: "https://i.imgur.com/3g7nmJC.png",
-          currency: "INR",
-          key: "rzp_test_Y7VpspdU1eaCY7", // Aapki .env wali Test Key ID
-          amount: data.order.amount,
-          order_id: data.order.id,
-          name: "BillPe POS",
-          prefill: {
-            email: storeInfo?.email || "admin@billpe.com",
-            contact: storeInfo?.phone || "9999999999",
-            name: storeInfo?.ownerName || "Store Admin"
-          },
-          theme: { color: "#10B981" }
-        };
-
-        RazorpayCheckout.open(options).then(async (response) => {
-          const verifyRes = await axiosInstance.post('/payment/monthly/verify', {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
-          });
-
-          setLoading(false);
-          if (verifyRes.data.success) {
-            Alert.alert(
-              'Success 🎉', 
-              'Monthly subscription activated successfully! Please re-login to update permissions.',
-              [{ text: 'OK', onPress: () => navigation.goBack() }]
-            );
-          }
-        }).catch((error) => {
-          setLoading(false);
-          Alert.alert(`Payment Cancelled / Failed`, error.description || "User cancelled payment.");
-        });
-      }
-    } catch (err) {
-      setLoading(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to initiate monthly renewal.');
+      const { data } = await axiosInstance.get('/payment/quota-status');
+      setStatus(data);
+    } catch (err) { 
+      console.log('Error fetching status:', err); 
+    } finally {
+      setFetchingStatus(false);
     }
   };
 
-  const handleAddonPurchase = async () => {
-    if (!isSubActive) {
-      Alert.alert('Plan Required', 'Please activate your ₹500 monthly plan first before buying add-on packs.');
-      return;
-    }
+  useEffect(() => {
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 5000); 
+    return () => clearInterval(interval);
+  }, []);
 
+  const handleNotify = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { data } = await axiosInstance.post('/payment/addon/order');
-      
-      if (data.success) {
-        const options = {
-          description: "BillPe Add-on BR Pack (+25 BRs)",
-          image: "https://i.imgur.com/3g7nmJC.png",
-          currency: "INR",
-          key: "rzp_test_Y7VpspdU1eaCY7",
-          amount: data.order.amount,
-          order_id: data.order.id,
-          name: "BillPe POS",
-          prefill: {
-            email: storeInfo?.email || "admin@billpe.com",
-            contact: storeInfo?.phone || "9999999999",
-            name: storeInfo?.ownerName || "Store Admin"
-          },
-          theme: { color: "#0284c7" }
-        };
-
-        RazorpayCheckout.open(options).then(async (response) => {
-          const verifyRes = await axiosInstance.post('/payment/addon/verify', {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature
-          });
-
-          setLoading(false);
-          if (verifyRes.data.success) {
-            Alert.alert('Success 🎉', 'Successfully added 25 extra barcode credits to your balance!');
-          }
-        }).catch((error) => {
-          setLoading(false);
-          Alert.alert(`Payment Cancelled / Failed`, error.description || "User cancelled payment.");
-        });
-      }
-    } catch (err) {
-      setLoading(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to initiate add-on purchase.');
+      await axiosInstance.post('/payment/request-activation');
+      setStatus(prev => ({ ...prev, paymentPending: true }));
+      Alert.alert('Request Sent ⏳', 'If payment is done, please contact support.');
+    } catch (e) { 
+      Alert.alert('Error', 'Request nahi ja payi.'); 
     }
+    setLoading(false);
   };
 
-  return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>← Back to Dashboard</Text>
-      </TouchableOpacity>
-      <Text style={styles.title}>Subscription & Br Quota</Text>
-      <Text style={styles.subtitle}>Manage store plan and add-on packs</Text>
+  if (fetchingStatus) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#10b981" />
+      </View>
+    );
+  }
 
-      {loading && <ActivityIndicator size="large" color="#10b981" style={{ marginVertical: 20 }} />}
-
-      {!isSubActive && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Monthly Plan (₹500 / month)</Text>
-          <Text style={styles.cardDesc}>Includes 200 Base Barcode BRs per month + POS access for employees.</Text>
-          <TouchableOpacity onPress={handleMonthlyRenewal} style={styles.btnGreen}>
-            <Text style={styles.btnTextDark}>Renew Monthly Plan (₹500)</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitleSky}>Add-on BR Pack (₹100)</Text>
-        <Text style={styles.cardDesc}>Get instant +25 extra barcode generation credits. (Requires Active Monthly Plan)</Text>
-        <TouchableOpacity onPress={handleAddonPurchase} style={styles.btnSky}>
-          <Text style={styles.btnTextWhite}>Buy 25 Extra BRs (₹100)</Text>
+  // 1. Subscription Active Screen
+  if (status.isActive) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.success}>Subscription Active ✅</Text>
+        <Text style={styles.sub}>Valid till: {new Date(status.expiryDate).toLocaleDateString('en-IN')}</Text>
+        <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
+          <Text style={styles.btnText}>Back to Dashboard</Text>
         </TouchableOpacity>
       </View>
+    );
+  }
+
+  // 2. Pending Screen (Force Lock)
+  if (status.paymentPending) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.pendingTitle}>Verification Pending ⏳</Text>
+        <Text style={styles.desc}>You had successfully send the approval request. Please call on below number to get fast approval.</Text>
+        
+        <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+916263634900')}>
+          <Text style={styles.callBtnText}>📞 Call Admin: 6263634900</Text>
+        </TouchableOpacity>
+        
+        <Text style={{color: '#64748b', textAlign: 'center', marginTop: 20, fontSize: 12}}>APp will automatically start after approval from admin</Text>
+      </View>
+    );
+  }
+
+  // 3. Purchase Plan Screen (Default View with QR & Payment Done Button)
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Purchase Monthly Plan (₹600)</Text>
+      
+      <View style={styles.qrBox}>
+        <Image 
+          source={require('../assets/image.png')} 
+          style={styles.qrImage} 
+        />
+        <Text style={{color: '#94a3b8', marginTop: 10, fontSize: 13}}>San using GPay / PhonePe / Paytm </Text>
+      </View>
+
+      <TouchableOpacity onPress={handleNotify} disabled={loading} style={styles.btn}>
+        {loading ? (
+          <ActivityIndicator color="#0f172a" />
+        ) : (
+          <Text style={styles.btnText}>Payment Done - Notify Admin</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 24, paddingTop: 40 },
-  backText: { color: '#10b981', fontWeight: '600' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
-  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 24 },
-  card: { backgroundColor: '#1e293b', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
-  cardTitle: { color: '#10b981', fontWeight: 'bold', fontSize: 18, marginBottom: 4 },
-  cardTitleSky: { color: '#38bdf8', fontWeight: 'bold', fontSize: 18, marginBottom: 4 },
-  cardDesc: { color: '#cbd5e1', fontSize: 13, marginBottom: 16, lineHeight: 18 },
-  btnGreen: { backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  btnSky: { backgroundColor: '#0284c7', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  btnTextDark: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
-  btnTextWhite: { color: '#fff', fontWeight: 'bold', fontSize: 15 }
+  container: { flex: 1, backgroundColor: '#0f172a', padding: 24, justifyContent: 'center' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 20 },
+  qrBox: { height: 280, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center', borderRadius: 20, marginBottom: 20, borderWidth: 2, borderColor: '#10b981', padding: 15 },
+  qrImage: { width: 180, height: 180, resizeMode: 'contain' },
+  btn: { backgroundColor: '#10b981', padding: 18, borderRadius: 12, alignItems: 'center' },
+  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  success: { color: '#10b981', fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  sub: { color: '#cbd5e1', fontSize: 15, textAlign: 'center', marginBottom: 20 },
+  pendingTitle: { color: '#f59e0b', fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
+  desc: { color: '#cbd5e1', textAlign: 'center', marginBottom: 24, fontSize: 15, lineHeight: 22 },
+  callBtn: { backgroundColor: '#3b82f6', padding: 18, borderRadius: 12, alignItems: 'center' },
+  callBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
 });

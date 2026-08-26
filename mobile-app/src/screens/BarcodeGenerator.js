@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
@@ -8,25 +8,17 @@ export default function BarcodeGenerator({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [fetchingQuota, setFetchingQuota] = useState(true);
   const [countInput, setCountInput] = useState('50'); 
-  const [quotaInfo, setQuotaInfo] = useState({
-    totalAvailable: 0,
-    monthlyRemaining: 0,
-    addonBrBalance: 0
-  });
+  const [subActive, setSubActive] = useState(false);
 
-  const fetchQuotaStatus = async () => {
+  const fetchStatus = async () => {
     try {
       setFetchingQuota(true);
       const { data } = await axiosInstance.get('/payment/quota-status');
       if (data.success) {
-        setQuotaInfo({
-          totalAvailable: data.totalAvailable,
-          monthlyRemaining: data.monthlyRemaining,
-          addonBrBalance: data.addonBrBalance
-        });
+        setSubActive(data.isActive);
       }
     } catch (err) {
-      console.log('Failed to fetch quota:', err.message);
+      console.log('Failed to fetch status:', err.message);
     } finally {
       setFetchingQuota(false);
     }
@@ -34,7 +26,7 @@ export default function BarcodeGenerator({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      fetchQuotaStatus();
+      fetchStatus();
     }, [])
   );
 
@@ -122,35 +114,21 @@ export default function BarcodeGenerator({ navigation }) {
   };
 
   const handleGeneratePrint = async () => {
-    const requestedCount = parseInt(countInput, 10);
-    
-    if (isNaN(requestedCount) || requestedCount <= 0 || requestedCount > 200) {
-      Alert.alert('Invalid Count', 'Please enter a valid number between 1 and 200.');
+    if (!subActive) {
+      Alert.alert('Subscription Expired 🔒', 'Please renew your ₹600 monthly plan to generate barcodes.');
       return;
     }
 
-    if (requestedCount > quotaInfo.totalAvailable) {
-      Alert.alert('Quota Exceeded 🔒', `You have ${quotaInfo.totalAvailable} BRs available. Please purchase Add-on pack.`);
+    const requestedCount = parseInt(countInput, 10);
+    if (isNaN(requestedCount) || requestedCount <= 0 || requestedCount > 500) {
+      Alert.alert('Invalid Count', 'Please enter a valid number (1 - 500).');
       return;
     }
 
     setLoading(true);
     try {
       const ids = generateUniqueIds(requestedCount);
-      
-      const { data } = await axiosInstance.post('/products/deduct-quota', { requestedCount });
-
-      if (!data.success) {
-        setLoading(false);
-        Alert.alert('Quota Error', data.message || 'BR limit exceeded.');
-        return;
-      }
-
-      fetchQuotaStatus();
-
-      const boxesHtml = ids
-        .map((id) => `<div class="box">${generateBarcodeSVG(id)}</div>`)
-        .join('');
+      const boxesHtml = ids.map((id) => `<div class="box">${generateBarcodeSVG(id)}</div>`).join('');
 
       const html = `<html>
         <head>
@@ -170,7 +148,7 @@ export default function BarcodeGenerator({ navigation }) {
       await Print.printAsync({ html });
     } catch (err) {
       setLoading(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to generate barcodes.');
+      Alert.alert('Error', 'Failed to generate barcodes.');
     }
   };
 
@@ -185,25 +163,23 @@ export default function BarcodeGenerator({ navigation }) {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.centerWrapper}>
           <Text style={styles.title}>Generate Barcode</Text>
-          <Text style={styles.subtitle}>Enter how many barcode stickers you want to generate & print (Max 200)</Text>
+          <Text style={styles.subtitle}>Unlimited Barcode Generation for Active Stores</Text>
 
-          {/* Live Quota Balance Banner */}
           <View style={styles.quotaCard}>
             {fetchingQuota ? (
               <ActivityIndicator color="#10b981" size="small" />
             ) : (
               <>
-                <Text style={styles.quotaTitle}>Available BR Balance</Text>
-                <Text style={styles.quotaCount}>{quotaInfo.totalAvailable} <Text style={{fontSize: 14, color: '#94a3b8'}}>BRs Left</Text></Text>
-                <Text style={styles.quotaSubText}>
-                  Monthly Remaining: {quotaInfo.monthlyRemaining} | Add-on Balance: {quotaInfo.addonBrBalance}
+                <Text style={styles.quotaTitle}>Subscription Status</Text>
+                <Text style={[styles.quotaCount, { color: subActive ? '#10b981' : '#ef4444' }]}>
+                  {subActive ? 'ACTIVE (Unlimited)' : 'EXPIRED 🔒'}
                 </Text>
               </>
             )}
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Number of Barcodes (1 - 200):</Text>
+            <Text style={styles.label}>Number of Barcodes (Max 500):</Text>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
@@ -213,7 +189,7 @@ export default function BarcodeGenerator({ navigation }) {
               placeholderTextColor="#64748b"
             />
 
-            <TouchableOpacity onPress={handleGeneratePrint} disabled={loading} style={styles.btn}>
+            <TouchableOpacity onPress={handleGeneratePrint} disabled={loading || !subActive} style={[styles.btn, !subActive && { backgroundColor: '#475569' }]}>
               {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Print Barcode Stickers</Text>}
             </TouchableOpacity>
           </View>
@@ -232,8 +208,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 20, textAlign: 'center', paddingHorizontal: 10 },
   quotaCard: { width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)', padding: 16, borderRadius: 16, alignItems: 'center', marginBottom: 16 },
   quotaTitle: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 },
-  quotaCount: { color: '#10b981', fontSize: 28, fontWeight: 'bold', marginBottom: 4 },
-  quotaSubText: { color: '#cbd5e1', fontSize: 11 },
+  quotaCount: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   card: { width: '100%', backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
   label: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 14, marginBottom: 8 },
   input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 16, marginBottom: 16 },

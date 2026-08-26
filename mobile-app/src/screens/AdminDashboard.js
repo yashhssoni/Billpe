@@ -9,7 +9,7 @@ export default function AdminDashboard({ navigation }) {
     { title: 'Scan & Add Stock', icon: '📷', screen: 'AdminScanner' },
     { title: 'Barcode Generator', icon: '🏷️', screen: 'BarcodeGenerator' },
     { title: 'Manage Database', icon: '📊', screen: 'ManageDatabase' },
-    { title: 'Sold Items History', icon: '💰', screen: 'SoldItemsScreen' }, // <-- Added here
+    { title: 'Sold Items History', icon: '💰', screen: 'SoldItemsScreen' },
     { title: 'Add Employee', icon: '👥', screen: 'AddEmployeeScreen' },
     { title: 'Subscription & BRs', icon: '💳', screen: 'SubscriptionScreen' },
   ];
@@ -17,9 +17,11 @@ export default function AdminDashboard({ navigation }) {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={styles.eyebrow}>Admin Dashboard</Text>
-          <Text style={styles.storeName}>{storeInfo?.storeName || 'My Store'}</Text>
+          <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
+            {storeInfo?.storeName || 'My Store'}
+          </Text>
           {storeInfo?._id && <Text style={styles.storeId}>Store ID: {storeInfo._id}</Text>}
         </View>
         <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
@@ -49,7 +51,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 24 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 },
   eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
-  storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2 },
+  storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
   storeId: { fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: '500' },
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
   logoutText: { color: '#ef4444', fontWeight: '600', fontSize: 12 },
