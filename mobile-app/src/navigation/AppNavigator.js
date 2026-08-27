@@ -6,6 +6,9 @@ import { View, ActivityIndicator } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import VerifyOtpScreen from '../screens/VerifyOtpScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import AdminStack from './AdminStack';
 import EmployeeStack from './EmployeeStack';
 
@@ -29,6 +32,9 @@ export default function AppNavigator() {
           <Stack.Group>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="VerifyOtpScreen" component={VerifyOtpScreen} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </Stack.Group>
         ) : user.role === 'admin' ? (
           <Stack.Screen name="AdminRoot" component={AdminStack} />

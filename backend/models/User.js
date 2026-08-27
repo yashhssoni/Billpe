@@ -6,7 +6,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   phone: { type: String, required: true },
   role: { type: String, enum: ['admin', 'employee'], default: 'employee' },
-  storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true }
+  storeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Store', required: true },
+  resetPasswordOTP: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

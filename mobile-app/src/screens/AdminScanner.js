@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
 
 export default function AdminScanner({ navigation }) {
@@ -28,6 +29,25 @@ export default function AdminScanner({ navigation }) {
   };
 
   const [p, setP] = useState(initialFormState);
+
+  // Helper Function for Instant WebP / JPEG Compression
+  const compressImage = async (uri) => {
+    if (!uri) return null;
+    try {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 800 } }], // 800px width ensures crystal-clear zoom quality
+        { 
+          compress: 0.7, // 70% quality drops size from 4MB to ~70KB
+          format: ImageManipulator.SaveFormat.JPEG 
+        }
+      );
+      return manipResult.uri;
+    } catch (error) {
+      console.log('Image compression error:', error);
+      return uri; // Fallback to original URI if manipulation fails
+    }
+  };
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -85,7 +105,7 @@ export default function AdminScanner({ navigation }) {
                     try {
                       await axiosInstance.put(`/products/${found._id}`, { 
                         stock: 1, 
-                        sold: false,
+                        sold: false, 
                         soldPrice: null,
                         soldCustomerName: '',
                         soldCustomerPhone: ''
@@ -161,11 +181,13 @@ export default function AdminScanner({ navigation }) {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.6,
+      quality: 0.8,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setP(prev => ({ ...prev, imageUri: result.assets[0].uri }));
+      const rawUri = result.assets[0].uri;
+      const optimizedUri = await compressImage(rawUri);
+      setP(prev => ({ ...prev, imageUri: optimizedUri }));
     }
   };
 
@@ -178,11 +200,13 @@ export default function AdminScanner({ navigation }) {
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.6,
+      quality: 0.8,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      setP(prev => ({ ...prev, imageUri: result.assets[0].uri }));
+      const rawUri = result.assets[0].uri;
+      const optimizedUri = await compressImage(rawUri);
+      setP(prev => ({ ...prev, imageUri: optimizedUri }));
     }
   };
 
@@ -223,7 +247,7 @@ export default function AdminScanner({ navigation }) {
       formData.append('stock', 10);
 
       if (p.imageUri && p.imageUri.startsWith('file://')) {
-        const filename = p.imageUri.split('/').pop();
+        const filename = p.imageUri.split('/').pop() || 'product.jpg';
         const match = /\.(\w+)$/.exec(filename);
         const type = match ? `image/${match[1]}` : `image/jpeg`;
 

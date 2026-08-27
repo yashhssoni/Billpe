@@ -1,11 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, addEmployee, getStoreEmployees } = require('../controllers/authController');
+const { 
+  sendRegisterOTP,
+  verifyRegisterOTP,
+  register, 
+  login, 
+  addEmployee, 
+  getStoreEmployees, 
+  forgotPassword, 
+  resetPassword 
+} = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
+// Registration OTP Flow
+router.post('/send-register-otp', sendRegisterOTP);
+router.post('/verify-register-otp', verifyRegisterOTP);
 router.post('/register', register);
+
+// Auth & Employees
 router.post('/login', login);
 router.post('/add-employee', protect, addEmployee);
-router.get('/employees', protect, getStoreEmployees); 
+router.get('/employees', protect, getStoreEmployees);
+
+// Password Recovery Routes (Public)
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 module.exports = router;
