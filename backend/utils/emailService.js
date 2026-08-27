@@ -1,6 +1,5 @@
 const { tranEmailApi, senderEmail } = require('../config/brevo');
 
-// 1. Password Reset Email
 exports.sendPasswordResetEmail = async (toEmail, otp) => {
   try {
     const sender = {
@@ -15,11 +14,11 @@ exports.sendPasswordResetEmail = async (toEmail, otp) => {
       htmlContent: `
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0f172a; color: #ffffff; border-radius: 10px;">
           <h2 style="color: #10b981;">BillPe Password Reset</h2>
-          <p style="color: #cbd5e1;">Aapka password reset karne ke liye 6-digit OTP niche diya gaya hai:</p>
+          <p style="color: #cbd5e1;">Your 6-digit OTP to reset your password is below:</p>
           <div style="background-color: #1e293b; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
             <span style="font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #38bdf8;">${otp}</span>
           </div>
-          <p style="color: #94a3b8; font-size: 12px;">Yeh OTP sirf 10 minutes ke liye valid hai.</p>
+          <p style="color: #94a3b8; font-size: 12px;">This OTP is valid for 10 minutes only.</p>
         </div>
       `
     });
@@ -30,7 +29,6 @@ exports.sendPasswordResetEmail = async (toEmail, otp) => {
   }
 };
 
-// 2. Registration Verification Email
 exports.sendRegistrationOtpEmail = async (toEmail, otp) => {
   try {
     const sender = {
@@ -45,11 +43,11 @@ exports.sendRegistrationOtpEmail = async (toEmail, otp) => {
       htmlContent: `
         <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #0f172a; color: #ffffff; border-radius: 10px;">
           <h2 style="color: #10b981;">Welcome to BillPe</h2>
-          <p style="color: #cbd5e1;">Aapka account verify karne ke liye 6-digit OTP:</p>
+          <p style="color: #cbd5e1;">6-digit OTP to verify your account:</p>
           <div style="background-color: #1e293b; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
             <span style="font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #10b981;">${otp}</span>
           </div>
-          <p style="color: #94a3b8; font-size: 12px;">Yeh OTP sirf 10 minutes ke liye valid hai.</p>
+          <p style="color: #94a3b8; font-size: 12px;">This OTP is valid for 10 minutes only.</p>
         </div>
       `
     });

@@ -1,6 +1,6 @@
 const Product = require('../models/Product');
 const SoldItem = require('../models/SoldItem'); 
-const { uploadImageToCloudinary } = require('../utils/imageUploader'); // Aapka cloudinary utility
+const { uploadImageToCloudinary } = require('../utils/imageUploader');
 
 exports.addProduct = async (req, res, next) => {
   try {
@@ -13,11 +13,10 @@ exports.addProduct = async (req, res, next) => {
 
     let imageUrl = req.body.imageUri || '';
 
-    // AGAR FRONTEND SE IMAGE FILE UPLOAD HOKAR AAYI HAI
     if (req.files && req.files.imageFile) {
       const file = req.files.imageFile;
       const uploadDetails = await uploadImageToCloudinary(file, 'billpe_products');
-      imageUrl = uploadDetails.secure_url; // Cloudinary secure URL
+      imageUrl = uploadDetails.secure_url; 
     }
 
     const parsedLowestRate = lowestRate !== undefined && lowestRate !== '' ? Number(lowestRate) : (price !== undefined ? Number(price) : 0);
@@ -42,7 +41,6 @@ exports.addProduct = async (req, res, next) => {
         product.imageUri = imageUrl;
       }
       
-      // Stock Reset
       product.stock = stock !== undefined ? Number(stock) : 1;
       product.sold = false;
       product.soldPrice = null;
@@ -74,7 +72,7 @@ exports.addProduct = async (req, res, next) => {
       weightKg: weightKg !== undefined ? Number(weightKg) : 0,
       weightGrams: weightGrams !== undefined ? Number(weightGrams) : 0,
       totalWeightKg: totalWeightKg !== undefined ? Number(totalWeightKg) : 0,
-      imageUri: imageUrl, // Cloudinary URL yahan save hoga
+      imageUri: imageUrl, 
       sold: false
     });
 

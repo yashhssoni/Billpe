@@ -7,7 +7,7 @@ import axiosInstance from '../api/axiosInstance';
 export default function BarcodeGenerator({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [fetchingQuota, setFetchingQuota] = useState(true);
-  const [countInput, setCountInput] = useState('50'); 
+  const [countInput, setCountInput] = useState('44'); 
   const [subActive, setSubActive] = useState(false);
 
   const fetchStatus = async () => {

@@ -38,7 +38,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.title}>Forgot Password?</Text>
-        <Text style={styles.subtitle}>Enter your registered email address and we will send you a 6-digit OTP code to reset your password.</Text>
+        <Text style={styles.subtitle}>Enter your email to receive a 6-digit OTP and reset your password.</Text>
 
         <TextInput
           style={styles.input}

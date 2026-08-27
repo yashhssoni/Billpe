@@ -29,7 +29,7 @@ exports.requestActivation = async (req, res, next) => {
       { upsert: true, new: true }
     );
 
-    res.json({ success: true, message: "Payment request sent to admin successfully." });
+    res.json({ success: true, message: "Payment request sent successfully." });
   } catch (error) {
     next(error);
   }
@@ -46,7 +46,7 @@ exports.adminApprove = async (req, res, next) => {
     let sub = await Subscription.findOne({ storeId });
 
     if (!sub) {
-      return res.status(404).json({ success: false, message: "Subscription record not found for this store." });
+      return res.status(404).json({ success: false, message: "No subscription found for this store." });
     }
 
     const newExpiry = new Date();
@@ -57,7 +57,7 @@ exports.adminApprove = async (req, res, next) => {
     sub.paymentPending = false;
     await sub.save();
 
-    res.json({ success: true, message: "Subscription approved and activated successfully for 1 month!" });
+    res.json({ success: true, message: "Subscription activated successfully for 1 month." });
   } catch (error) {
     next(error);
   }

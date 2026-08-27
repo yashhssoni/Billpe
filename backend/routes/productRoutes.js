@@ -4,7 +4,6 @@ const { addProduct, getProducts, updateProduct, deleteProduct } = require('../co
 const { protect } = require('../middleware/authMiddleware');
 const { checkSubscriptionAndQuota } = require('../middleware/checkLimit');
 
-// Quota deduct karne ke liye route (Barcode generation ke waqt - without saving product)
 router.post('/deduct-quota', protect, checkSubscriptionAndQuota, (req, res) => {
   res.json({ success: true, message: "Quota verified and deducted successfully." });
 });

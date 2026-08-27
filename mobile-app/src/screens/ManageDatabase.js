@@ -6,8 +6,6 @@ import axiosInstance from '../api/axiosInstance';
 export default function ManageDatabase({ navigation }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Edit Modal States
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [updating, setUpdating] = useState(false);
@@ -174,7 +172,6 @@ export default function ManageDatabase({ navigation }) {
         />
       )}
 
-      {/* Edit Product Modal */}
       {editingProduct && (
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>

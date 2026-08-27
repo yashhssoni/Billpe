@@ -30,7 +30,6 @@ export default function App() {
       }
     }
 
-    // Only run update check in production standalone builds
     if (!__DEV__) {
       onFetchUpdateAsync();
     }

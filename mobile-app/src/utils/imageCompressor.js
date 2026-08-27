@@ -5,15 +5,15 @@ export const compressProductImage = async (uri) => {
   try {
     const manipResult = await ImageManipulator.manipulateAsync(
       uri,
-      [{ resize: { width: 800 } }], // 800px width par crystal-clear quality rehti hai
+      [{ resize: { width: 800 } }], 
       { 
-        compress: 0.7, // 70% quality, size drops from 4MB to ~70KB
+        compress: 0.7,
         format: ImageManipulator.SaveFormat.JPEG 
       }
     );
     return manipResult.uri;
   } catch (error) {
     console.log('Image compression error:', error);
-    return uri; // Error aane par original URI use hoga
+    return uri; 
   }
 };

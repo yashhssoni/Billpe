@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert, ScrollView } from 'react-native';
 
 export default function SupportScreen({ navigation }) {
-  const SUPPORT_PHONE = '6263634900'; // Yahan apna WhatsApp / Support number dalein
+  const SUPPORT_PHONE = '6263634900'; 
   const SUPPORT_EMAIL = 'firstaidsupportservice@gmail.com';
 
   const handleWhatsApp = () => {
@@ -32,7 +32,7 @@ export default function SupportScreen({ navigation }) {
       </TouchableOpacity>
 
       <Text style={styles.title}>Help & Support Desk</Text>
-      <Text style={styles.subtitle}>Directly contact our team for store edits, technical bugs, or billing queries.</Text>
+      <Text style={styles.subtitle}>Contact our team for store edits, technical issues, or billing queries.</Text>
 
       <TouchableOpacity style={styles.actionCard} onPress={handleWhatsApp} activeOpacity={0.8}>
         <View style={[styles.iconBox, { backgroundColor: 'rgba(37, 211, 102, 0.15)', borderColor: '#25D366' }]}>
@@ -40,7 +40,7 @@ export default function SupportScreen({ navigation }) {
         </View>
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text style={styles.cardTitle}>Chat on WhatsApp</Text>
-          <Text style={styles.cardDesc}>Instant response for Store Name edits & queries</Text>
+          <Text style={styles.cardDesc}>Quick help for Store Name edits and queries.</Text>
         </View>
       </TouchableOpacity>
 
@@ -50,7 +50,7 @@ export default function SupportScreen({ navigation }) {
         </View>
         <View style={{ flex: 1, marginLeft: 14 }}>
           <Text style={styles.cardTitle}>Call Support</Text>
-          <Text style={styles.cardDesc}>Mon - Sat (10:00 AM to 7:00 PM)</Text>
+          <Text style={styles.cardDesc}>Mon - Sat (10:00 AM to 8:00 PM)</Text>
         </View>
       </TouchableOpacity>
 

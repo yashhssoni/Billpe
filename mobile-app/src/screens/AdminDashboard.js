@@ -1,19 +1,19 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { 
   View, Text, TouchableOpacity, ScrollView, StyleSheet, 
-  TextInput, ActivityIndicator, Alert 
+  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, 
+  Platform 
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import axiosInstance from '../api/axiosInstance';
 
 export default function AdminDashboard({ navigation }) {
   const { storeInfo, logout } = useContext(AuthContext);
-
-  // Review Module States
-  const [hasReviewed, setHasReviewed] = useState(true); // Default true jab tak status load na ho
+  const [hasReviewed, setHasReviewed] = useState(true); 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const scrollViewRef = useRef(null);
 
   const menuItems = [
     { title: 'Scan & Add Stock', icon: '📷', screen: 'AdminScanner' },
@@ -56,7 +56,7 @@ export default function AdminDashboard({ navigation }) {
       setSubmittingReview(false);
       if (data.success) {
         Alert.alert('🎉 Thank You!', 'Your review has been submitted successfully!');
-        setHasReviewed(true); // Review dene ke baad box dashboard se gayab ho jayega
+        setHasReviewed(true);
       }
     } catch (err) {
       setSubmittingReview(false);
@@ -64,106 +64,116 @@ export default function AdminDashboard({ navigation }) {
     }
   };
 
+  const handleInputFocus = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 200);
+  };
+
   return (
-    <ScrollView 
-      style={styles.container} 
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView 
+      style={{ flex: 1, backgroundColor: '#0f172a' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1, marginRight: 10 }}>
-          <Text style={styles.eyebrow}>Admin Dashboard</Text>
-          <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
-            {storeInfo?.storeName || 'My Store'}
-          </Text>
-          {storeInfo?._id && <Text style={styles.storeId}>Store ID: {storeInfo._id}</Text>}
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.eyebrow}>Admin Dashboard</Text>
+            <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
+              {storeInfo?.storeName || 'My Store'}
+            </Text>
+            {storeInfo?._id && <Text style={styles.storeId}>Store ID: {storeInfo._id}</Text>}
+          </View>
+          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Menu Grid */}
-      <View style={styles.grid}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() => navigation.navigate(item.screen)}
-            style={[styles.card, item.isFullWidth && styles.fullWidthCard]}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconBox}>
-              <Text style={{ fontSize: 24 }}>{item.icon}</Text>
+        {/* Menu Grid */}
+        <View style={styles.grid}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => navigation.navigate(item.screen)}
+              style={[styles.card, item.isFullWidth && styles.fullWidthCard]}
+              activeOpacity={0.7}
+            >
+              <View style={styles.iconBox}>
+                <Text style={{ fontSize: 24 }}>{item.icon}</Text>
+              </View>
+              <View style={item.isFullWidth ? { marginLeft: 14 } : null}>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                {item.isFullWidth && (
+                  <Text style={styles.cardSubtitle}>Profile, FAQs, Community Reviews & Support</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {!hasReviewed && (
+          <View style={styles.reviewSection}>
+            <View style={styles.reviewHeaderRow}>
+              <Text style={styles.reviewBadge}>⭐ Feedback</Text>
+              <Text style={styles.reviewSubtitle}>Help us improve BillPe</Text>
             </View>
-            <View style={item.isFullWidth ? { marginLeft: 14 } : null}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              {item.isFullWidth && (
-                <Text style={styles.cardSubtitle}>Profile, FAQs, Community Reviews & Support</Text>
+            
+            <Text style={styles.reviewHeading}>How was your BillPe experience?</Text>
+
+            <View style={styles.starRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity 
+                  key={star} 
+                  onPress={() => setRating(star)}
+                  activeOpacity={0.6}
+                >
+                  <Text style={[styles.starIcon, star <= rating ? styles.starFilled : styles.starEmpty]}>
+                    ★
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TextInput
+              style={styles.reviewInput}
+              placeholder="Write a quick comment (e.g. Fast billing, smooth scanner!)..."
+              placeholderTextColor="#64748b"
+              value={comment}
+              onChangeText={setComment}
+              maxLength={200}
+              onFocus={handleInputFocus}
+              returnKeyType="done"
+            />
+
+            <TouchableOpacity 
+              style={styles.submitReviewBtn} 
+              onPress={handleSubmitReview}
+              disabled={submittingReview}
+              activeOpacity={0.8}
+            >
+              {submittingReview ? (
+                <ActivityIndicator color="#0f172a" size="small" />
+              ) : (
+                <Text style={styles.submitReviewBtnText}>Submit Feedback</Text>
               )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* ================= BOTTOM INLINE REVIEW BOX ================= */}
-      {!hasReviewed && (
-        <View style={styles.reviewSection}>
-          <View style={styles.reviewHeaderRow}>
-            <Text style={styles.reviewBadge}>⭐ Feedback</Text>
-            <Text style={styles.reviewSubtitle}>Help us improve BillPe</Text>
+            </TouchableOpacity>
           </View>
-          
-          <Text style={styles.reviewHeading}>How has your experience been with BillPe?</Text>
-
-          {/* Interactive Star Selection */}
-          <View style={styles.starRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity 
-                key={star} 
-                onPress={() => setRating(star)}
-                activeOpacity={0.6}
-              >
-                <Text style={[styles.starIcon, star <= rating ? styles.starFilled : styles.starEmpty]}>
-                  ★
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Short Comment Input */}
-          <TextInput
-            style={styles.reviewInput}
-            placeholder="Write a quick comment (e.g. Fast billing, smooth scanner!)..."
-            placeholderTextColor="#64748b"
-            value={comment}
-            onChangeText={setComment}
-            maxLength={200}
-          />
-
-          {/* Submit Button */}
-          <TouchableOpacity 
-            style={styles.submitReviewBtn} 
-            onPress={handleSubmitReview}
-            disabled={submittingReview}
-            activeOpacity={0.8}
-          >
-            {submittingReview ? (
-              <ActivityIndicator color="#0f172a" size="small" />
-            ) : (
-              <Text style={styles.submitReviewBtnText}>Submit Feedback</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={{ height: 40 }} />
-    </ScrollView>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20 },
+  container: { flex: 1, backgroundColor: '#0f172a', paddingHorizontal: 20 },
+  scrollContent: { paddingBottom: 80 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 },
   eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
   storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
@@ -178,7 +188,6 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginTop: 8 },
   cardSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
 
-  // Inline Review Card Styles
   reviewSection: { 
     backgroundColor: '#1e293b', 
     borderRadius: 20, 
@@ -186,6 +195,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, 
     borderColor: 'rgba(245, 158, 11, 0.4)', 
     marginTop: 8,
+    marginBottom: 20,
     shadowColor: '#f59e0b',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -207,8 +217,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: '#334155', 
     paddingHorizontal: 14, 
-    paddingVertical: 10, 
-    fontSize: 13, 
+    paddingVertical: 12, 
+    fontSize: 14, 
     marginVertical: 8 
   },
   submitReviewBtn: { 

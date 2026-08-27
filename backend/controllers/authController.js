@@ -6,18 +6,15 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendPasswordResetEmail, sendRegistrationOtpEmail } = require('../utils/emailService');
 
-// Temporary in-memory OTP storage for registration
 const pendingRegistrations = new Map();
 
 const generateToken = (id, role, storeId) => {
   return jwt.sign({ id, role, storeId }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
-// 1. Send OTP for Registration
 exports.sendRegisterOTP = async (req, res) => {
   try {
     const { storeName, ownerName, phone, email, password, address, gstin, role, storeId } = req.body;
-
     const normalizedEmail = email ? email.toLowerCase().trim() : '';
     const normalizedPhone = phone ? phone.trim() : '';
 
@@ -26,11 +23,11 @@ exports.sendRegisterOTP = async (req, res) => {
     }
 
     if (role === 'admin' && (!storeName || !address)) {
-      return res.status(400).json({ success: false, message: "Store Name and Address are required for admin registration." });
+      return res.status(400).json({ success: false, message: "Store Name & Address required for registration." });
     }
 
     if (role === 'employee' && !storeId) {
-      return res.status(400).json({ success: false, message: "Store ID is required for employee registration." });
+      return res.status(400).json({ success: false, message: "Store ID required for employee registration." });
     }
 
     const existingUser = await User.findOne({
@@ -62,8 +59,6 @@ exports.sendRegisterOTP = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message || "Failed to send verification OTP." });
   }
 };
-
-// 2. Verify Registration OTP & Create Account
 exports.verifyRegisterOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -147,7 +142,6 @@ exports.verifyRegisterOTP = async (req, res) => {
   }
 };
 
-// 3. Fallback Direct Register
 exports.register = async (req, res, next) => {
   try {
     const { storeName, ownerName, phone, email, password, address, gstin, role, storeId } = req.body;
@@ -225,7 +219,6 @@ exports.register = async (req, res, next) => {
   }
 };
 
-// 4. Login
 exports.login = async (req, res, next) => {
   try {
     const { email, identifier, password } = req.body;
@@ -271,7 +264,6 @@ exports.login = async (req, res, next) => {
   }
 };
 
-// 5. Add Employee
 exports.addEmployee = async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
@@ -312,8 +304,6 @@ exports.addEmployee = async (req, res, next) => {
     next(error);
   }
 };
-
-// 6. Get Store Employees
 exports.getStoreEmployees = async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
@@ -331,7 +321,6 @@ exports.getStoreEmployees = async (req, res, next) => {
   }
 };
 
-// 7. Forgot Password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -363,7 +352,6 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// 8. Reset Password
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;

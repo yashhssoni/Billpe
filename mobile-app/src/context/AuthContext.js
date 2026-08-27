@@ -34,12 +34,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login with Email or Phone Number
   const login = async (identifier, password) => {
     try {
       const { data } = await axiosInstance.post('/auth/login', { 
         identifier: identifier.trim(),
-        email: identifier.trim(), // Backward compatibility ke liye
+        email: identifier.trim(), 
         password 
       });
 

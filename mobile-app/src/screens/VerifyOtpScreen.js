@@ -27,7 +27,6 @@ export default function VerifyOtpScreen({ route, navigation }) {
 
       setLoading(false);
       if (data.success) {
-        // Credentials ko permanently save karein (taaki logout ke baad bhi auto-fill kaam kare)
         if (email) await AsyncStorage.setItem('billpe_saved_login_email', email.trim());
         if (password) await AsyncStorage.setItem('billpe_saved_login_password', password);
 

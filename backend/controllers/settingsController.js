@@ -3,7 +3,6 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const Review = require('../models/Review');
 
-// 1. Get Profile Details & Review Status
 exports.getProfileDetails = async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
@@ -33,14 +32,13 @@ exports.getProfileDetails = async (req, res) => {
   }
 };
 
-// 2. Change Password (Inside App)
 exports.changePassword = async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Please provide both current and new password' });
+      return res.status(400).json({ success: false, message: 'Please provide current and new password' });
     }
 
     if (newPassword.length < 6) {
@@ -67,7 +65,6 @@ exports.changePassword = async (req, res) => {
   }
 };
 
-// 3. Submit Review (From Dashboard or Settings)
 exports.submitReview = async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
@@ -110,7 +107,6 @@ exports.submitReview = async (req, res) => {
   }
 };
 
-// 4. Get Community Reviews
 exports.getCommunityReviews = async (req, res) => {
   try {
     const reviews = await Review.find({ isApproved: true })

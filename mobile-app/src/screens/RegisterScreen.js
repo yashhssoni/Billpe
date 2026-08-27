@@ -35,7 +35,6 @@ export default function RegisterScreen({ navigation }) {
       }
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // user closed picker
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert('Error', 'Google Play Services not available on this device.');
       } else {

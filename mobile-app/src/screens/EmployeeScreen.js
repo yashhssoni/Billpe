@@ -10,28 +10,19 @@ export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
   const { loading: salesLoading, processCheckout } = useSales();
   const [permission, requestPermission] = useCameraPermissions();
-  
   const [scanner, setScanner] = useState(false);
   const [cart, setCart] = useState([]);
   const [currentScanned, setCurrentScanned] = useState(null);
   const [manualPrice, setManualPrice] = useState('');
   const [priceMode, setPriceMode] = useState('manual');
   const [loading, setLoading] = useState(false);
-
-  // Employee & Payment Mode
   const [employeeName, setEmployeeName] = useState(user?.name || '');
   const [paymentMode, setPaymentMode] = useState('Cash');
-
-  // Image Zoom Modal
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState(null);
-
-  // Edit Price Modal
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
-
-  // Customer Details
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
@@ -315,7 +306,6 @@ export default function EmployeeScreen({ navigation }) {
     }
   };
 
-  // Exact Admin Scanner Fullscreen View
   if (scanner) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -425,7 +415,6 @@ export default function EmployeeScreen({ navigation }) {
               onChangeText={setEmployeeName} 
             />
 
-            {/* Payment Mode Selector */}
             <Text style={[styles.fieldHeading, { marginTop: 10 }]}>Payment Mode</Text>
             <View style={styles.paymentToggleRow}>
               <TouchableOpacity 
@@ -445,8 +434,6 @@ export default function EmployeeScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-
-          {/* Customer Details */}
           <View style={[styles.cardBox, { marginTop: 12 }]}>
             <Text style={styles.fieldHeading}>Customer Details (Optional)</Text>
             <TextInput style={styles.input} placeholder="Customer Name" placeholderTextColor="#64748b" value={customerName} onChangeText={setCustomerName} />
@@ -482,10 +469,8 @@ export default function EmployeeScreen({ navigation }) {
             )}
           </View>
 
-          {/* Dual Checkout Action Buttons */}
           {cart.length > 0 && (
             <View style={styles.checkoutActionRow}>
-              {/* 1. Fast Checkout (No Print) */}
               <TouchableOpacity 
                 style={styles.doneBtn} 
                 onPress={() => handleCompleteCheckout(false)}
@@ -496,7 +481,6 @@ export default function EmployeeScreen({ navigation }) {
                 </Text>
               </TouchableOpacity>
 
-              {/* 2. Complete & Print Bill */}
               <TouchableOpacity 
                 style={styles.printBtn} 
                 onPress={() => handleCompleteCheckout(true)}
@@ -509,7 +493,6 @@ export default function EmployeeScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Full Screen Image Zoom Modal */}
       <Modal visible={imageModalVisible} transparent={true} animationType="fade">
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
@@ -521,7 +504,6 @@ export default function EmployeeScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Edit Cart Item Modal */}
       {editingCartItem && (
         <Modal visible={editModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
@@ -607,7 +589,6 @@ const styles = StyleSheet.create({
   updateBtn: { backgroundColor: '#10b981', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   updateBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
   
-  // Dual Checkout Button Row
   checkoutActionRow: { flexDirection: 'row', gap: 10, marginTop: 16, marginBottom: 10 },
   doneBtn: { flex: 1.2, backgroundColor: '#10b981', paddingVertical: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   doneBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },

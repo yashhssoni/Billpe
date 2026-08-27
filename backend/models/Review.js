@@ -5,7 +5,7 @@ const reviewSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Store',
     required: true,
-    unique: true // Ek store sirf 1 review submit kar sakta hai
+    unique: true 
   },
   storeName: {
     type: String,

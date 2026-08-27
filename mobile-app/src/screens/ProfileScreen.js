@@ -84,8 +84,6 @@ export default function ProfileScreen({ navigation }) {
       </TouchableOpacity>
 
       <Text style={styles.mainTitle}>Store & Owner Profile</Text>
-
-      {/* Store Information Card */}
       <View style={styles.card}>
         <View style={styles.rowBetween}>
           <Text style={styles.cardHeader}>Store Details</Text>
@@ -105,7 +103,7 @@ export default function ProfileScreen({ navigation }) {
 
         <View style={styles.infoBanner}>
           <Text style={styles.infoBannerText}>
-            ℹ️ Store Name edit karne ke liye Help Desk / Support section se contact karein.
+           ℹ️ To edit your Store Name, please contact our Help Desk / Support team.
           </Text>
         </View>
 

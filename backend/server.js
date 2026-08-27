@@ -38,7 +38,7 @@ app.use('/api/payment', require('./routes/paymentRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 
 app.get('/', (req, res) => {
-  res.send('BillPe POS & Subscription Backend API is running successfully...');
+  res.send('BillPe & Subscription Backend API is running successfully...');
 });
 
 app.use(errorHandler);

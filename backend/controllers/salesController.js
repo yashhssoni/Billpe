@@ -31,7 +31,6 @@ exports.checkout = async (req, res, next) => {
 
       const salePrice = Number(item.agreedPrice || item.price || product.price);
 
-      // Barcode-based single unit tracking
       product.sold = true;
       product.soldPrice = salePrice;
       product.soldCustomerName = finalCustomerName;

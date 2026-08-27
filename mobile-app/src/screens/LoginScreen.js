@@ -24,7 +24,6 @@ export default function LoginScreen({ navigation }) {
 
       if (savedEmail && savedPass) {
         setSavedAccount({ email: savedEmail, pass: savedPass });
-        // Inputs ko default auto-fill kar dein
         setIdentifier(savedEmail);
         setPassword(savedPass);
       }
@@ -50,7 +49,6 @@ export default function LoginScreen({ navigation }) {
     setLoading(false);
 
     if (result.success) {
-      // Future login ke liye persistent update
       await AsyncStorage.setItem('billpe_saved_login_email', identifier.trim());
       await AsyncStorage.setItem('billpe_saved_login_password', password);
     } else {

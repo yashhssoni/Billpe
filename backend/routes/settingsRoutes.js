@@ -11,13 +11,8 @@ const {
   getCommunityReviews
 } = require('../controllers/settingsController');
 
-// Store & Owner Profile
 router.get('/profile', protect, getProfileDetails);
-
-// Change Password (In-app)
 router.post('/change-password', protect, changePassword);
-
-// Reviews (Submit: Protected, Get: Open/Protected)
 router.post('/reviews', protect, submitReview);
 router.get('/reviews', getCommunityReviews);
 

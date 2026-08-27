@@ -43,8 +43,6 @@ export default function SubscriptionScreen({ navigation }) {
       </View>
     );
   }
-
-  // 1. Subscription Active Screen
   if (status.isActive) {
     return (
       <View style={styles.container}>
@@ -57,13 +55,12 @@ export default function SubscriptionScreen({ navigation }) {
     );
   }
 
-  // 2. Pending Screen (With QR Code + Call Admin Button)
   if (status.paymentPending) {
     return (
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.pendingTitle}>Verification Pending ⏳</Text>
         <Text style={styles.desc}>
-          Request sent successfully! If not paid yet, scan below to complete payment and call admin for fast approval.
+          Request sent. If unpaid, scan below to pay and contact the admin for approval.
         </Text>
 
         {/* QR Code Box */}
@@ -76,19 +73,17 @@ export default function SubscriptionScreen({ navigation }) {
           <Text style={styles.qrSubText}>Scan using GPay / PhonePe / Paytm</Text>
         </View>
         
-        {/* Call Admin Button */}
         <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+916263634900')}>
           <Text style={styles.callBtnText}>📞 Call Admin: 6263634900</Text>
         </TouchableOpacity>
         
         <Text style={styles.autoStartNote}>
-          App will automatically unlock once approved by admin.
+          The app will unlock automatically after admin approval.
         </Text>
       </ScrollView>
     );
   }
 
-  // 3. Purchase Plan Screen (Default View)
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>Purchase Monthly Plan (₹600)</Text>
@@ -105,7 +100,7 @@ export default function SubscriptionScreen({ navigation }) {
         {loading ? (
           <ActivityIndicator color="#0f172a" />
         ) : (
-          <Text style={styles.btnText}>Payment Done - Notify Admin</Text>
+          <Text style={styles.btnText}>Payment completed? Notify the admin.</Text>
         )}
       </TouchableOpacity>
     </ScrollView>

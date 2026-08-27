@@ -30,22 +30,21 @@ export default function AdminScanner({ navigation }) {
 
   const [p, setP] = useState(initialFormState);
 
-  // Helper Function for Instant WebP / JPEG Compression
   const compressImage = async (uri) => {
     if (!uri) return null;
     try {
       const manipResult = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 800 } }], // 800px width ensures crystal-clear zoom quality
+        [{ resize: { width: 800 } }],
         { 
-          compress: 0.7, // 70% quality drops size from 4MB to ~70KB
+          compress: 0.7, 
           format: ImageManipulator.SaveFormat.JPEG 
         }
       );
       return manipResult.uri;
     } catch (error) {
       console.log('Image compression error:', error);
-      return uri; // Fallback to original URI if manipulation fails
+      return uri; 
     }
   };
 
@@ -289,16 +288,13 @@ export default function AdminScanner({ navigation }) {
     }
   };
 
-  // Dynamic Border & Glow Logic for Required Inputs
   const getRequiredInputStyle = (fieldName, value) => {
     const isFilled = Boolean(value && String(value).trim().length > 0);
     const isFocused = focusedField === fieldName;
 
     if (!isFilled) {
-      // Empty: Red Border + Red Shadow
       return isFocused ? [styles.input, styles.inputRedActive] : [styles.input, styles.inputRedIdle];
     } else {
-      // Filled: Green Glow when focused/typing, Clean Neutral when focus moves away
       return isFocused ? [styles.input, styles.inputGreenActive] : [styles.input, styles.inputFilledClean];
     }
   };
@@ -350,7 +346,6 @@ export default function AdminScanner({ navigation }) {
             onChangeText={(t) => setP({ ...p, name: t })} 
           />
 
-          {/* 3. Lowest Rate & Highest Rate (Both Required) */}
           <View style={styles.rateRow}>
             {/* Lowest Rate */}
             <View style={{ flex: 1 }}>
@@ -370,7 +365,6 @@ export default function AdminScanner({ navigation }) {
               />
             </View>
 
-            {/* Highest Rate */}
             <View style={{ flex: 1 }}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Highest Rate *</Text>
@@ -390,11 +384,9 @@ export default function AdminScanner({ navigation }) {
           </View>
         </View>
 
-        {/* ================= OPTIONAL SECTION ================= */}
         <View style={[styles.sectionCard, { marginTop: 16 }]}>
           <Text style={styles.sectionHeadingOptional}>Additional Details (Optional)</Text>
 
-          {/* Product Type / Category */}
           <Text style={styles.label}>Product Type / Category:</Text>
           <TextInput 
             style={styles.inputOptional} 
@@ -404,7 +396,6 @@ export default function AdminScanner({ navigation }) {
             onChangeText={(t) => setP({ ...p, category: t })} 
           />
 
-          {/* Product Weight */}
           <Text style={styles.label}>Product Weight:</Text>
           <View style={styles.weightRow}>
             <View style={{ flex: 1 }}>
@@ -429,7 +420,6 @@ export default function AdminScanner({ navigation }) {
             </View>
           </View>
 
-          {/* Color */}
           <Text style={styles.label}>Color:</Text>
           <TextInput 
             style={styles.inputOptional} 
@@ -439,7 +429,6 @@ export default function AdminScanner({ navigation }) {
             onChangeText={(t) => setP({ ...p, color: t })} 
           />
 
-          {/* Description */}
           <Text style={styles.label}>Description:</Text>
           <TextInput 
             style={styles.inputOptional} 
@@ -449,7 +438,6 @@ export default function AdminScanner({ navigation }) {
             onChangeText={(t) => setP({ ...p, description: t })} 
           />
 
-          {/* Product Photo */}
           <Text style={styles.label}>Product Photo:</Text>
           {p.imageUri ? (
             <View style={{ marginBottom: 12 }}>
@@ -470,12 +458,10 @@ export default function AdminScanner({ navigation }) {
           )}
         </View>
 
-        {/* Save Button */}
         <TouchableOpacity onPress={handleSaveProduct} disabled={loading} style={styles.saveBtn} activeOpacity={0.8}>
           {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>Save / Update Product</Text>}
         </TouchableOpacity>
 
-        {/* Back Button */}
         <View style={{ marginTop: 12 }}>
           <Button 
             title="Back" 
@@ -492,8 +478,6 @@ export default function AdminScanner({ navigation }) {
             color="#ef4444" 
           />
         </View>
-
-        {/* Android Navigation Bar Safe Spacing */}
         <View style={styles.androidNavSpace} />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -513,7 +497,6 @@ const styles = StyleSheet.create({
   label: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1', fontSize: 13 },
   requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
 
-  // Base Required Input
   input: { 
     borderWidth: 1.5, 
     padding: 12, 
@@ -525,7 +508,6 @@ const styles = StyleSheet.create({
   },
   readOnlyInput: { backgroundColor: '#334155', color: '#94a3b8', borderColor: '#475569' },
 
-  // 🔴 Required Empty State (Red Border + Shadow)
   inputRedIdle: { 
     borderColor: 'rgba(239, 68, 68, 0.7)', 
     shadowColor: '#ef4444', 
@@ -544,7 +526,6 @@ const styles = StyleSheet.create({
     elevation: 4 
   },
 
-  // 🟢 Required Active Filled Typing State (Green Glow)
   inputGreenActive: { 
     borderColor: '#10b981', 
     borderWidth: 2, 
@@ -555,13 +536,11 @@ const styles = StyleSheet.create({
     elevation: 4 
   },
 
-  // ⚪ Required Filled (Focus Moved Away)
   inputFilledClean: { 
     borderColor: '#334155', 
     borderWidth: 1.5 
   },
 
-  // Optional Input Styling
   inputOptional: { 
     borderWidth: 1, 
     padding: 12, 
