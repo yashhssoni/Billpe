@@ -2,7 +2,7 @@ import React, { useState, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
-  Platform, Image, Button, Modal 
+  Platform, Image, Button, Modal, FlatList 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -31,6 +31,7 @@ export default function AdminScanner({ navigation }) {
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
 
   const [modalState, setModalState] = useState({
     visible: false,
@@ -521,23 +522,16 @@ export default function AdminScanner({ navigation }) {
             ) : null}
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-            {POPULAR_CATEGORIES.map((cat, idx) => {
-              const isSelected = p.category.toLowerCase() === cat.toLowerCase();
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
-                  onPress={() => setP({ ...p, category: isSelected ? '' : cat })}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <TouchableOpacity 
+            style={styles.dropdownTrigger}
+            onPress={() => setCategoryDropdownVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={p.category ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
+              {p.category ? p.category : t('selectCategoryPlaceholder')}
+            </Text>
+            <Text style={styles.dropdownArrow}>▼</Text>
+          </TouchableOpacity>
 
           <TextInput 
             style={styles.inputOptional} 
@@ -632,6 +626,49 @@ export default function AdminScanner({ navigation }) {
         <View style={styles.androidNavSpace} />
       </ScrollView>
 
+      <Modal
+        visible={categoryDropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setCategoryDropdownVisible(false)}
+      >
+        <View style={styles.dropdownModalOverlay}>
+          <View style={styles.dropdownModalCard}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>{t('selectCategoryModalTitle')}</Text>
+              <TouchableOpacity onPress={() => setCategoryDropdownVisible(false)}>
+                <Text style={styles.dropdownModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={POPULAR_CATEGORIES}
+              keyExtractor={(item) => item}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 350 }}
+              renderItem={({ item }) => {
+                const isSelected = p.category.toLowerCase() === item.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                    onPress={() => {
+                      setP({ ...p, category: item });
+                      setCategoryDropdownVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]}>
+                      {item}
+                    </Text>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {renderCustomModal()}
     </KeyboardAvoidingView>
   );
@@ -651,29 +688,68 @@ const styles = StyleSheet.create({
   requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
   clearChipText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
 
-  chipsScroll: { flexDirection: 'row', marginBottom: 10, marginTop: 2 },
-  categoryChip: {
+  dropdownTrigger: {
     backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  dropdownPlaceholderText: { color: '#64748b', fontSize: 14 },
+  dropdownSelectedText: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
+  dropdownArrow: { color: '#38bdf8', fontSize: 12 },
+
+  dropdownModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  dropdownModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10
+  },
+  dropdownModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155'
+  },
+  dropdownModalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  dropdownModalClose: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
+
+  dropdownItem: {
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 18,
-    marginRight: 8
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
   },
-  categoryChipActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    borderColor: '#38bdf8'
-  },
-  categoryChipText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  categoryChipTextActive: {
-    color: '#38bdf8',
-    fontWeight: 'bold'
-  },
+  dropdownItemActive: { backgroundColor: 'rgba(56, 189, 248, 0.15)' },
+  dropdownItemText: { color: '#cbd5e1', fontSize: 14, fontWeight: '500' },
+  dropdownItemTextActive: { color: '#38bdf8', fontWeight: 'bold' },
+  checkmark: { color: '#38bdf8', fontSize: 16, fontWeight: 'bold' },
 
   input: { 
     borderWidth: 1.5, 

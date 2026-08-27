@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Alert } from 'react-native';
 import * as Updates from 'expo-updates';
 import { AuthProvider } from './src/context/AuthContext';
+import { LanguageProvider } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import UpdateAlert from './src/components/UpdateAlert';
 
@@ -36,9 +37,11 @@ export default function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AppNavigator />
-      <UpdateAlert />
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <AppNavigator />
+        <UpdateAlert />
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
