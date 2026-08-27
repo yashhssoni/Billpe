@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 
-// Middleware jisme aapka JWT auth logic hai
-const { authMiddleware } = require('../middleware/authMiddleware');
+// protect middleware import
+const { protect } = require('../middleware/authMiddleware');
 
 const {
   getProfileDetails,
@@ -11,9 +11,14 @@ const {
   getCommunityReviews
 } = require('../controllers/settingsController');
 
-router.get('/profile', authMiddleware, getProfileDetails);
-router.post('/change-password', authMiddleware, changePassword);
-router.post('/reviews', authMiddleware, submitReview);
-router.get('/reviews', authMiddleware, getCommunityReviews);
+// Store & Owner Profile
+router.get('/profile', protect, getProfileDetails);
+
+// Change Password (In-app)
+router.post('/change-password', protect, changePassword);
+
+// Reviews (Submit: Protected, Get: Open/Protected)
+router.post('/reviews', protect, submitReview);
+router.get('/reviews', getCommunityReviews);
 
 module.exports = router;

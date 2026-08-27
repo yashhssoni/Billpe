@@ -87,7 +87,6 @@ exports.submitReview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Store not found' });
     }
 
-    // Upsert logic (agar pehle diya ho toh update, warna create)
     const review = await Review.findOneAndUpdate(
       { storeId: store._id },
       {
