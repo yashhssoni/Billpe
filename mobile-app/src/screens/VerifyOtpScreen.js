@@ -1,17 +1,16 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
   Alert, KeyboardAvoidingView, Platform, StyleSheet 
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
-import { AuthContext } from '../context/AuthContext';
 
 export default function VerifyOtpScreen({ route, navigation }) {
   const { email, password } = route.params || {};
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const { login } = useContext(AuthContext);
 
   const handleVerify = async () => {
     if (!otp.trim() || otp.trim().length !== 6) {
@@ -28,12 +27,23 @@ export default function VerifyOtpScreen({ route, navigation }) {
 
       setLoading(false);
       if (data.success) {
-        Alert.alert('🎉 Welcome!', 'Your account has been verified successfully.');
-        if (password) {
-          await login(email, password);
-        } else {
-          navigation.navigate('Login');
-        }
+        // Credentials ko permanently save karein (taaki logout ke baad bhi auto-fill kaam kare)
+        if (email) await AsyncStorage.setItem('billpe_saved_login_email', email.trim());
+        if (password) await AsyncStorage.setItem('billpe_saved_login_password', password);
+
+        Alert.alert(
+          '🎉 Verification Successful',
+          'Your store account is verified. Please sign in to access your dashboard.',
+          [
+            {
+              text: 'Go to Login',
+              onPress: () => navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              })
+            }
+          ]
+        );
       }
     } catch (err) {
       setLoading(false);
@@ -71,7 +81,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
         />
 
         <TouchableOpacity onPress={handleVerify} disabled={loading} style={styles.btn} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Verify & Continue</Text>}
+          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Verify & Proceed to Login</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleResend} disabled={resending} style={styles.resendBtn}>
