@@ -33,7 +33,6 @@ exports.sendRegisterOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: "Store ID is required for employee registration." });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({
       $or: [{ email: normalizedEmail }, { phone: normalizedPhone }]
     });
@@ -43,15 +42,13 @@ exports.sendRegisterOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: `${field} is already registered.` });
     }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
-    // Save registration payload temporarily
     pendingRegistrations.set(normalizedEmail, {
       payload: { storeName, ownerName, phone: normalizedPhone, email: normalizedEmail, password, address, gstin, role, storeId },
       hashedOtp,
-      expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+      expiresAt: Date.now() + 10 * 60 * 1000
     });
 
     await sendRegistrationOtpEmail(normalizedEmail, otp);
@@ -150,7 +147,85 @@ exports.verifyRegisterOTP = async (req, res) => {
   }
 };
 
-// 3. Login
+// 3. Fallback Direct Register
+exports.register = async (req, res, next) => {
+  try {
+    const { storeName, ownerName, phone, email, password, address, gstin, role, storeId } = req.body;
+    const normalizedEmail = email ? email.toLowerCase().trim() : '';
+    const normalizedPhone = phone ? phone.trim() : '';
+
+    const existingUser = await User.findOne({
+      $or: [{ email: normalizedEmail }, { phone: normalizedPhone }]
+    });
+
+    if (existingUser) {
+      const field = existingUser.email === normalizedEmail ? "Email" : "Phone number";
+      return res.status(400).json({ success: false, message: `${field} is already registered.` });
+    }
+
+    let assignedStoreId = storeId;
+    let storeInfo = null;
+
+    if (role === 'admin') {
+      if (!storeName || !address) {
+        return res.status(400).json({ success: false, message: "Store Name and Address are required for admin registration." });
+      }
+
+      const store = await Store.create({ 
+        storeName: storeName.trim(), 
+        ownerName: ownerName.trim(), 
+        phone: normalizedPhone, 
+        email: normalizedEmail, 
+        address: address.trim(), 
+        gstin: gstin ? gstin.trim() : '' 
+      });
+      assignedStoreId = store._id;
+      storeInfo = store;
+
+      try {
+        await Subscription.create({
+          storeId: store._id,
+          expiryDate: new Date(),
+          monthlyBrLimit: 200,
+          monthlyBrUsed: 0,
+          addonBrBalance: 0,
+          isActive: false
+        });
+      } catch (subErr) {}
+    } else {
+      if (!storeId) {
+        return res.status(400).json({ success: false, message: "Store ID is required for employee registration." });
+      }
+      storeInfo = await Store.findById(storeId);
+      if (!storeInfo) {
+        return res.status(404).json({ success: false, message: "Invalid Store ID. Store not found." });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      name: ownerName.trim(),
+      email: normalizedEmail,
+      password: hashedPassword,
+      phone: normalizedPhone,
+      role: role || 'admin',
+      storeId: assignedStoreId
+    });
+
+    const token = generateToken(user._id, user.role, assignedStoreId);
+
+    res.status(201).json({
+      success: true,
+      token,
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      storeInfo
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Registration failed." });
+  }
+};
+
+// 4. Login
 exports.login = async (req, res, next) => {
   try {
     const { email, identifier, password } = req.body;
@@ -196,7 +271,7 @@ exports.login = async (req, res, next) => {
   }
 };
 
-// 4. Add Employee
+// 5. Add Employee
 exports.addEmployee = async (req, res, next) => {
   try {
     const { name, email, password, phone } = req.body;
@@ -238,7 +313,7 @@ exports.addEmployee = async (req, res, next) => {
   }
 };
 
-// 5. Get Store Employees
+// 6. Get Store Employees
 exports.getStoreEmployees = async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
@@ -256,7 +331,7 @@ exports.getStoreEmployees = async (req, res, next) => {
   }
 };
 
-// 6. Forgot Password -> Send OTP via Brevo
+// 7. Forgot Password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -288,7 +363,7 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// 7. Reset Password -> Verify OTP & Update
+// 8. Reset Password
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
