@@ -2,18 +2,42 @@ import React, { useState } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
-  Platform, Image, Button 
+  Platform, Image, Button, Modal 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
 
+// Practical Indian Store Categories
+const POPULAR_CATEGORIES = [
+  'General',
+  'Grocery / Kirana',
+  'Apparel / Clothes',
+  'Steel / Bartan',
+  'Footwear / Shoes',
+  'Electronics & Mobiles',
+  'Stationery & Books',
+  'Cosmetics & Beauty',
+  'Snacks & Beverages',
+  'Hardware & Electrical',
+  'Medical & Pharma',
+  'Toys & Gifts'
+];
+
 export default function AdminScanner({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+
+  const [modalState, setModalState] = useState({
+    visible: false,
+    type: null,
+    item: null,
+    scannedBarcode: '',
+    restocking: false
+  });
 
   const initialFormState = {
     barcodeId: '',
@@ -88,73 +112,23 @@ export default function AdminScanner({ navigation }) {
         
         if (found) {
           if (found.sold === true || found.stock <= 0) {
-            Alert.alert(
-              '🔒 Sold Item Details',
-              `Product: ${found.productName}\n` +
-              `Status: SOLD OUT\n` +
-              `Sold Price: ₹${found.soldPrice || found.price}\n` +
-              `Customer: ${found.soldCustomerName || 'N/A'}\n` +
-              `Mobile: ${found.soldCustomerPhone || 'N/A'}\n\n` +
-              `Item already sold, do you want to restock this to Inventory?`,
-              [
-                { text: 'Scan Another', onPress: () => setScanner(true), style: 'cancel' },
-                {
-                  text: 'Restock',
-                  onPress: async () => {
-                    try {
-                      await axiosInstance.put(`/products/${found._id}`, { 
-                        stock: 1, 
-                        sold: false, 
-                        soldPrice: null,
-                        soldCustomerName: '',
-                        soldCustomerPhone: ''
-                      });
-                      Alert.alert('Success', 'Item added back to inventory!');
-                      setScanner(true);
-                    } catch (e) {
-                      if (e.response && e.response.status === 403) {
-                        Alert.alert('Subscription Expired 🔒', e.response.data.message || 'Please renew your subscription.', [
-                          { text: 'Go to Subscription', onPress: () => navigation.navigate('SubscriptionScreen') }
-                        ]);
-                      } else {
-                        Alert.alert('Error', 'Error in Restock.');
-                      }
-                      setScanner(true);
-                    }
-                  }
-                }
-              ]
-            );
+            setModalState({
+              visible: true,
+              type: 'sold',
+              item: found,
+              scannedBarcode: data,
+              restocking: false
+            });
             return;
           }
 
-          Alert.alert(
-            '⚠️ Item Already in Inventory',
-            `Product: ${found.productName}\n` +
-            `Current Stock: ${found.stock}\n` +
-            `Price: ₹${found.price}\n\n` +
-            `Item already present in Inventory`,
-            [
-              { text: 'Scan Another', onPress: () => setScanner(true), style: 'cancel' },
-              {
-                text: 'Edit / Update Details',
-                onPress: () => {
-                  setP({
-                    barcodeId: data,
-                    name: found.productName || '',
-                    color: found.color || '',
-                    category: found.category || '',
-                    description: found.description || '',
-                    kg: found.weightKg !== undefined && found.weightKg !== null ? String(found.weightKg) : '',
-                    grams: found.weightGrams !== undefined && found.weightGrams !== null ? String(found.weightGrams) : '',
-                    lowestRate: String(found.lowestRate || found.price || ''),
-                    highestRate: String(found.highestRate || found.price || ''),
-                    imageUri: found.imageUri || ''
-                  });
-                }
-              }
-            ]
-          );
+          setModalState({
+            visible: true,
+            type: 'existing',
+            item: found,
+            scannedBarcode: data,
+            restocking: false
+          });
           return;
         }
       }
@@ -169,6 +143,54 @@ export default function AdminScanner({ navigation }) {
     }
 
     setP(prev => ({ ...prev, barcodeId: data }));
+  };
+
+  const handleRestock = async () => {
+    const found = modalState.item;
+    if (!found) return;
+
+    setModalState(prev => ({ ...prev, restocking: true }));
+    try {
+      await axiosInstance.put(`/products/${found._id}`, { 
+        stock: 1, 
+        sold: false, 
+        soldPrice: null,
+        soldCustomerName: '',
+        soldCustomerPhone: ''
+      });
+      setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
+      Alert.alert('Success', 'Item added back to inventory!');
+      setScanner(true);
+    } catch (e) {
+      setModalState(prev => ({ ...prev, restocking: false, visible: false }));
+      if (e.response && e.response.status === 403) {
+        Alert.alert('Subscription Expired 🔒', e.response.data.message || 'Please renew your subscription.', [
+          { text: 'Go to Subscription', onPress: () => navigation.navigate('SubscriptionScreen') }
+        ]);
+      } else {
+        Alert.alert('Error', 'Error in Restock.');
+      }
+      setScanner(true);
+    }
+  };
+
+  const handleEditDetails = () => {
+    const found = modalState.item;
+    const barcode = modalState.scannedBarcode;
+    setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
+
+    setP({
+      barcodeId: barcode,
+      name: found.productName || '',
+      color: found.color || '',
+      category: found.category || '',
+      description: found.description || '',
+      kg: found.weightKg !== undefined && found.weightKg !== null ? String(found.weightKg) : '',
+      grams: found.weightGrams !== undefined && found.weightGrams !== null ? String(found.weightGrams) : '',
+      lowestRate: String(found.lowestRate || found.price || ''),
+      highestRate: String(found.highestRate || found.price || ''),
+      imageUri: found.imageUri || ''
+    });
   };
 
   const pickImage = async () => {
@@ -299,6 +321,110 @@ export default function AdminScanner({ navigation }) {
     }
   };
 
+  function renderCustomModal() {
+    if (!modalState.visible || !modalState.item) return null;
+
+    const item = modalState.item;
+    const isSold = modalState.type === 'sold';
+
+    return (
+      <Modal transparent animationType="fade" visible={modalState.visible}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, isSold ? styles.modalCardAmber : styles.modalCardSky]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalTag, isSold ? styles.tagAmber : styles.tagSky]}>
+                <Text style={[styles.modalTagText, isSold ? styles.tagTextAmber : styles.tagTextSky]}>
+                  {isSold ? '🔒 SOLD OUT' : '📦 IN INVENTORY'}
+                </Text>
+              </View>
+              <Text style={styles.modalBarcode}>#{modalState.scannedBarcode}</Text>
+            </View>
+
+            <Text style={styles.modalProductName} numberOfLines={2}>
+              {item.productName || 'Product'}
+            </Text>
+
+            <View style={styles.modalInfoBox}>
+              {isSold ? (
+                <>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Sold Price:</Text>
+                    <Text style={styles.infoValueHighlight}>₹{item.soldPrice || item.price || 0}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Customer:</Text>
+                    <Text style={styles.infoValue}>{item.soldCustomerName || 'Walk-in Customer'}</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Mobile:</Text>
+                    <Text style={styles.infoValue}>{item.soldCustomerPhone || 'N/A'}</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Current Stock:</Text>
+                    <Text style={styles.infoValueHighlight}>{item.stock} Units</Text>
+                  </View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Base Price:</Text>
+                    <Text style={styles.infoValue}>₹{item.price || item.lowestRate || 0}</Text>
+                  </View>
+                  {item.category ? (
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Category:</Text>
+                      <Text style={styles.infoValue}>{item.category}</Text>
+                    </View>
+                  ) : null}
+                </>
+              )}
+            </View>
+
+            <Text style={styles.modalPrompt}>
+              {isSold ? 'Do you want to restock this item back to inventory?' : 'Item is already in your database.'}
+            </Text>
+
+            <View style={styles.modalActionsRow}>
+              <TouchableOpacity 
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
+                  setScanner(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelBtnText}>Scan Another</Text>
+              </TouchableOpacity>
+
+              {isSold ? (
+                <TouchableOpacity 
+                  style={styles.modalPrimaryBtn}
+                  onPress={handleRestock}
+                  disabled={modalState.restocking}
+                  activeOpacity={0.8}
+                >
+                  {modalState.restocking ? (
+                    <ActivityIndicator color="#0f172a" size="small" />
+                  ) : (
+                    <Text style={styles.modalPrimaryBtnText}>Restock</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={[styles.modalPrimaryBtn, { backgroundColor: '#38bdf8' }]}
+                  onPress={handleEditDetails}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.modalPrimaryBtnText, { color: '#0f172a' }]}>Edit / Update</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   if (scanner) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -310,6 +436,8 @@ export default function AdminScanner({ navigation }) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={{ color: 'white', fontWeight: 'bold' }}>← Back</Text>
         </TouchableOpacity>
+
+        {renderCustomModal()}
       </View>
     );
   }
@@ -319,11 +447,9 @@ export default function AdminScanner({ navigation }) {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Product Entry Form</Text>
 
-        {/* ================= REQUIRED SECTION (ON TOP) ================= */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionHeading}>Mandatory Details (Required *)</Text>
 
-          {/* 1. Barcode ID */}
           <Text style={styles.label}>Barcode ID:</Text>
           <TextInput 
             style={[styles.input, styles.readOnlyInput]} 
@@ -331,14 +457,13 @@ export default function AdminScanner({ navigation }) {
             editable={false} 
           />
 
-          {/* 2. Product Name */}
           <View style={styles.labelRow}>
             <Text style={styles.label}>Product Name *</Text>
             {!p.name.trim() && <Text style={styles.requiredTag}>Required</Text>}
           </View>
           <TextInput 
             style={getRequiredInputStyle('name', p.name)} 
-            placeholder="e.g. Steel Patila, Formal Shirt, Basmati Rice" 
+            placeholder="e.g. Formal Shirt, Basmati Rice, Steel Cooker" 
             placeholderTextColor="#64748b" 
             value={p.name} 
             onFocus={() => setFocusedField('name')}
@@ -347,7 +472,6 @@ export default function AdminScanner({ navigation }) {
           />
 
           <View style={styles.rateRow}>
-            {/* Lowest Rate */}
             <View style={{ flex: 1 }}>
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Lowest Rate *</Text>
@@ -387,10 +511,36 @@ export default function AdminScanner({ navigation }) {
         <View style={[styles.sectionCard, { marginTop: 16 }]}>
           <Text style={styles.sectionHeadingOptional}>Additional Details (Optional)</Text>
 
-          <Text style={styles.label}>Product Type / Category:</Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Product Category:</Text>
+            {p.category ? (
+              <TouchableOpacity onPress={() => setP({ ...p, category: '' })}>
+                <Text style={styles.clearChipText}>Clear</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
+            {POPULAR_CATEGORIES.map((cat, idx) => {
+              const isSelected = p.category.toLowerCase() === cat.toLowerCase();
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.categoryChip, isSelected && styles.categoryChipActive]}
+                  onPress={() => setP({ ...p, category: isSelected ? '' : cat })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.categoryChipText, isSelected && styles.categoryChipTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
           <TextInput 
             style={styles.inputOptional} 
-            placeholder="e.g. Steel, Grocery, Apparel, etc." 
+            placeholder="Or type custom category..." 
             placeholderTextColor="#64748b" 
             value={p.category} 
             onChangeText={(t) => setP({ ...p, category: t })} 
@@ -462,12 +612,13 @@ export default function AdminScanner({ navigation }) {
           {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>Save / Update Product</Text>}
         </TouchableOpacity>
 
+        {/* Back Button */}
         <View style={{ marginTop: 12 }}>
           <Button 
             title="Back" 
             onPress={() => {
               if (hasUnsavedChanges()) {
-                Alert.alert('Discard Changes?', 'You have unsaved details. Are you sure you want to go back?', [
+                Alert.alert('Discard Changes?', 'Unsaved changes. Go back anyway?', [
                   { text: 'Stay', style: 'cancel' },
                   { text: 'Discard & Go Back', style: 'destructive', onPress: () => navigation.goBack() }
                 ]);
@@ -480,6 +631,8 @@ export default function AdminScanner({ navigation }) {
         </View>
         <View style={styles.androidNavSpace} />
       </ScrollView>
+
+      {renderCustomModal()}
     </KeyboardAvoidingView>
   );
 }
@@ -496,6 +649,32 @@ const styles = StyleSheet.create({
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   label: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1', fontSize: 13 },
   requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
+  clearChipText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
+
+  // Chips Scroll & Chip Style
+  chipsScroll: { flexDirection: 'row', marginBottom: 10, marginTop: 2 },
+  categoryChip: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
+    marginRight: 8
+  },
+  categoryChipActive: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderColor: '#38bdf8'
+  },
+  categoryChipText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  categoryChipTextActive: {
+    color: '#38bdf8',
+    fontWeight: 'bold'
+  },
 
   input: { 
     borderWidth: 1.5, 
@@ -564,5 +743,104 @@ const styles = StyleSheet.create({
   androidNavSpace: { height: 45 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 }
+  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
+
+  // Custom Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8
+  },
+  modalCardAmber: { borderColor: 'rgba(245, 158, 11, 0.5)' },
+  modalCardSky: { borderColor: 'rgba(56, 189, 248, 0.5)' },
+
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  modalTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  tagAmber: { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#f59e0b' },
+  tagSky: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38bdf8' },
+  modalTagText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+  tagTextAmber: { color: '#f59e0b' },
+  tagTextSky: { color: '#38bdf8' },
+  modalBarcode: { color: '#64748b', fontSize: 11, fontWeight: '700' },
+
+  modalProductName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12
+  },
+
+  modalInfoBox: {
+    backgroundColor: '#0f172a',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 12
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  infoLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+  infoValue: { color: '#e2e8f0', fontSize: 12, fontWeight: '700' },
+  infoValueHighlight: { color: '#10b981', fontSize: 13, fontWeight: '900' },
+
+  modalPrompt: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 16
+  },
+
+  modalActionsRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#475569'
+  },
+  modalCancelBtnText: { color: '#94a3b8', fontWeight: 'bold', fontSize: 13 },
+
+  modalPrimaryBtn: {
+    flex: 1,
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  modalPrimaryBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 13 }
 });
