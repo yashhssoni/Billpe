@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function ReviewScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,18 +29,18 @@ export default function ReviewScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>← Back</Text>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Merchant Reviews & Wall of Love</Text>
-      <Text style={styles.subtitle}>See how BillPe is empowering stores across the platform.</Text>
+      <Text style={styles.title}>{t('reviewWallTitle')}</Text>
+      <Text style={styles.subtitle}>{t('reviewWallSubtitle')}</Text>
 
       {loading ? (
         <ActivityIndicator color="#10b981" style={{ marginTop: 30 }} />
       ) : reviews.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={{ fontSize: 32 }}>⭐</Text>
-          <Text style={styles.emptyText}>No reviews published yet. Be the first one!</Text>
+          <Text style={styles.emptyText}>{t('noReviewsYet')}</Text>
         </View>
       ) : (
         reviews.map((rev) => (
@@ -46,7 +48,7 @@ export default function ReviewScreen({ navigation }) {
             <View style={styles.cardHeader}>
               <View>
                 <Text style={styles.storeName}>{rev.storeName}</Text>
-                <Text style={styles.ownerName}>by {rev.ownerName}</Text>
+                <Text style={styles.ownerName}>{t('reviewByPrefix')} {rev.ownerName}</Text>
               </View>
               <Text style={styles.starText}>{'★'.repeat(rev.rating)}</Text>
             </View>

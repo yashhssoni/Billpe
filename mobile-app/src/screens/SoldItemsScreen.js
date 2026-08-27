@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function SoldItemsScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,7 +16,7 @@ export default function SoldItemsScreen({ navigation }) {
         setSales(data.sales);
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to load sales history.');
+      Alert.alert(t('error'), 'Failed to load sales history.');
     } finally {
       setLoading(false);
     }
@@ -27,10 +29,10 @@ export default function SoldItemsScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>← Back to Dashboard</Text>
+        <Text style={styles.backText}>{t('backToDashboard')}</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>Sold Items History</Text>
-      <Text style={styles.subtitle}>Total Sales Records: {sales.length}</Text>
+      <Text style={styles.title}>{t('soldItemsTitle')}</Text>
+      <Text style={styles.subtitle}>{t('totalSalesRecords')} {sales.length}</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
@@ -45,27 +47,27 @@ export default function SoldItemsScreen({ navigation }) {
                 <View style={styles.cardHeaderRow}>
                   <Text style={styles.itemName}>{item.productName}</Text>
                   <View style={[styles.paymentBadge, item.paymentMode === 'Online' ? styles.onlineBadge : styles.cashBadge]}>
-                    <Text style={styles.paymentBadgeText}>{item.paymentMode ? item.paymentMode.toUpperCase() : 'CASH'}</Text>
+                    <Text style={styles.paymentBadgeText}>{item.paymentMode === 'Online' ? t('paymentOnline') : t('paymentCash')}</Text>
                   </View>
                 </View>
 
                 <Text style={styles.itemTotal}>Sold Price: ₹{item.price}</Text>
                 
                 <Text style={styles.itemMeta}>
-                  👤 Billed By: <Text style={styles.metaHighlight}>{item.soldByName || item.soldBy?.name || 'Staff'}</Text>
+                  {t('billedByLabel')} <Text style={styles.metaHighlight}>{item.soldByName || item.soldBy?.name || 'Staff'}</Text>
                 </Text>
 
                 {item.customerName && item.customerName !== 'N/A' && (
                   <Text style={styles.itemMeta}>
-                    🛍️ Customer: {item.customerName} {item.customerPhone !== 'N/A' ? `(${item.customerPhone})` : ''}
+                    {t('customerHistoryLabel')} {item.customerName} {item.customerPhone !== 'N/A' ? `(${item.customerPhone})` : ''}
                   </Text>
                 )}
 
-                <Text style={styles.itemDate}>📅 Date: {new Date(item.createdAt).toLocaleString('en-IN')}</Text>
+                <Text style={styles.itemDate}>{t('dateLabel')} {new Date(item.createdAt).toLocaleString('en-IN')}</Text>
               </View>
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No sales history found.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t('noSalesHistory')}</Text>}
         />
       )}
     </View>

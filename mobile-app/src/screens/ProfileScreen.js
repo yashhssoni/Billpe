@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
   ActivityIndicator, Alert, TextInput 
 } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function ProfileScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,7 +28,7 @@ export default function ProfileScreen({ navigation }) {
         setProfile(data.data);
       }
     } catch (err) {
-      Alert.alert('Error', 'Unable to load profile data.');
+      Alert.alert(t('error'), 'Unable to load profile data.');
     } finally {
       setLoading(false);
     }
@@ -33,17 +36,17 @@ export default function ProfileScreen({ navigation }) {
 
   const handleChangePassword = async () => {
     if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert('Validation Error', 'Please fill all password fields.');
+      Alert.alert(t('error'), t('fillAllFieldsError'));
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Invalid Password', 'New password must be at least 6 characters long.');
+      Alert.alert(t('error'), t('passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Mismatch', 'New password and Confirm password do not match.');
+      Alert.alert(t('error'), t('passwordsMismatch'));
       return;
     }
 
@@ -56,14 +59,14 @@ export default function ProfileScreen({ navigation }) {
       setUpdatingPassword(false);
 
       if (data.success) {
-        Alert.alert('Success 🎉', data.message || 'Password updated successfully!');
+        Alert.alert(t('success') + ' 🎉', data.message || 'Password updated successfully!');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       }
     } catch (err) {
       setUpdatingPassword(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to update password.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update password.');
     }
   };
 
@@ -78,30 +81,30 @@ export default function ProfileScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>← Back</Text>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.mainTitle}>Store & Owner Profile</Text>
+      <Text style={styles.mainTitle}>{t('storeOwnerProfileTitle')}</Text>
       <View style={styles.card}>
         <View style={styles.rowBetween}>
-          <Text style={styles.cardHeader}>Store Details</Text>
+          <Text style={styles.cardHeader}>{t('storeDetailsSection')}</Text>
           <View style={styles.lockedBadge}>
-            <Text style={styles.lockedText}>🔒 Locked</Text>
+            <Text style={styles.lockedText}>{t('lockedTag')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>Store Name</Text>
+        <Text style={styles.label}>{t('storeNameField')}</Text>
         <Text style={styles.valueHighlight}>{profile?.storeName || 'My Store'}</Text>
 
-        <Text style={styles.label}>Store ID</Text>
+        <Text style={styles.label}>{t('storeIdPrefix')}</Text>
         <Text style={styles.valueText}>{profile?.storeId || 'N/A'}</Text>
 
-        <Text style={styles.label}>Store Address</Text>
+        <Text style={styles.label}>{t('storeAddressField')}</Text>
         <Text style={styles.valueText}>{profile?.storeAddress || 'N/A'}</Text>
 
         <View style={styles.infoBanner}>
           <Text style={styles.infoBannerText}>
-           ℹ️ To edit your Store Name, please contact our Help Desk / Support team.
+            {t('lockedStoreInfoBanner')}
           </Text>
         </View>
 
@@ -109,52 +112,50 @@ export default function ProfileScreen({ navigation }) {
           style={styles.supportContactBtn} 
           onPress={() => navigation.navigate('SupportScreen')}
         >
-          <Text style={styles.supportContactBtnText}>Contact Support to Edit Store</Text>
+          <Text style={styles.supportContactBtnText}>{t('contactSupportToEditBtn')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Owner Information Card */}
       <View style={[styles.card, { marginTop: 16 }]}>
-        <Text style={styles.cardHeader}>Owner Details</Text>
+        <Text style={styles.cardHeader}>{t('ownerDetailsSection')}</Text>
 
-        <Text style={styles.label}>Owner Name</Text>
+        <Text style={styles.label}>{t('ownerNameField')}</Text>
         <Text style={styles.valueText}>{profile?.ownerName || 'N/A'}</Text>
 
-        <Text style={styles.label}>Registered Email</Text>
+        <Text style={styles.label}>{t('registeredEmailField')}</Text>
         <Text style={styles.valueText}>{profile?.email || 'N/A'}</Text>
 
-        <Text style={styles.label}>Registered Mobile</Text>
+        <Text style={styles.label}>{t('registeredMobileField')}</Text>
         <Text style={styles.valueText}>{profile?.phone || 'N/A'}</Text>
       </View>
 
-      {/* Security & Change Password Card */}
       <View style={[styles.card, { marginTop: 16 }]}>
-        <Text style={styles.cardHeader}>🔐 Security & Password</Text>
+        <Text style={styles.cardHeader}>{t('securityPasswordSection')}</Text>
 
-        <Text style={styles.label}>Current Password</Text>
+        <Text style={styles.label}>{t('currentPasswordLabel')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter current password"
+          placeholder={t('currentPasswordPlaceholder')}
           placeholderTextColor="#64748b"
           secureTextEntry
           value={currentPassword}
           onChangeText={setCurrentPassword}
         />
 
-        <Text style={styles.label}>New Password</Text>
+        <Text style={styles.label}>{t('newPasswordLabel')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Enter new password (min 6 chars)"
+          placeholder={t('newPasswordMinCharsPlaceholder')}
           placeholderTextColor="#64748b"
           secureTextEntry
           value={newPassword}
           onChangeText={setNewPassword}
         />
 
-        <Text style={styles.label}>Confirm New Password</Text>
+        <Text style={styles.label}>{t('confirmNewPasswordLabel')}</Text>
         <TextInput
           style={styles.input}
-          placeholder="Confirm new password"
+          placeholder={t('confirmNewPasswordPlaceholder')}
           placeholderTextColor="#64748b"
           secureTextEntry
           value={confirmPassword}
@@ -169,7 +170,7 @@ export default function ProfileScreen({ navigation }) {
           {updatingPassword ? (
             <ActivityIndicator color="#0f172a" />
           ) : (
-            <Text style={styles.updatePasswordBtnText}>Update Password</Text>
+            <Text style={styles.updatePasswordBtnText}>{t('updatePasswordBtn')}</Text>
           )}
         </TouchableOpacity>
       </View>

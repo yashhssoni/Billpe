@@ -5,10 +5,14 @@ import {
   Platform 
 } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import axiosInstance from '../api/axiosInstance';
 
 export default function AdminDashboard({ navigation }) {
   const { storeInfo, logout } = useContext(AuthContext);
+  const { t } = useContext(LanguageContext);
+
   const [hasReviewed, setHasReviewed] = useState(true); 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -16,13 +20,13 @@ export default function AdminDashboard({ navigation }) {
   const scrollViewRef = useRef(null);
 
   const menuItems = [
-    { title: 'Scan & Add Stock', icon: '📷', screen: 'AdminScanner' },
-    { title: 'Barcode Generator', icon: '🏷️', screen: 'BarcodeGenerator' },
-    { title: 'Manage Database', icon: '📊', screen: 'ManageDatabase' },
-    { title: 'Sold Items History', icon: '💰', screen: 'SoldItemsScreen' },
-    { title: 'Add Employee', icon: '👥', screen: 'AddEmployeeScreen' },
-    { title: 'Subscription & BRs', icon: '💳', screen: 'SubscriptionScreen' },
-    { title: 'Settings & Support', icon: '⚙️', screen: 'SettingsHubScreen', isFullWidth: true },
+    { title: t('scanAddStockCard'), icon: '📷', screen: 'AdminScanner' },
+    { title: t('barcodeGenCard'), icon: '🏷️', screen: 'BarcodeGenerator' },
+    { title: t('manageDbCard'), icon: '📊', screen: 'ManageDatabase' },
+    { title: t('soldHistoryCard'), icon: '💰', screen: 'SoldItemsScreen' },
+    { title: t('addEmployeeCard'), icon: '👥', screen: 'AddEmployeeScreen' },
+    { title: t('subscriptionCard'), icon: '💳', screen: 'SubscriptionScreen' },
+    { title: t('settingsSupportCard'), icon: '⚙️', screen: 'SettingsHubScreen', isFullWidth: true },
   ];
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function AdminDashboard({ navigation }) {
 
   const handleSubmitReview = async () => {
     if (!comment.trim()) {
-      Alert.alert('Feedback Required', 'Please enter a quick comment before submitting.');
+      Alert.alert(t('error'), t('feedbackEmptyError'));
       return;
     }
 
@@ -55,12 +59,12 @@ export default function AdminDashboard({ navigation }) {
 
       setSubmittingReview(false);
       if (data.success) {
-        Alert.alert('🎉 Thank You!', 'Your review has been submitted successfully!');
+        Alert.alert('🎉 ' + t('success'), t('feedbackSubmittedSuccess'));
         setHasReviewed(true);
       }
     } catch (err) {
       setSubmittingReview(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to submit review.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to submit review.');
     }
   };
 
@@ -82,18 +86,22 @@ export default function AdminDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
+        {/* Header with Switcher + Logout */}
         <View style={styles.header}>
-          <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={styles.eyebrow}>Admin Dashboard</Text>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
             <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
               {storeInfo?.storeName || 'My Store'}
             </Text>
-            {storeInfo?._id && <Text style={styles.storeId}>Store ID: {storeInfo._id}</Text>}
+            {storeInfo?._id && <Text style={styles.storeId}>{t('storeIdPrefix')} {storeInfo._id}</Text>}
           </View>
-          <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
+
+          <View style={styles.headerActions}>
+            <LanguageSwitcher />
+            <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+              <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Menu Grid */}
@@ -108,24 +116,25 @@ export default function AdminDashboard({ navigation }) {
               <View style={styles.iconBox}>
                 <Text style={{ fontSize: 24 }}>{item.icon}</Text>
               </View>
-              <View style={item.isFullWidth ? { marginLeft: 14 } : null}>
+              <View style={item.isFullWidth ? { marginLeft: 14, flex: 1 } : null}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 {item.isFullWidth && (
-                  <Text style={styles.cardSubtitle}>Profile, FAQs, Community Reviews & Support</Text>
+                  <Text style={styles.cardSubtitle}>{t('settingsSubText')}</Text>
                 )}
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
+        {/* Inline Feedback Section */}
         {!hasReviewed && (
           <View style={styles.reviewSection}>
             <View style={styles.reviewHeaderRow}>
-              <Text style={styles.reviewBadge}>⭐ Feedback</Text>
-              <Text style={styles.reviewSubtitle}>Help us improve BillPe</Text>
+              <Text style={styles.reviewBadge}>{t('feedbackBadge')}</Text>
+              <Text style={styles.reviewSubtitle}>{t('feedbackSub')}</Text>
             </View>
             
-            <Text style={styles.reviewHeading}>How was your BillPe experience?</Text>
+            <Text style={styles.reviewHeading}>{t('feedbackHeading')}</Text>
 
             <View style={styles.starRow}>
               {[1, 2, 3, 4, 5].map((star) => (
@@ -143,7 +152,7 @@ export default function AdminDashboard({ navigation }) {
 
             <TextInput
               style={styles.reviewInput}
-              placeholder="Write a quick comment (e.g. Fast billing, smooth scanner!)..."
+              placeholder={t('feedbackPlaceholder')}
               placeholderTextColor="#64748b"
               value={comment}
               onChangeText={setComment}
@@ -161,7 +170,7 @@ export default function AdminDashboard({ navigation }) {
               {submittingReview ? (
                 <ActivityIndicator color="#0f172a" size="small" />
               ) : (
-                <Text style={styles.submitReviewBtnText}>Submit Feedback</Text>
+                <Text style={styles.submitReviewBtnText}>{t('submitFeedbackBtn')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -175,10 +184,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', paddingHorizontal: 20 },
   scrollContent: { paddingBottom: 80 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
   storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
   storeId: { fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: '500' },
-  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
   logoutText: { color: '#ef4444', fontWeight: '600', fontSize: 12 },
   
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

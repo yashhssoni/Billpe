@@ -5,8 +5,11 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function LoginScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password) {
-      Alert.alert('Error', 'Please enter Email/Phone and Password.');
+      Alert.alert(t('error'), t('enterLoginCredentialsError'));
       return;
     }
     setLoading(true);
@@ -52,7 +55,7 @@ export default function LoginScreen({ navigation }) {
       await AsyncStorage.setItem('billpe_saved_login_email', identifier.trim());
       await AsyncStorage.setItem('billpe_saved_login_password', password);
     } else {
-      Alert.alert('Login Failed', result.message || 'Invalid credentials.');
+      Alert.alert(t('loginFailed'), result.message || 'Invalid credentials.');
     }
   };
 
@@ -60,28 +63,32 @@ export default function LoginScreen({ navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
+          <View style={{ alignItems: 'flex-end', marginBottom: 10 }}>
+            <LanguageSwitcher />
+          </View>
+
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome to BillPe</Text>
-            <Text style={styles.subtitle}>Simple & Smart Billing System</Text>
+            <Text style={styles.title}>{t('welcome')}</Text>
+            <Text style={styles.subtitle}>{t('subtitle')}</Text>
           </View>
 
           {/* Persistent Auto-fill Action Box */}
           {savedAccount && (
             <TouchableOpacity style={styles.autofillBox} onPress={handleApplyAutofill} activeOpacity={0.8}>
               <View style={{ flex: 1, paddingRight: 8 }}>
-                <Text style={styles.autofillHeading}>⚡ Auto-fill Saved Account</Text>
+                <Text style={styles.autofillHeading}>{t('autofillHeading')}</Text>
                 <Text style={styles.autofillEmail} numberOfLines={1}>{savedAccount.email}</Text>
               </View>
               <View style={styles.autofillAction}>
-                <Text style={styles.autofillActionText}>Fill</Text>
+                <Text style={styles.autofillActionText}>{t('autofillFillBtn')}</Text>
               </View>
             </TouchableOpacity>
           )}
 
-          <Text style={styles.inputLabel}>Email or Mobile Number</Text>
+          <Text style={styles.inputLabel}>{t('emailOrPhone')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. 9876543210 or user@gmail.com"
+            placeholder={t('emailOrPhonePlaceholder')}
             placeholderTextColor="#64748b"
             value={identifier}
             onChangeText={setIdentifier}
@@ -90,15 +97,15 @@ export default function LoginScreen({ navigation }) {
           />
 
           <View style={styles.labelRow}>
-            <Text style={styles.inputLabel}>Password</Text>
+            <Text style={styles.inputLabel}>{t('password')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
           </View>
 
           <TextInput
             style={styles.input}
-            placeholder="Enter your password"
+            placeholder={t('passwordPlaceholder')}
             placeholderTextColor="#64748b"
             value={password}
             onChangeText={setPassword}
@@ -108,13 +115,13 @@ export default function LoginScreen({ navigation }) {
           />
 
           <TouchableOpacity onPress={handleLogin} disabled={loading} style={styles.btn} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Sign In</Text>}
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('signIn')}</Text>}
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have a store account? </Text>
+            <Text style={styles.footerText}>{t('noAccount')} </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerText}>Register</Text>
+              <Text style={styles.registerText}>{t('register')}</Text>
             </TouchableOpacity>
           </View>
         </View>

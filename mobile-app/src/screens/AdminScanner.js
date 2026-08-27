@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
@@ -8,6 +8,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 const POPULAR_CATEGORIES = [
   'General',
@@ -25,6 +26,7 @@ const POPULAR_CATEGORIES = [
 ];
 
 export default function AdminScanner({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -75,13 +77,13 @@ export default function AdminScanner({ navigation }) {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.infoText}>Give permission to scan Bar code.</Text>
+        <Text style={styles.infoText}>{t('cameraPermissionText')}</Text>
         <TouchableOpacity onPress={requestPermission} style={styles.btn}>
-          <Text style={styles.btnText}>Grant Permission</Text>
+          <Text style={styles.btnText}>{t('grantPermissionBtn')}</Text>
         </TouchableOpacity>
         <View style={{ marginTop: 15 }} />
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.btn, { backgroundColor: '#ef4444' }]}>
-          <Text style={styles.btnText}>Back</Text>
+          <Text style={styles.btnText}>{t('back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -133,7 +135,7 @@ export default function AdminScanner({ navigation }) {
       }
     } catch (err) {
       if (err.response && err.response.status === 403) {
-        Alert.alert('Subscription Required 🔒', err.response.data.message || 'Please renew your subscription.', [
+        Alert.alert(t('subExpiredLocked'), err.response.data.message || 'Please renew your subscription.', [
           { text: 'Go to Subscription', onPress: () => navigation.navigate('SubscriptionScreen') }
         ]);
         setScanner(true);
@@ -158,16 +160,16 @@ export default function AdminScanner({ navigation }) {
         soldCustomerPhone: ''
       });
       setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
-      Alert.alert('Success', 'Item added back to inventory!');
+      Alert.alert(t('success'), t('itemRestockedSuccess'));
       setScanner(true);
     } catch (e) {
       setModalState(prev => ({ ...prev, restocking: false, visible: false }));
       if (e.response && e.response.status === 403) {
-        Alert.alert('Subscription Expired 🔒', e.response.data.message || 'Please renew your subscription.', [
+        Alert.alert(t('subExpiredLocked'), e.response.data.message || 'Please renew your subscription.', [
           { text: 'Go to Subscription', onPress: () => navigation.navigate('SubscriptionScreen') }
         ]);
       } else {
-        Alert.alert('Error', 'Error in Restock.');
+        Alert.alert(t('error'), 'Error in Restock.');
       }
       setScanner(true);
     }
@@ -234,7 +236,7 @@ export default function AdminScanner({ navigation }) {
 
   const handleSaveProduct = async () => {
     if (!p.name.trim() || !String(p.lowestRate).trim() || !String(p.highestRate).trim()) {
-      Alert.alert('Incomplete Required Fields ⚠️', 'Please fill Product Name, Lowest Rate, and Highest Rate.');
+      Alert.alert(t('error'), 'Please fill Product Name, Lowest Rate, and Highest Rate.');
       return;
     }
 
@@ -242,7 +244,7 @@ export default function AdminScanner({ navigation }) {
     const highestVal = Number(p.highestRate);
 
     if (lowestVal > highestVal) {
-      Alert.alert('Invalid Pricing ⚠️', 'Lowest Rate cannot be higher than Highest Rate.');
+      Alert.alert(t('error'), t('pricingInvalidError'));
       return;
     }
 
@@ -288,23 +290,23 @@ export default function AdminScanner({ navigation }) {
       setLoading(false);
 
       if (data.success || data.product) {
-        Alert.alert('Success', data.message || 'Product saved successfully!', [
+        Alert.alert(t('success'), data.message || 'Product saved successfully!', [
           { 
-            text: 'Scan Next Item', 
+            text: t('scanNextItem'), 
             onPress: () => {
               setP(initialFormState);
               setScanner(true);
             }
           },
-          { text: 'Dashboard', onPress: () => navigation.goBack() }
+          { text: t('dashboardBtn'), onPress: () => navigation.goBack() }
         ]);
       }
     } catch (err) {
       setLoading(false);
       if (err.response && err.response.status === 403) {
-        Alert.alert('Subscription Expired 🔒', err.response.data.message || 'Please renew subscription.');
+        Alert.alert(t('subExpiredLocked'), err.response.data.message || 'Please renew subscription.');
       } else {
-        Alert.alert('Error', err.response?.data?.message || 'Failed to save product.');
+        Alert.alert(t('error'), err.response?.data?.message || 'Failed to save product.');
       }
     }
   };
@@ -333,7 +335,7 @@ export default function AdminScanner({ navigation }) {
             <View style={styles.modalHeaderRow}>
               <View style={[styles.modalTag, isSold ? styles.tagAmber : styles.tagSky]}>
                 <Text style={[styles.modalTagText, isSold ? styles.tagTextAmber : styles.tagTextSky]}>
-                  {isSold ? '🔒 SOLD OUT' : '📦 IN INVENTORY'}
+                  {isSold ? t('soldOutBadge') : t('inInventoryBadge')}
                 </Text>
               </View>
               <Text style={styles.modalBarcode}>#{modalState.scannedBarcode}</Text>
@@ -347,31 +349,31 @@ export default function AdminScanner({ navigation }) {
               {isSold ? (
                 <>
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Sold Price:</Text>
+                    <Text style={styles.infoLabel}>{t('soldPriceModalLabel')}</Text>
                     <Text style={styles.infoValueHighlight}>₹{item.soldPrice || item.price || 0}</Text>
                   </View>
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Customer:</Text>
+                    <Text style={styles.infoLabel}>{t('customerModalLabel')}</Text>
                     <Text style={styles.infoValue}>{item.soldCustomerName || 'Walk-in Customer'}</Text>
                   </View>
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Mobile:</Text>
+                    <Text style={styles.infoLabel}>{t('mobileModalLabel')}</Text>
                     <Text style={styles.infoValue}>{item.soldCustomerPhone || 'N/A'}</Text>
                   </View>
                 </>
               ) : (
                 <>
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Current Stock:</Text>
+                    <Text style={styles.infoLabel}>{t('currentStockModalLabel')}</Text>
                     <Text style={styles.infoValueHighlight}>{item.stock} Units</Text>
                   </View>
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Base Price:</Text>
+                    <Text style={styles.infoLabel}>{t('basePriceModalLabel')}</Text>
                     <Text style={styles.infoValue}>₹{item.price || item.lowestRate || 0}</Text>
                   </View>
                   {item.category ? (
                     <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Category:</Text>
+                      <Text style={styles.infoLabel}>{t('categoryModalLabel')}</Text>
                       <Text style={styles.infoValue}>{item.category}</Text>
                     </View>
                   ) : null}
@@ -380,7 +382,7 @@ export default function AdminScanner({ navigation }) {
             </View>
 
             <Text style={styles.modalPrompt}>
-              {isSold ? 'Do you want to restock this item back to inventory?' : 'Item is already in your database.'}
+              {isSold ? t('restockPrompt') : t('alreadyInDbPrompt')}
             </Text>
 
             <View style={styles.modalActionsRow}>
@@ -392,7 +394,7 @@ export default function AdminScanner({ navigation }) {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.modalCancelBtnText}>Scan Another</Text>
+                <Text style={styles.modalCancelBtnText}>{t('scanAnotherBtn')}</Text>
               </TouchableOpacity>
 
               {isSold ? (
@@ -405,7 +407,7 @@ export default function AdminScanner({ navigation }) {
                   {modalState.restocking ? (
                     <ActivityIndicator color="#0f172a" size="small" />
                   ) : (
-                    <Text style={styles.modalPrimaryBtnText}>Restock</Text>
+                    <Text style={styles.modalPrimaryBtnText}>{t('restockBtn')}</Text>
                   )}
                 </TouchableOpacity>
               ) : (
@@ -414,7 +416,7 @@ export default function AdminScanner({ navigation }) {
                   onPress={handleEditDetails}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.modalPrimaryBtnText, { color: '#0f172a' }]}>Edit / Update</Text>
+                  <Text style={[styles.modalPrimaryBtnText, { color: '#0f172a' }]}>{t('editUpdateBtn')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -433,7 +435,7 @@ export default function AdminScanner({ navigation }) {
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>← Back</Text>
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
         </TouchableOpacity>
 
         {renderCustomModal()}
@@ -444,12 +446,12 @@ export default function AdminScanner({ navigation }) {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Product Entry Form</Text>
+        <Text style={styles.title}>{t('productEntryFormTitle')}</Text>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionHeading}>Mandatory Details (Required *)</Text>
+          <Text style={styles.sectionHeading}>{t('mandatoryDetailsHeading')}</Text>
 
-          <Text style={styles.label}>Barcode ID:</Text>
+          <Text style={styles.label}>{t('barcodeIdLabel')}</Text>
           <TextInput 
             style={[styles.input, styles.readOnlyInput]} 
             value={p.barcodeId} 
@@ -457,50 +459,50 @@ export default function AdminScanner({ navigation }) {
           />
 
           <View style={styles.labelRow}>
-            <Text style={styles.label}>Product Name *</Text>
-            {!p.name.trim() && <Text style={styles.requiredTag}>Required</Text>}
+            <Text style={styles.label}>{t('productNameReqLabel')}</Text>
+            {!p.name.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
           </View>
           <TextInput 
             style={getRequiredInputStyle('name', p.name)} 
-            placeholder="e.g. Formal Shirt, Basmati Rice, Steel Cooker" 
+            placeholder={t('productNamePlaceholder')} 
             placeholderTextColor="#64748b" 
             value={p.name} 
             onFocus={() => setFocusedField('name')}
             onBlur={() => setFocusedField(null)}
-            onChangeText={(t) => setP({ ...p, name: t })} 
+            onChangeText={(tVal) => setP({ ...p, name: tVal })} 
           />
 
           <View style={styles.rateRow}>
             <View style={{ flex: 1 }}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>Lowest Rate *</Text>
-                {!String(p.lowestRate).trim() && <Text style={styles.requiredTag}>Required</Text>}
+                <Text style={styles.label}>{t('lowestRateReqLabel')}</Text>
+                {!String(p.lowestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
               </View>
               <TextInput 
                 style={getRequiredInputStyle('lowestRate', p.lowestRate)} 
-                placeholder="Min Price (e.g. 400)" 
+                placeholder={t('lowestRatePlaceholder')} 
                 placeholderTextColor="#64748b" 
                 value={String(p.lowestRate)} 
                 onFocus={() => setFocusedField('lowestRate')}
                 onBlur={() => setFocusedField(null)}
-                onChangeText={(t) => setP({ ...p, lowestRate: t })} 
+                onChangeText={(tVal) => setP({ ...p, lowestRate: tVal })} 
                 keyboardType="numeric" 
               />
             </View>
 
             <View style={{ flex: 1 }}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>Highest Rate *</Text>
-                {!String(p.highestRate).trim() && <Text style={styles.requiredTag}>Required</Text>}
+                <Text style={styles.label}>{t('highestRateReqLabel')}</Text>
+                {!String(p.highestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
               </View>
               <TextInput 
                 style={getRequiredInputStyle('highestRate', p.highestRate)} 
-                placeholder="Max Price (e.g. 550)" 
+                placeholder={t('highestRatePlaceholder')} 
                 placeholderTextColor="#64748b" 
                 value={String(p.highestRate)} 
                 onFocus={() => setFocusedField('highestRate')}
                 onBlur={() => setFocusedField(null)}
-                onChangeText={(t) => setP({ ...p, highestRate: t })} 
+                onChangeText={(tVal) => setP({ ...p, highestRate: tVal })} 
                 keyboardType="numeric" 
               />
             </View>
@@ -508,13 +510,13 @@ export default function AdminScanner({ navigation }) {
         </View>
 
         <View style={[styles.sectionCard, { marginTop: 16 }]}>
-          <Text style={styles.sectionHeadingOptional}>Additional Details (Optional)</Text>
+          <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
 
           <View style={styles.labelRow}>
-            <Text style={styles.label}>Product Category:</Text>
+            <Text style={styles.label}>{t('productCategoryLabel')}</Text>
             {p.category ? (
               <TouchableOpacity onPress={() => setP({ ...p, category: '' })}>
-                <Text style={styles.clearChipText}>Clear</Text>
+                <Text style={styles.clearChipText}>{t('clearCategory')}</Text>
               </TouchableOpacity>
             ) : null}
           </View>
@@ -539,87 +541,86 @@ export default function AdminScanner({ navigation }) {
 
           <TextInput 
             style={styles.inputOptional} 
-            placeholder="Or type custom category..." 
+            placeholder={t('customCategoryPlaceholder')} 
             placeholderTextColor="#64748b" 
             value={p.category} 
-            onChangeText={(t) => setP({ ...p, category: t })} 
+            onChangeText={(tVal) => setP({ ...p, category: tVal })} 
           />
 
-          <Text style={styles.label}>Product Weight:</Text>
+          <Text style={styles.label}>{t('productWeightLabel')}</Text>
           <View style={styles.weightRow}>
             <View style={{ flex: 1 }}>
               <TextInput 
                 style={styles.inputOptional} 
-                placeholder="KG (e.g. 1)" 
+                placeholder={t('weightKgPlaceholder')} 
                 placeholderTextColor="#64748b" 
                 keyboardType="numeric" 
                 value={p.kg} 
-                onChangeText={(t) => setP({ ...p, kg: t })} 
+                onChangeText={(tVal) => setP({ ...p, kg: tVal })} 
               />
             </View>
             <View style={{ flex: 1 }}>
               <TextInput 
                 style={styles.inputOptional} 
-                placeholder="Grams (e.g. 200)" 
+                placeholder={t('weightGramsPlaceholder')} 
                 placeholderTextColor="#64748b" 
                 keyboardType="numeric" 
                 value={p.grams} 
-                onChangeText={(t) => setP({ ...p, grams: t })} 
+                onChangeText={(tVal) => setP({ ...p, grams: tVal })} 
               />
             </View>
           </View>
 
-          <Text style={styles.label}>Color:</Text>
+          <Text style={styles.label}>{t('colorLabel')}</Text>
           <TextInput 
             style={styles.inputOptional} 
-            placeholder="Color" 
+            placeholder={t('colorPlaceholder')} 
             placeholderTextColor="#64748b" 
             value={p.color} 
-            onChangeText={(t) => setP({ ...p, color: t })} 
+            onChangeText={(tVal) => setP({ ...p, color: tVal })} 
           />
 
-          <Text style={styles.label}>Description:</Text>
+          <Text style={styles.label}>{t('descriptionLabel')}</Text>
           <TextInput 
             style={styles.inputOptional} 
-            placeholder="Size, Quality, etc." 
+            placeholder={t('descriptionPlaceholder')} 
             placeholderTextColor="#64748b" 
             value={p.description} 
-            onChangeText={(t) => setP({ ...p, description: t })} 
+            onChangeText={(tVal) => setP({ ...p, description: tVal })} 
           />
 
-          <Text style={styles.label}>Product Photo:</Text>
+          <Text style={styles.label}>{t('productPhotoLabel')}</Text>
           {p.imageUri ? (
             <View style={{ marginBottom: 12 }}>
               <Image source={{ uri: p.imageUri }} style={styles.preview} />
               <View style={{ marginTop: 8 }}>
-                <Button title="Remove Photo" onPress={removeImage} color="#B71C1C" />
+                <Button title={t('removePhotoBtn')} onPress={removeImage} color="#B71C1C" />
               </View>
             </View>
           ) : (
             <View style={styles.photoButtonsRow}>
               <View style={{ flex: 1, marginRight: 6 }}>
-                <Button title="📸 Click Photo" onPress={takePhoto} color="#2E7D32" />
+                <Button title={t('clickPhotoBtn')} onPress={takePhoto} color="#2E7D32" />
               </View>
               <View style={{ flex: 1, marginLeft: 6 }}>
-                <Button title="🖼️ Open Gallery" onPress={pickImage} color="#1E88E5" />
+                <Button title={t('openGalleryBtn')} onPress={pickImage} color="#1E88E5" />
               </View>
             </View>
           )}
         </View>
 
         <TouchableOpacity onPress={handleSaveProduct} disabled={loading} style={styles.saveBtn} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>Save / Update Product</Text>}
+          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>{t('saveUpdateProductBtn')}</Text>}
         </TouchableOpacity>
 
-        {/* Back Button */}
         <View style={{ marginTop: 12 }}>
           <Button 
-            title="Back" 
+            title={t('back')} 
             onPress={() => {
               if (hasUnsavedChanges()) {
-                Alert.alert('Discard Changes?', 'Unsaved changes. Go back anyway?', [
-                  { text: 'Stay', style: 'cancel' },
-                  { text: 'Discard & Go Back', style: 'destructive', onPress: () => navigation.goBack() }
+                Alert.alert(t('discardChangesTitle'), t('discardChangesMsg'), [
+                  { text: t('stay'), style: 'cancel' },
+                  { text: t('discardAndGoBack'), style: 'destructive', onPress: () => navigation.goBack() }
                 ]);
               } else {
                 navigation.goBack();
@@ -650,7 +651,6 @@ const styles = StyleSheet.create({
   requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
   clearChipText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
 
-  // Chips Scroll & Chip Style
   chipsScroll: { flexDirection: 'row', marginBottom: 10, marginTop: 2 },
   categoryChip: {
     backgroundColor: '#0f172a',
@@ -744,7 +744,6 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
 
-  // Custom Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.75)',

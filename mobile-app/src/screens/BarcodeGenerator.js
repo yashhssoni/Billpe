@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function BarcodeGenerator({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
   const [fetchingQuota, setFetchingQuota] = useState(true);
   const [countInput, setCountInput] = useState('44'); 
@@ -115,13 +117,13 @@ export default function BarcodeGenerator({ navigation }) {
 
   const handleGeneratePrint = async () => {
     if (!subActive) {
-      Alert.alert('Subscription Expired 🔒', 'Please renew your ₹600 monthly plan to generate barcodes.');
+      Alert.alert(t('subExpiredLocked'), t('renewMonthlyPlanPrompt'));
       return;
     }
 
     const requestedCount = parseInt(countInput, 10);
     if (isNaN(requestedCount) || requestedCount <= 0 || requestedCount > 500) {
-      Alert.alert('Invalid Count', 'Please enter a valid number (1 - 500).');
+      Alert.alert(t('error'), t('invalidCountError'));
       return;
     }
 
@@ -148,7 +150,7 @@ export default function BarcodeGenerator({ navigation }) {
       await Print.printAsync({ html });
     } catch (err) {
       setLoading(false);
-      Alert.alert('Error', 'Failed to generate barcodes.');
+      Alert.alert(t('error'), 'Failed to generate barcodes.');
     }
   };
 
@@ -156,41 +158,41 @@ export default function BarcodeGenerator({ navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>← Back to Dashboard</Text>
+          <Text style={styles.backText}>{t('backToDashboard')}</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.centerWrapper}>
-          <Text style={styles.title}>Generate Barcode</Text>
-          <Text style={styles.subtitle}>Unlimited Barcode Generation for Active Stores</Text>
+          <Text style={styles.title}>{t('generateBarcodeTitle')}</Text>
+          <Text style={styles.subtitle}>{t('generateBarcodeSubtitle')}</Text>
 
           <View style={styles.quotaCard}>
             {fetchingQuota ? (
               <ActivityIndicator color="#10b981" size="small" />
             ) : (
               <>
-                <Text style={styles.quotaTitle}>Subscription Status</Text>
+                <Text style={styles.quotaTitle}>{t('subscriptionStatus')}</Text>
                 <Text style={[styles.quotaCount, { color: subActive ? '#10b981' : '#ef4444' }]}>
-                  {subActive ? 'ACTIVE (Unlimited)' : 'EXPIRED 🔒'}
+                  {subActive ? t('subActiveUnlimited') : t('subExpiredLocked')}
                 </Text>
               </>
             )}
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.label}>Number of Barcodes (Max 500):</Text>
+            <Text style={styles.label}>{t('numberOfBarcodesLabel')}</Text>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
               value={countInput}
               onChangeText={setCountInput}
-              placeholder="Enter quantity"
+              placeholder={t('enterQuantityPlaceholder')}
               placeholderTextColor="#64748b"
             />
 
             <TouchableOpacity onPress={handleGeneratePrint} disabled={loading || !subActive} style={[styles.btn, !subActive && { backgroundColor: '#475569' }]}>
-              {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Print Barcode Stickers</Text>}
+              {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('printBarcodeStickersBtn')}</Text>}
             </TouchableOpacity>
           </View>
         </View>

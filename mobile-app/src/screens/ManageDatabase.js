@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, StyleSheet, Modal, ScrollView, TextInput, Button, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function ManageDatabase({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -64,7 +66,7 @@ export default function ManageDatabase({ navigation }) {
 
   const handleUpdateProduct = async () => {
     if (!editingProduct.productName || !editingProduct.lowestRate) {
-      Alert.alert('Error', 'Product Name and Lowest Rate are required.');
+      Alert.alert(t('error'), 'Product Name and Lowest Rate are required.');
       return;
     }
 
@@ -92,21 +94,21 @@ export default function ManageDatabase({ navigation }) {
       setUpdating(false);
 
       if (data.success) {
-        Alert.alert('Success', 'Product updated successfully!');
+        Alert.alert(t('success'), t('productUpdatedSuccess'));
         setModalVisible(false);
         fetchProducts();
       }
     } catch (err) {
       setUpdating(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to update product.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update product.');
     }
   };
 
   const handleDelete = async (id) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this product?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('confirmDeleteTitle'), t('confirmDeleteMsg'), [
+      { text: t('cancel'), style: 'cancel' },
       { 
-        text: 'Delete', 
+        text: t('delete'), 
         style: 'destructive', 
         onPress: async () => {
           try {
@@ -115,7 +117,7 @@ export default function ManageDatabase({ navigation }) {
               setProducts(products.filter(p => p._id !== id));
             }
           } catch (err) {
-            Alert.alert('Error', 'Failed to delete product.');
+            Alert.alert(t('error'), 'Failed to delete product.');
           }
         } 
       }
@@ -125,10 +127,10 @@ export default function ManageDatabase({ navigation }) {
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>← Back to Dashboard</Text>
+        <Text style={styles.backText}>{t('backToDashboard')}</Text>
       </TouchableOpacity>
-      <Text style={styles.title}>Manage Store Database</Text>
-      <Text style={styles.subtitle}>Total Items in Inventory: {products.length}</Text>
+      <Text style={styles.title}>{t('manageDbTitle')}</Text>
+      <Text style={styles.subtitle}>{t('totalItemsCount')} {products.length}</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
@@ -141,7 +143,7 @@ export default function ManageDatabase({ navigation }) {
               {item.imageUri ? (
                 <Image source={{ uri: item.imageUri }} style={styles.thumb} />
               ) : (
-                <View style={[styles.thumb, styles.noThumb]}><Text style={{fontSize: 9, color: '#94a3b8'}}>No Photo</Text></View>
+                <View style={[styles.thumb, styles.noThumb]}><Text style={{fontSize: 9, color: '#94a3b8'}}>{t('noPhoto')}</Text></View>
               )}
 
               <View style={{ flex: 1, paddingHorizontal: 10 }}>
@@ -150,25 +152,25 @@ export default function ManageDatabase({ navigation }) {
                 <Text style={styles.itemCategory}>Cat: {item.category || 'General'}</Text>
                 
                 {(item.weightKg > 0 || item.weightGrams > 0) && (
-                  <Text style={styles.itemExtraInfo}>Weight: {item.weightKg ? `${item.weightKg}kg ` : ''}{item.weightGrams ? `${item.weightGrams}g` : ''}</Text>
+                  <Text style={styles.itemExtraInfo}>{t('weightLabel')} {item.weightKg ? `${item.weightKg}kg ` : ''}{item.weightGrams ? `${item.weightGrams}g` : ''}</Text>
                 )}
-                {item.color ? <Text style={styles.itemExtraInfo}>Color: {item.color}</Text> : null}
-                {item.description ? <Text style={styles.itemExtraInfo} numberOfLines={1}>Info: {item.description}</Text> : null}
+                {item.color ? <Text style={styles.itemExtraInfo}>{t('colorInfoLabel')} {item.color}</Text> : null}
+                {item.description ? <Text style={styles.itemExtraInfo} numberOfLines={1}>{t('infoLabel')} {item.description}</Text> : null}
                 
-                <Text style={styles.itemBarcode}>Barcode: {item.barcode}</Text>
+                <Text style={styles.itemBarcode}>{t('barcodeLabel')} {item.barcode}</Text>
               </View>
 
               <View style={styles.actionBtns}>
                 <TouchableOpacity onPress={() => handleOpenEdit(item)} style={styles.editBtn}>
-                  <Text style={styles.editText}>Edit</Text>
+                  <Text style={styles.editText}>{t('edit')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(item._id)} style={styles.deleteBtn}>
-                  <Text style={styles.deleteText}>Del</Text>
+                  <Text style={styles.deleteText}>{t('del')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No products found in inventory.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t('noProductsFound')}</Text>}
         />
       )}
 
@@ -176,37 +178,37 @@ export default function ManageDatabase({ navigation }) {
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              <Text style={styles.modalTitle}>Edit Product Details</Text>
+              <Text style={styles.modalTitle}>{t('editProductDetailsTitle')}</Text>
 
-              <Text style={styles.label}>Product Name *</Text>
-              <TextInput style={styles.input} value={editingProduct.productName} onChangeText={(t) => setEditingProduct({ ...editingProduct, productName: t })} placeholderTextColor="#64748b" />
+              <Text style={styles.label}>{t('productNameReqLabel')}</Text>
+              <TextInput style={styles.input} value={editingProduct.productName} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, productName: tVal })} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Category / Type</Text>
-              <TextInput style={styles.input} value={editingProduct.category} onChangeText={(t) => setEditingProduct({ ...editingProduct, category: t })} placeholderTextColor="#64748b" />
+              <Text style={styles.label}>{t('categoryTypeLabel')}</Text>
+              <TextInput style={styles.input} value={editingProduct.category} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, category: tVal })} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Weight (KG & Grams)</Text>
+              <Text style={styles.label}>{t('weightKgGramsLabel')}</Text>
               <View style={styles.weightRow}>
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="KG" keyboardType="numeric" value={editingProduct.kg} onChangeText={(t) => setEditingProduct({ ...editingProduct, kg: t })} placeholderTextColor="#64748b" />
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Grams" keyboardType="numeric" value={editingProduct.grams} onChangeText={(t) => setEditingProduct({ ...editingProduct, grams: t })} placeholderTextColor="#64748b" />
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="KG" keyboardType="numeric" value={editingProduct.kg} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, kg: tVal })} placeholderTextColor="#64748b" />
+                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Grams" keyboardType="numeric" value={editingProduct.grams} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, grams: tVal })} placeholderTextColor="#64748b" />
               </View>
 
-              <Text style={styles.label}>Color</Text>
-              <TextInput style={styles.input} value={editingProduct.color} onChangeText={(t) => setEditingProduct({ ...editingProduct, color: t })} placeholderTextColor="#64748b" />
+              <Text style={styles.label}>{t('colorLabel')}</Text>
+              <TextInput style={styles.input} value={editingProduct.color} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, color: tVal })} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Description</Text>
-              <TextInput style={styles.input} value={editingProduct.description} onChangeText={(t) => setEditingProduct({ ...editingProduct, description: t })} placeholderTextColor="#64748b" />
+              <Text style={styles.label}>{t('descriptionLabel')}</Text>
+              <TextInput style={styles.input} value={editingProduct.description} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, description: tVal })} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Lowest Rate (₹) *</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.lowestRate} onChangeText={(t) => setEditingProduct({ ...editingProduct, lowestRate: t })} placeholderTextColor="#64748b" />
+              <Text style={styles.label}>{t('lowestRateSymbolLabel')}</Text>
+              <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.lowestRate} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, lowestRate: tVal })} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Highest Rate (₹)</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.highestRate} onChangeText={(t) => setEditingProduct({ ...editingProduct, highestRate: t })} placeholderTextColor="#64748b" />
+              <Text style={styles.label}>{t('highestRateSymbolLabel')}</Text>
+              <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.highestRate} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, highestRate: tVal })} placeholderTextColor="#64748b" />
 
-              <Text style={styles.label}>Product Photo</Text>
+              <Text style={styles.label}>{t('productPhotoLabel')}</Text>
               {editingProduct.imageUri ? (
                 <View style={{ marginBottom: 12 }}>
                   <Image source={{ uri: editingProduct.imageUri }} style={styles.preview} />
-                  <Button title="Remove Photo" onPress={() => setEditingProduct({ ...editingProduct, imageUri: '' })} color="#B71C1C" />
+                  <Button title={t('removePhotoBtn')} onPress={() => setEditingProduct({ ...editingProduct, imageUri: '' })} color="#B71C1C" />
                 </View>
               ) : (
                 <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
@@ -216,11 +218,11 @@ export default function ManageDatabase({ navigation }) {
               )}
 
               <TouchableOpacity onPress={handleUpdateProduct} disabled={updating} style={styles.updateBtn}>
-                {updating ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.updateBtnText}>Update Product</Text>}
+                {updating ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>}
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelModalBtn}>
-                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>Cancel</Text>
+                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t('cancel')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

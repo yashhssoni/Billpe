@@ -1,36 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-
-const FAQ_ITEMS = [
-  {
-    q: 'How to add and scan new stock?',
-    a: 'Go to Admin Dashboard -> Tap "Scan & Add Stock" -> Point the camera at the barcode -> Enter Product Name, Lowest & Highest Rate -> Tap "Save / Update Product".'
-  },
-  {
-    q: 'Can I edit my Store Name directly from the app?',
-    a: 'For security and tax invoice consistency, Store Names are locked. Please reach out via the Help & Support screen to request a store name update.'
-  },
-  {
-    q: 'How does thermal bill printing work?',
-    a: 'When an employee generates a bill, standard Bluetooth / Wi-Fi print dialog opens automatically. Connect your thermal printer once and print receipts with 1-tap.'
-  },
-  {
-    q: 'What happens if a product is scanned twice or already sold?',
-    a: 'If a sold item is scanned, the app alerts the user showing past sale details (buyer name, rate, date) along with an option to Restock / Return the item.'
-  }
-];
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function FaqScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [activeIdx, setActiveIdx] = useState(null);
+
+  const FAQ_ITEMS = [
+    { q: t('faqQ1'), a: t('faqA1') },
+    { q: t('faqQ2'), a: t('faqA2') },
+    { q: t('faqQ3'), a: t('faqA3') },
+    { q: t('faqQ4'), a: t('faqA4') }
+  ];
 
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>← Back</Text>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Frequently Asked Questions</Text>
-      <Text style={styles.subtitle}>Quick answers to common operational questions.</Text>
+      <Text style={styles.title}>{t('faqTitle')}</Text>
+      <Text style={styles.subtitle}>{t('faqSubtitle')}</Text>
 
       {FAQ_ITEMS.map((item, index) => {
         const isOpen = activeIdx === index;

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert,
   KeyboardAvoidingView, Platform, ScrollView, StyleSheet
 } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 GoogleSignin.configure({
   webClientId: '1088550340494-3jopngg56fcc6e8b6r2mmm1ov88832a5.apps.googleusercontent.com',
@@ -12,6 +13,7 @@ GoogleSignin.configure({
 });
 
 export default function RegisterScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [role, setRole] = useState('admin');
   const [form, setForm] = useState({
     storeName: '', ownerName: '', phone: '', email: '', password: '', address: '', gstin: '', storeId: ''
@@ -36,9 +38,9 @@ export default function RegisterScreen({ navigation }) {
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Error', 'Google Play Services not available on this device.');
+        Alert.alert(t('error'), 'Google Play Services not available on this device.');
       } else {
-        Alert.alert('Google Sign-In Failed', 'Please try again.');
+        Alert.alert(t('error'), 'Google Sign-In Failed. Please try again.');
       }
     } finally {
       setFetchingGoogleUser(false);
@@ -57,17 +59,17 @@ export default function RegisterScreen({ navigation }) {
     };
 
     if (!payload.email || !payload.password || !payload.phone || !payload.ownerName) {
-      Alert.alert('Error', 'Please fill all required fields.');
+      Alert.alert(t('error'), t('fillAllFieldsError'));
       return;
     }
 
     if (role === 'admin' && (!payload.storeName || !payload.address)) {
-      Alert.alert('Error', 'Store Name and Address are required for Admin.');
+      Alert.alert(t('error'), t('adminStoreAddressRequired'));
       return;
     }
 
     if (role === 'employee' && !payload.storeId) {
-      Alert.alert('Error', 'Please enter the Store ID provided by your Admin.');
+      Alert.alert(t('error'), t('empStoreIdRequired'));
       return;
     }
 
@@ -77,13 +79,12 @@ export default function RegisterScreen({ navigation }) {
       setLoading(false);
 
       if (data.success) {
-        Alert.alert('Verification OTP Sent', 'Please check your email for the 6-digit OTP code.');
-        // Navigate to Verify OTP Screen with email & password context
+        Alert.alert(t('otpSentAlertTitle'), t('otpSentAlertMsg'));
         navigation.navigate('VerifyOtpScreen', { email: payload.email, password: payload.password });
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Registration Failed', error.response?.data?.message || 'Something went wrong.');
+      Alert.alert(t('error'), error.response?.data?.message || 'Something went wrong.');
     }
   };
 
@@ -91,28 +92,28 @@ export default function RegisterScreen({ navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Select your role to register on BillPe</Text>
+          <Text style={styles.title}>{t('createAccount')}</Text>
+          <Text style={styles.subtitle}>{t('registerSubtitle')}</Text>
 
           <View style={styles.tabContainer}>
             <TouchableOpacity
               style={[styles.tab, role === 'admin' && styles.activeTab]}
               onPress={() => setRole('admin')}
             >
-              <Text style={[styles.tabText, role === 'admin' && styles.activeTabText]}>Store Admin</Text>
+              <Text style={[styles.tabText, role === 'admin' && styles.activeTabText]}>{t('roleAdmin')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.tab, role === 'employee' && styles.activeTab]}
               onPress={() => setRole('employee')}
             >
-              <Text style={[styles.tabText, role === 'employee' && styles.activeTabText]}>Employee</Text>
+              <Text style={[styles.tabText, role === 'employee' && styles.activeTabText]}>{t('roleEmployee')}</Text>
             </TouchableOpacity>
           </View>
 
           <TextInput
             style={styles.input}
-            placeholder={role === 'admin' ? "Owner Name *" : "Employee Name *"}
+            placeholder={role === 'admin' ? t('ownerNameAdmin') : t('ownerNameEmp')}
             placeholderTextColor="#64748b"
             value={form.ownerName}
             onChangeText={(val) => setForm({ ...form, ownerName: val })}
@@ -123,21 +124,21 @@ export default function RegisterScreen({ navigation }) {
             <>
               <TextInput
                 style={styles.input}
-                placeholder="Store Name *"
+                placeholder={t('storeNameReq')}
                 placeholderTextColor="#64748b"
                 value={form.storeName}
                 onChangeText={(val) => setForm({ ...form, storeName: val })}
               />
               <TextInput
                 style={styles.input}
-                placeholder="Store Address *"
+                placeholder={t('storeAddressReq')}
                 placeholderTextColor="#64748b"
                 value={form.address}
                 onChangeText={(val) => setForm({ ...form, address: val })}
               />
               <TextInput
                 style={styles.input}
-                placeholder="GSTIN (Optional)"
+                placeholder={t('gstinOptional')}
                 placeholderTextColor="#64748b"
                 value={form.gstin}
                 onChangeText={(val) => setForm({ ...form, gstin: val })}
@@ -148,7 +149,7 @@ export default function RegisterScreen({ navigation }) {
           {role === 'employee' && (
             <TextInput
               style={styles.input}
-              placeholder="Store ID (Given by Admin) *"
+              placeholder={t('storeIdReqEmp')}
               placeholderTextColor="#64748b"
               value={form.storeId}
               onChangeText={(val) => setForm({ ...form, storeId: val })}
@@ -157,7 +158,7 @@ export default function RegisterScreen({ navigation }) {
 
           <TextInput
             style={styles.input}
-            placeholder="Phone Number *"
+            placeholder={t('phoneNumberReq')}
             placeholderTextColor="#64748b"
             keyboardType="phone-pad"
             value={form.phone}
@@ -167,7 +168,7 @@ export default function RegisterScreen({ navigation }) {
 
           <TextInput
             style={styles.input}
-            placeholder="Email Address *"
+            placeholder={t('emailAddressReq')}
             placeholderTextColor="#64748b"
             value={form.email}
             onChangeText={(val) => setForm({ ...form, email: val })}
@@ -184,13 +185,13 @@ export default function RegisterScreen({ navigation }) {
             {fetchingGoogleUser ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.googleBtnText}>⚡ Fill Email with Google</Text>
+              <Text style={styles.googleBtnText}>{t('googleFillEmail')}</Text>
             )}
           </TouchableOpacity>
 
           <TextInput
             style={styles.input}
-            placeholder="Password *"
+            placeholder={t('passwordReq')}
             placeholderTextColor="#64748b"
             secureTextEntry
             value={form.password}
@@ -200,11 +201,11 @@ export default function RegisterScreen({ navigation }) {
           />
 
           <TouchableOpacity onPress={handleSendOTP} disabled={loading} style={styles.btn}>
-            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Verify & Register</Text>}
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndRegisterBtn')}</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkContainer}>
-            <Text style={styles.linkText}>Already have an account? <Text style={styles.linkHighlight}>Login</Text></Text>
+            <Text style={styles.linkText}>{t('alreadyHaveAccount')} <Text style={styles.linkHighlight}>{t('loginHighlight')}</Text></Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

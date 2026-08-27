@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function AddEmployeeScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +17,6 @@ export default function AddEmployeeScreen({ navigation }) {
   const fetchEmployees = async () => {
     try {
       const { data } = await axiosInstance.get('/auth/employees');
-      console.log("Fetched Employees Response:", data);
       if (data.success) {
         setEmployees(data.employees);
       }
@@ -34,7 +35,7 @@ export default function AddEmployeeScreen({ navigation }) {
 
   const handleAddEmployee = async () => {
     if (!name || !email || !password || !phone) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert(t('error'), t('fillAllFieldsError'));
       return;
     }
 
@@ -48,7 +49,7 @@ export default function AddEmployeeScreen({ navigation }) {
       });
       setLoading(false);
       if (data.success) {
-        Alert.alert('Success', 'Employee created successfully!');
+        Alert.alert(t('success'), t('empCreatedSuccess'));
         setName('');
         setEmail('');
         setPassword('');
@@ -57,31 +58,59 @@ export default function AddEmployeeScreen({ navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to add employee.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to add employee.');
     }
   };
 
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>← Back to Dashboard</Text>
+        <Text style={styles.backText}>{t('backToDashboard')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Store Staff & Employees</Text>
-      <Text style={styles.subtitle}>Add and manage your store employees</Text>
+      <Text style={styles.title}>{t('storeStaffTitle')}</Text>
+      <Text style={styles.subtitle}>{t('manageStaffSubtitle')}</Text>
 
       <View style={styles.card}>
-        <TextInput style={styles.input} placeholder="Employee Name" placeholderTextColor="#64748b" value={name} onChangeText={setName} />
-        <TextInput style={styles.input} placeholder="Email Address" placeholderTextColor="#64748b" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#64748b" keyboardType="phone-pad" value={phone} onChangeText={setPhone} />
-        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#64748b" secureTextEntry value={password} onChangeText={setPassword} />
+        <TextInput 
+          style={styles.input} 
+          placeholder={t('empNamePlaceholder')} 
+          placeholderTextColor="#64748b" 
+          value={name} 
+          onChangeText={setName} 
+        />
+        <TextInput 
+          style={styles.input} 
+          placeholder={t('empEmailPlaceholder')} 
+          placeholderTextColor="#64748b" 
+          autoCapitalize="none" 
+          keyboardType="email-address" 
+          value={email} 
+          onChangeText={setEmail} 
+        />
+        <TextInput 
+          style={styles.input} 
+          placeholder={t('empPhonePlaceholder')} 
+          placeholderTextColor="#64748b" 
+          keyboardType="phone-pad" 
+          value={phone} 
+          onChangeText={setPhone} 
+        />
+        <TextInput 
+          style={styles.input} 
+          placeholder={t('empPasswordPlaceholder')} 
+          placeholderTextColor="#64748b" 
+          secureTextEntry 
+          value={password} 
+          onChangeText={setPassword} 
+        />
 
         <TouchableOpacity onPress={handleAddEmployee} disabled={loading} style={styles.btn}>
-          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Create Employee Account</Text>}
+          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('createEmpAccountBtn')}</Text>}
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.listHeader}>Registered Employees ({employees.length})</Text>
+      <Text style={styles.listHeader}>{t('registeredEmployeesHeader')} ({employees.length})</Text>
       
       <FlatList
         data={employees}
@@ -97,7 +126,7 @@ export default function AddEmployeeScreen({ navigation }) {
             </View>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.emptyText}>No employees registered yet.</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{t('noEmployeesYet')}</Text>}
       />
     </View>
   );

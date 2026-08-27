@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
   Alert, KeyboardAvoidingView, Platform, StyleSheet 
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function VerifyOtpScreen({ route, navigation }) {
+  const { t } = useContext(LanguageContext);
   const { email, password } = route.params || {};
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,7 +16,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
 
   const handleVerify = async () => {
     if (!otp.trim() || otp.trim().length !== 6) {
-      Alert.alert('Error', 'Please enter the valid 6-digit OTP.');
+      Alert.alert(t('error'), t('invalidOtpLength'));
       return;
     }
 
@@ -31,11 +33,11 @@ export default function VerifyOtpScreen({ route, navigation }) {
         if (password) await AsyncStorage.setItem('billpe_saved_login_password', password);
 
         Alert.alert(
-          '🎉 Verification Successful',
-          'Your store account is verified. Please sign in to access your dashboard.',
+          t('verificationSuccessTitle'),
+          t('verificationSuccessMsg'),
           [
             {
-              text: 'Go to Login',
+              text: t('goToLogin'),
               onPress: () => navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
@@ -46,7 +48,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Verification Failed', err.response?.data?.message || 'Invalid or expired OTP.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Invalid or expired OTP.');
     }
   };
 
@@ -55,18 +57,18 @@ export default function VerifyOtpScreen({ route, navigation }) {
       setResending(true);
       await axiosInstance.post('/auth/send-register-otp', { email });
       setResending(false);
-      Alert.alert('OTP Resent', 'A new verification code has been sent to your email.');
+      Alert.alert(t('otpResentTitle'), t('otpResentMsg'));
     } catch (err) {
       setResending(false);
-      Alert.alert('Error', 'Failed to resend OTP.');
+      Alert.alert(t('error'), 'Failed to resend OTP.');
     }
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>Email Verification</Text>
-        <Text style={styles.subtitle}>Enter the 6-digit OTP code sent to:</Text>
+        <Text style={styles.title}>{t('emailVerificationTitle')}</Text>
+        <Text style={styles.subtitle}>{t('enterOtpSubtitle')}</Text>
         <Text style={styles.emailHighlight}>{email}</Text>
 
         <TextInput
@@ -80,14 +82,14 @@ export default function VerifyOtpScreen({ route, navigation }) {
         />
 
         <TouchableOpacity onPress={handleVerify} disabled={loading} style={styles.btn} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Verify & Proceed to Login</Text>}
+          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndProceedBtn')}</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleResend} disabled={resending} style={styles.resendBtn}>
           {resending ? (
             <ActivityIndicator color="#38bdf8" />
           ) : (
-            <Text style={styles.resendText}>Didn't receive code? <Text style={{ color: '#38bdf8', fontWeight: 'bold' }}>Resend OTP</Text></Text>
+            <Text style={styles.resendText}>{t('didntReceiveOtp')} <Text style={{ color: '#38bdf8', fontWeight: 'bold' }}>{t('resendOtp')}</Text></Text>
           )}
         </TouchableOpacity>
       </View>

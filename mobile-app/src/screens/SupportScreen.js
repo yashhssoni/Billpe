@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert, ScrollView } from 'react-native';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function SupportScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const SUPPORT_PHONE = '6263634900'; 
   const SUPPORT_EMAIL = 'firstaidsupportservice@gmail.com';
 
@@ -9,38 +11,38 @@ export default function SupportScreen({ navigation }) {
     const text = encodeURIComponent('Hello BillPe Support, I need assistance regarding my Store details & account.');
     const url = `whatsapp://send?phone=${SUPPORT_PHONE}&text=${text}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'WhatsApp is not installed on your phone.');
+      Alert.alert(t('error'), t('whatsAppNotInstalled'));
     });
   };
 
   const handleCall = () => {
     Linking.openURL(`tel:${SUPPORT_PHONE}`).catch(() => {
-      Alert.alert('Error', 'Unable to make call.');
+      Alert.alert(t('error'), 'Unable to make call.');
     });
   };
 
   const handleEmail = () => {
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Support Request - BillPe Store`).catch(() => {
-      Alert.alert('Error', 'Unable to open email client.');
+      Alert.alert(t('error'), 'Unable to open email client.');
     });
   };
 
   return (
     <ScrollView style={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>← Back</Text>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Help & Support Desk</Text>
-      <Text style={styles.subtitle}>Contact our team for store edits, technical issues, or billing queries.</Text>
+      <Text style={styles.title}>{t('supportTitle')}</Text>
+      <Text style={styles.subtitle}>{t('supportSubtitle')}</Text>
 
       <TouchableOpacity style={styles.actionCard} onPress={handleWhatsApp} activeOpacity={0.8}>
         <View style={[styles.iconBox, { backgroundColor: 'rgba(37, 211, 102, 0.15)', borderColor: '#25D366' }]}>
           <Text style={{ fontSize: 24 }}>💬</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={styles.cardTitle}>Chat on WhatsApp</Text>
-          <Text style={styles.cardDesc}>Quick help for Store Name edits and queries.</Text>
+          <Text style={styles.cardTitle}>{t('chatWhatsAppCard')}</Text>
+          <Text style={styles.cardDesc}>{t('chatWhatsAppSub')}</Text>
         </View>
       </TouchableOpacity>
 
@@ -49,8 +51,8 @@ export default function SupportScreen({ navigation }) {
           <Text style={{ fontSize: 24 }}>📞</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={styles.cardTitle}>Call Support</Text>
-          <Text style={styles.cardDesc}>Mon - Sat (10:00 AM to 8:00 PM)</Text>
+          <Text style={styles.cardTitle}>{t('callSupportCard')}</Text>
+          <Text style={styles.cardDesc}>{t('callSupportSub')}</Text>
         </View>
       </TouchableOpacity>
 
@@ -59,7 +61,7 @@ export default function SupportScreen({ navigation }) {
           <Text style={{ fontSize: 24 }}>✉️</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={styles.cardTitle}>Email Support</Text>
+          <Text style={styles.cardTitle}>{t('emailSupportCard')}</Text>
           <Text style={styles.cardDesc}>{SUPPORT_EMAIL}</Text>
         </View>
       </TouchableOpacity>

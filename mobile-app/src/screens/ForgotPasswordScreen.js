@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
   Alert, KeyboardAvoidingView, Platform, StyleSheet 
 } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function ForgotPasswordScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSendOTP = async () => {
     if (!email.trim()) {
-      Alert.alert('Required', 'Please enter your registered email.');
+      Alert.alert(t('required'), t('emailRequired'));
       return;
     }
 
@@ -21,12 +23,12 @@ export default function ForgotPasswordScreen({ navigation }) {
       setLoading(false);
 
       if (data.success) {
-        Alert.alert('OTP Sent', 'Password reset code has been sent to your email.');
+        Alert.alert(t('otpSentAlertTitle'), t('resetPasswordCodeSent'));
         navigation.navigate('ResetPassword', { email: email.trim().toLowerCase() });
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Failed', err.response?.data?.message || 'Unable to send reset code.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Unable to send reset code.');
     }
   };
 
@@ -34,15 +36,15 @@ export default function ForgotPasswordScreen({ navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <View style={styles.card}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>← Back to Login</Text>
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('backToLogin')}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Forgot Password?</Text>
-        <Text style={styles.subtitle}>Enter your email to receive a 6-digit OTP and reset your password.</Text>
+        <Text style={styles.title}>{t('forgotPasswordTitle')}</Text>
+        <Text style={styles.subtitle}>{t('forgotPasswordSubtitle')}</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Enter registered email"
+          placeholder={t('enterRegisteredEmail')}
           placeholderTextColor="#64748b"
           keyboardType="email-address"
           autoCapitalize="none"
@@ -51,7 +53,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         />
 
         <TouchableOpacity onPress={handleSendOTP} disabled={loading} style={styles.btn} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Send Reset OTP</Text>}
+          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('sendResetOtpBtn')}</Text>}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

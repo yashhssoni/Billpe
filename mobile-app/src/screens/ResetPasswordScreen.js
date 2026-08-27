@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
   Alert, KeyboardAvoidingView, Platform, StyleSheet, ScrollView 
 } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function ResetPasswordScreen({ route, navigation }) {
+  const { t } = useContext(LanguageContext);
   const { email } = route.params || {};
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -14,17 +16,17 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
   const handleResetPassword = async () => {
     if (!otp.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert('Required', 'Please fill all fields.');
+      Alert.alert(t('required'), t('fillAllFieldsError'));
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Invalid Password', 'Password must be at least 6 characters.');
+      Alert.alert(t('error'), t('passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Mismatch', 'New password and confirm password do not match.');
+      Alert.alert(t('error'), t('passwordsMismatch'));
       return;
     }
 
@@ -38,13 +40,13 @@ export default function ResetPasswordScreen({ route, navigation }) {
 
       setLoading(false);
       if (data.success) {
-        Alert.alert('🎉 Success', 'Password reset successfully! Please login with your new password.', [
-          { text: 'Login Now', onPress: () => navigation.navigate('Login') }
+        Alert.alert('🎉 ' + t('success'), t('passwordResetSuccess'), [
+          { text: t('loginNow'), onPress: () => navigation.navigate('Login') }
         ]);
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Reset Failed', err.response?.data?.message || 'Invalid or expired OTP code.');
+      Alert.alert(t('error'), err.response?.data?.message || 'Invalid or expired OTP code.');
     }
   };
 
@@ -52,10 +54,10 @@ export default function ResetPasswordScreen({ route, navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.title}>Set New Password</Text>
-          <Text style={styles.subtitle}>Enter the 6-digit OTP received on <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{email}</Text></Text>
+          <Text style={styles.title}>{t('setNewPasswordTitle')}</Text>
+          <Text style={styles.subtitle}>{t('setNewPasswordSubtitle')} <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{email}</Text></Text>
 
-          <Text style={styles.inputLabel}>6-Digit OTP</Text>
+          <Text style={styles.inputLabel}>{t('otpLabel')}</Text>
           <TextInput
             style={[styles.input, { letterSpacing: 6, textAlign: 'center', fontSize: 20 }]}
             placeholder="000000"
@@ -66,20 +68,20 @@ export default function ResetPasswordScreen({ route, navigation }) {
             onChangeText={setOtp}
           />
 
-          <Text style={styles.inputLabel}>New Password</Text>
+          <Text style={styles.inputLabel}>{t('newPasswordLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter new password"
+            placeholder={t('newPasswordPlaceholder')}
             placeholderTextColor="#64748b"
             secureTextEntry
             value={newPassword}
             onChangeText={setNewPassword}
           />
 
-          <Text style={styles.inputLabel}>Confirm New Password</Text>
+          <Text style={styles.inputLabel}>{t('confirmNewPasswordLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Confirm new password"
+            placeholder={t('confirmNewPasswordPlaceholder')}
             placeholderTextColor="#64748b"
             secureTextEntry
             value={confirmPassword}
@@ -87,7 +89,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
           />
 
           <TouchableOpacity onPress={handleResetPassword} disabled={loading} style={styles.btn} activeOpacity={0.8}>
-            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>Update Password & Login</Text>}
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('updatePasswordAndLoginBtn')}</Text>}
           </TouchableOpacity>
         </View>
       </ScrollView>

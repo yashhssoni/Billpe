@@ -1,13 +1,19 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, StyleSheet, Button, TextInput, Alert, TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image } from 'react-native';
+import { 
+  View, Text, StyleSheet, Button, TextInput, Alert, 
+  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image 
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useSales } from '../hooks/useSales';
 
 export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
+  const { t } = useContext(LanguageContext);
   const { loading: salesLoading, processCheckout } = useSales();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(false);
@@ -37,13 +43,13 @@ export default function EmployeeScreen({ navigation }) {
   if (!permission.granted) {
     return (
       <View style={styles.center}>
-        <Text style={styles.infoText}>Give permission to scan Bar code.</Text>
+        <Text style={styles.infoText}>{t('cameraPermissionText')}</Text>
         <TouchableOpacity onPress={requestPermission} style={styles.btn}>
-          <Text style={styles.btnText}>Grant Permission</Text>
+          <Text style={styles.btnText}>{t('grantPermissionBtn')}</Text>
         </TouchableOpacity>
         <View style={{ marginTop: 15 }} />
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.btn, { backgroundColor: '#ef4444' }]}>
-          <Text style={styles.btnText}>Back</Text>
+          <Text style={styles.btnText}>{t('back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -64,28 +70,28 @@ export default function EmployeeScreen({ navigation }) {
       if (res.success && res.products) {
         const found = res.products.find(item => item.barcode === data);
         if (!found) {
-          Alert.alert('Not Found', 'This product does not exist in the database.');
+          Alert.alert(t('error'), 'This product does not exist in the database.');
           return;
         }
 
         const alreadyInCart = cart.some(cartItem => cartItem.barcode === data || cartItem._id === found._id);
         if (alreadyInCart) {
-          Alert.alert('Already in Cart', `${found.productName} pehle se cart me added hai.`);
+          Alert.alert(t('error'), `${found.productName} is already added in cart.`);
           return;
         }
 
         if (found.sold === true || found.stock <= 0) {
           Alert.alert(
-            '⚠️ Item Already Sold',
+            '⚠️ ' + t('soldOutBadge'),
             `Product Name: ${found.productName}\n` +
             `Sold Price: ₹${found.soldPrice || found.price}\n` +
             `Sold To: ${found.soldCustomerName || 'N/A'}\n` +
             `Mobile: ${found.soldCustomerPhone || 'N/A'}\n\n` +
-            `Return / Restock the item?`,
+            `${t('restockPrompt')}`,
             [
-              { text: 'Cancel', style: 'cancel' },
+              { text: t('cancel'), style: 'cancel' },
               {
-                text: 'Mark as Returned',
+                text: t('restockBtn'),
                 onPress: async () => {
                   try {
                     await axiosInstance.put(`/products/${found._id}`, { 
@@ -95,9 +101,9 @@ export default function EmployeeScreen({ navigation }) {
                       soldCustomerName: '',
                       soldCustomerPhone: ''
                     });
-                    Alert.alert('Success', 'Item returned & added back to inventory!');
+                    Alert.alert(t('success'), t('itemRestockedSuccess'));
                   } catch (e) {
-                    Alert.alert('Error', 'Stock update failed.');
+                    Alert.alert(t('error'), 'Stock update failed.');
                   }
                 }
               }
@@ -112,7 +118,7 @@ export default function EmployeeScreen({ navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert('Error', 'Failed to fetch product details.');
+      Alert.alert(t('error'), 'Failed to fetch product details.');
     }
   };
 
@@ -135,14 +141,14 @@ export default function EmployeeScreen({ navigation }) {
 
   const handleAddToCart = () => {
     if (!manualPrice) {
-      Alert.alert('Error', 'Please enter agreed selling price.');
+      Alert.alert(t('error'), 'Please enter agreed selling price.');
       return;
     }
     const enteredPrice = parseFloat(manualPrice);
     const minAllowed = parseFloat(currentScanned?.lowestRate ?? currentScanned?.price ?? 0);
 
     if (enteredPrice < minAllowed) {
-      Alert.alert('Price Too Low', `Minimum allowed price is ₹${minAllowed}`);
+      Alert.alert(t('error'), `Minimum allowed price is ₹${minAllowed}`);
       return;
     }
 
@@ -172,7 +178,7 @@ export default function EmployeeScreen({ navigation }) {
 
   const handleSaveCartEdit = () => {
     if (!editPrice) {
-      Alert.alert('Error', 'Price cannot be empty.');
+      Alert.alert(t('error'), 'Price cannot be empty.');
       return;
     }
 
@@ -180,7 +186,7 @@ export default function EmployeeScreen({ navigation }) {
     const minAllowed = parseFloat(editingCartItem?.lowestRate ?? editingCartItem?.price ?? 0);
 
     if (newPrice < minAllowed) {
-      Alert.alert('Price Too Low', `Minimum allowed price is ₹${minAllowed}`);
+      Alert.alert(t('error'), `Minimum allowed price is ₹${minAllowed}`);
       return;
     }
 
@@ -197,7 +203,7 @@ export default function EmployeeScreen({ navigation }) {
 
   const handleCompleteCheckout = async (shouldPrint = true) => {
     if (cart.length === 0) {
-      Alert.alert('Error', 'Cart is empty.');
+      Alert.alert(t('error'), 'Cart is empty.');
       return;
     }
 
@@ -237,7 +243,6 @@ export default function EmployeeScreen({ navigation }) {
         const htmlContent = `
           <html>
             <body style="padding: 15px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; max-width: 350px; margin: auto;">
-              
               <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
                 <h2 style="margin: 0; font-size: 20px; font-weight: bold; text-transform: uppercase;">${result.storeInfo?.storeName || 'RETAIL STORE'}</h2>
                 <p style="margin: 3px 0; font-size: 12px; color: #444;">${result.storeInfo?.address || ''}</p>
@@ -285,7 +290,6 @@ export default function EmployeeScreen({ navigation }) {
                 <p style="margin: 2px 0; font-weight: bold;">Thank You for Shopping!</p>
                 <p style="margin: 2px 0;">Please visit again.</p>
               </div>
-
             </body>
           </html>
         `;
@@ -315,7 +319,7 @@ export default function EmployeeScreen({ navigation }) {
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
         <TouchableOpacity style={styles.backButton} onPress={() => setScanner(false)}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>← Back</Text>
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -323,11 +327,15 @@ export default function EmployeeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Header with Switcher + Logout */}
       <View style={styles.topBar}>
-        <Text style={styles.header}>Employee portal</Text>
-        <TouchableOpacity onPress={handleLogoutPress} style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <Text style={styles.header}>Employee Portal</Text>
+        <View style={styles.headerActions}>
+          <LanguageSwitcher />
+          <TouchableOpacity onPress={handleLogoutPress} style={styles.logoutBtn}>
+            <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {currentScanned ? (
@@ -338,28 +346,28 @@ export default function EmployeeScreen({ navigation }) {
                 <Image source={{ uri: currentScanned.imageUri }} style={styles.thumbnailImg} />
               </TouchableOpacity>
             ) : (
-              <View style={[styles.thumbnailImg, styles.noImgBox]}><Text style={{fontSize: 9, color: '#94a3b8'}}>No Image</Text></View>
+              <View style={[styles.thumbnailImg, styles.noImgBox]}><Text style={{fontSize: 9, color: '#94a3b8'}}>{t('noPhoto')}</Text></View>
             )}
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.productTitle}>{currentScanned?.productName}</Text>
-              <Text style={styles.subText}>Category: {currentScanned?.category || 'General'}</Text>
+              <Text style={styles.subText}>{t('categoryModalLabel')} {currentScanned?.category || 'General'}</Text>
             </View>
           </View>
 
           <View style={styles.metaBadgeContainer}>
             <View style={styles.metaBadge}>
-              <Text style={styles.metaLabel}>Color:</Text>
+              <Text style={styles.metaLabel}>{t('colorInfoLabel')}</Text>
               <Text style={styles.metaVal}>{currentScanned?.color || 'N/A'}</Text>
             </View>
             <View style={styles.metaBadge}>
-              <Text style={styles.metaLabel}>Weight:</Text>
+              <Text style={styles.metaLabel}>{t('weightLabel')}</Text>
               <Text style={styles.metaVal}>{currentScanned?.weightKg || 0}kg {currentScanned?.weightGrams || 0}g</Text>
             </View>
           </View>
 
           {currentScanned?.description ? (
             <Text style={styles.descText} numberOfLines={2}>
-              <Text style={{fontWeight: 'bold', color: '#cbd5e1'}}>Desc: </Text>
+              <Text style={{fontWeight: 'bold', color: '#cbd5e1'}}>{t('infoLabel')} </Text>
               {currentScanned.description}
             </Text>
           ) : null}
@@ -387,29 +395,28 @@ export default function EmployeeScreen({ navigation }) {
             placeholder="Enter price" 
             placeholderTextColor="#64748b" 
             value={manualPrice} 
-            onChangeText={(t) => { setManualPrice(t); setPriceMode('manual'); }} 
+            onChangeText={(tVal) => { setManualPrice(tVal); setPriceMode('manual'); }} 
             keyboardType="numeric" 
           />
 
           <View style={{ marginVertical: 10 }}>
             <Button title="Add to Cart" onPress={handleAddToCart} color="#10b981" />
           </View>
-          <Button title="Cancel Item" onPress={() => setCurrentScanned(null)} color="#64748b" />
+          <Button title={t('cancel')} onPress={() => setCurrentScanned(null)} color="#64748b" />
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {(loading || salesLoading) && <ActivityIndicator size="small" color="#10b981" style={{ marginBottom: 10 }} />}
           
           <TouchableOpacity style={styles.scanBtn} onPress={() => setScanner(true)}>
-            <Text style={styles.scanBtnText}>📸 Scan Item Barcode</Text>
+            <Text style={styles.scanBtnText}>📸 {t('scanAddStockCard')}</Text>
           </TouchableOpacity>
 
-          {/* Employee Name */}
           <View style={styles.cardBox}>
-            <Text style={styles.fieldHeading}>Billed By (Employee Name)</Text>
+            <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
             <TextInput 
               style={styles.input} 
-              placeholder="Employee Name" 
+              placeholder={t('empNamePlaceholder')} 
               placeholderTextColor="#64748b" 
               value={employeeName} 
               onChangeText={setEmployeeName} 
@@ -418,24 +425,25 @@ export default function EmployeeScreen({ navigation }) {
             <Text style={[styles.fieldHeading, { marginTop: 10 }]}>Payment Mode</Text>
             <View style={styles.paymentToggleRow}>
               <TouchableOpacity 
-                style={[styles.payModeBtn, paymentMode === 'Cash' && styles.payModeBtnActive]}
+                style={[styles.payModeBtn, paymentMode === 'Cash' && styles.payModeBtnActive]} 
                 onPress={() => setPaymentMode('Cash')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 Cash</Text>
+                <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 {t('paymentCash')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.payModeBtn, paymentMode === 'Online' && styles.payModeBtnActive]}
+                style={[styles.payModeBtn, paymentMode === 'Online' && styles.payModeBtnActive]} 
                 onPress={() => setPaymentMode('Online')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 Online / UPI</Text>
+                <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 {t('paymentOnline')}</Text>
               </TouchableOpacity>
             </View>
           </View>
+
           <View style={[styles.cardBox, { marginTop: 12 }]}>
-            <Text style={styles.fieldHeading}>Customer Details (Optional)</Text>
+            <Text style={styles.fieldHeading}>{t('customerHistoryLabel')} ({t('additionalDetailsHeading')})</Text>
             <TextInput style={styles.input} placeholder="Customer Name" placeholderTextColor="#64748b" value={customerName} onChangeText={setCustomerName} />
             <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
             <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
@@ -458,7 +466,7 @@ export default function EmployeeScreen({ navigation }) {
                   <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>₹{item.agreedPrice}</Text>
                   
                   <TouchableOpacity style={styles.editBtn} onPress={() => handleOpenEditCartItem(item)}>
-                    <Text style={styles.editText}>Edit</Text>
+                    <Text style={styles.editText}>{t('edit')}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFromCart(item.cartKey)}>
@@ -493,10 +501,11 @@ export default function EmployeeScreen({ navigation }) {
         </ScrollView>
       )}
 
+      {/* Image Preview Modal */}
       <Modal visible={imageModalVisible} transparent={true} animationType="fade">
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
-            <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>✕ Close</Text>
+            <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>✕ {t('cancel')}</Text>
           </TouchableOpacity>
           {selectedImageUri && (
             <Image source={{ uri: selectedImageUri }} style={styles.fullScreenImage} resizeMode="contain" />
@@ -504,22 +513,23 @@ export default function EmployeeScreen({ navigation }) {
         </View>
       </Modal>
 
+      {/* Edit Price Modal */}
       {editingCartItem && (
         <Modal visible={editModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Edit Cart Price</Text>
+              <Text style={styles.modalTitle}>{t('editProductDetailsTitle')}</Text>
               <Text style={{ color: '#fff', fontWeight: 'bold', marginBottom: 10 }}>{editingCartItem.productName}</Text>
 
               <Text style={styles.label}>Agreed Price (₹)</Text>
               <TextInput style={styles.input} keyboardType="numeric" value={editPrice} onChangeText={setEditPrice} placeholderTextColor="#64748b" />
 
               <TouchableOpacity onPress={handleSaveCartEdit} style={styles.updateBtn}>
-                <Text style={styles.updateBtnText}>Save Price</Text>
+                <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => setEditModalVisible(false)} style={{ padding: 10, alignItems: 'center', marginTop: 5 }}>
-                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>Cancel</Text>
+                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -532,6 +542,7 @@ export default function EmployeeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 40, backgroundColor: '#0f172a' },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', padding: 20 },
   header: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   subHeader: { fontSize: 15, fontWeight: 'bold', marginVertical: 8, color: '#cbd5e1' },
@@ -566,7 +577,7 @@ const styles = StyleSheet.create({
 
   scanBtn: { backgroundColor: '#10b981', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 12 },
   scanBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
-  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
   priceOptionRow: { flexDirection: 'row', marginVertical: 10, gap: 8 },
   priceOptionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center' },

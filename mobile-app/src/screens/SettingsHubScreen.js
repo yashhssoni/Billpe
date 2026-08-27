@@ -1,31 +1,33 @@
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function SettingsHubScreen({ navigation }) {
-  const { logout, user, storeInfo } = useContext(AuthContext);
+  const { logout, storeInfo } = useContext(AuthContext);
+  const { t } = useContext(LanguageContext);
 
   const handleLogout = () => {
-    Alert.alert('Confirm Logout', 'Are you sure you want to log out of BillPe?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => logout() }
+    Alert.alert(t('confirmLogoutTitle'), t('confirmLogoutMsg'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('logoutBtn'), style: 'destructive', onPress: () => logout() }
     ]);
   };
 
   const menuItems = [
-    { title: 'Store Profile', subtitle: 'View store details & update credentials', screen: 'ProfileScreen', icon: '🏪' },
-    { title: 'Help & Support Desk', subtitle: 'WhatsApp, Call, and Email assistance', screen: 'SupportScreen', icon: '💬' },
-    { title: 'Community Wall & Reviews', subtitle: 'Read reviews from fellow retailers', screen: 'ReviewScreen', icon: '⭐' },
-    { title: 'Frequently Asked Questions', subtitle: 'Quick answers for billing & printer setup', screen: 'FaqScreen', icon: '❓' },
+    { title: t('storeProfileCard'), subtitle: t('storeProfileSub'), screen: 'ProfileScreen', icon: '🏪' },
+    { title: t('helpSupportCard'), subtitle: t('helpSupportSub'), screen: 'SupportScreen', icon: '💬' },
+    { title: t('communityWallCard'), subtitle: t('communityWallSub'), screen: 'ReviewScreen', icon: '⭐' },
+    { title: t('faqCard'), subtitle: t('faqSub'), screen: 'FaqScreen', icon: '❓' },
   ];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={styles.backText}>{t('back')}</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Settings & Support</Text>
+        <Text style={styles.title}>{t('settingsHubTitle')}</Text>
         <Text style={styles.subtitle}>{storeInfo?.storeName || 'BillPe Store'}</Text>
       </View>
 
@@ -48,7 +50,7 @@ export default function SettingsHubScreen({ navigation }) {
       </View>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-        <Text style={styles.logoutText}>Log Out Account</Text>
+        <Text style={styles.logoutText}>{t('logOutAccountBtn')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

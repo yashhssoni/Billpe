@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, Linking, Image, ScrollView } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
+import { LanguageContext } from '../context/LanguageContext';
 
 export default function SubscriptionScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
   const [status, setStatus] = useState({ isActive: false, paymentPending: false, expiryDate: null });
   const [loading, setLoading] = useState(false);
   const [fetchingStatus, setFetchingStatus] = useState(true);
@@ -29,9 +31,9 @@ export default function SubscriptionScreen({ navigation }) {
     try {
       await axiosInstance.post('/payment/request-activation');
       setStatus(prev => ({ ...prev, paymentPending: true }));
-      Alert.alert('Request Sent ⏳', 'Approval request sent. Please contact admin.');
+      Alert.alert(t('requestSentTitle'), t('requestSentMsg'));
     } catch (e) { 
-      Alert.alert('Error', 'Request nahi ja payi.'); 
+      Alert.alert(t('error'), 'Request nahi ja payi.'); 
     }
     setLoading(false);
   };
@@ -46,10 +48,10 @@ export default function SubscriptionScreen({ navigation }) {
   if (status.isActive) {
     return (
       <View style={styles.container}>
-        <Text style={styles.success}>Subscription Active ✅</Text>
-        <Text style={styles.sub}>Valid till: {new Date(status.expiryDate).toLocaleDateString('en-IN')}</Text>
+        <Text style={styles.success}>{t('subActiveTitle')}</Text>
+        <Text style={styles.sub}>{t('validTillPrefix')} {new Date(status.expiryDate).toLocaleDateString('en-IN')}</Text>
         <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
-          <Text style={styles.btnText}>Back to Dashboard</Text>
+          <Text style={styles.btnText}>{t('backToDashboard')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -58,27 +60,26 @@ export default function SubscriptionScreen({ navigation }) {
   if (status.paymentPending) {
     return (
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <Text style={styles.pendingTitle}>Verification Pending ⏳</Text>
+        <Text style={styles.pendingTitle}>{t('verificationPendingTitle')}</Text>
         <Text style={styles.desc}>
-          Request sent. If unpaid, scan below to pay and contact the admin for approval.
+          {t('verificationPendingDesc')}
         </Text>
 
-        {/* QR Code Box */}
         <View style={styles.qrBox}>
-          <Text style={styles.planAmountText}>Monthly Plan: ₹600</Text>
+          <Text style={styles.planAmountText}>{t('monthlyPlanPriceText')}</Text>
           <Image 
             source={require('../assets/image.png')} 
             style={styles.qrImage} 
           />
-          <Text style={styles.qrSubText}>Scan using GPay / PhonePe / Paytm</Text>
+          <Text style={styles.qrSubText}>{t('scanQrSubText')}</Text>
         </View>
         
         <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+916263634900')}>
-          <Text style={styles.callBtnText}>📞 Call Admin: 6263634900</Text>
+          <Text style={styles.callBtnText}>{t('callAdminBtn')}</Text>
         </TouchableOpacity>
         
         <Text style={styles.autoStartNote}>
-          The app will unlock automatically after admin approval.
+          {t('autoUnlockNote')}
         </Text>
       </ScrollView>
     );
@@ -86,21 +87,21 @@ export default function SubscriptionScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>Purchase Monthly Plan (₹600)</Text>
+      <Text style={styles.title}>{t('purchaseMonthlyPlanTitle')}</Text>
       
       <View style={styles.qrBox}>
         <Image 
           source={require('../assets/image.png')} 
           style={styles.qrImage} 
         />
-        <Text style={styles.qrSubText}>Scan using GPay / PhonePe / Paytm</Text>
+        <Text style={styles.qrSubText}>{t('scanQrSubText')}</Text>
       </View>
 
       <TouchableOpacity onPress={handleNotify} disabled={loading} style={styles.btn}>
         {loading ? (
           <ActivityIndicator color="#0f172a" />
         ) : (
-          <Text style={styles.btnText}>Payment completed? Notify the admin.</Text>
+          <Text style={styles.btnText}>{t('paymentDoneNotifyBtn')}</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
