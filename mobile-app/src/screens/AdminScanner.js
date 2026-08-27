@@ -9,7 +9,6 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
 
-// Practical Indian Store Categories
 const POPULAR_CATEGORIES = [
   'General',
   'Grocery / Kirana',
