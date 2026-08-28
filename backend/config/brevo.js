@@ -10,5 +10,5 @@ const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 module.exports = {
   tranEmailApi,
-  senderEmail: process.env.BREVO_SENDER_EMAIL || 'firstaidsupportservice@gmail.com'
+  senderEmail: process.env.SENDER_EMAIL || 'billpesupportservice@gmail.com'
 };
