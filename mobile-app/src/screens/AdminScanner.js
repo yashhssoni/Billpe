@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
@@ -10,7 +10,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
 
-const POPULAR_CATEGORIES = [
+const DEFAULT_POPULAR_CATEGORIES = [
   'General',
   'Grocery / Kirana',
   'Apparel / Clothes',
@@ -32,6 +32,7 @@ export default function AdminScanner({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
+  const [dynamicCategories, setDynamicCategories] = useState(DEFAULT_POPULAR_CATEGORIES);
 
   const [modalState, setModalState] = useState({
     visible: false,
@@ -55,6 +56,27 @@ export default function AdminScanner({ navigation }) {
   };
 
   const [p, setP] = useState(initialFormState);
+
+  useEffect(() => {
+    fetchExistingCategories();
+  }, []);
+
+  const fetchExistingCategories = async () => {
+    try {
+      const { data: res } = await axiosInstance.get('/products?includeSold=true');
+      if (res.success && res.products) {
+        const categorySet = new Set(DEFAULT_POPULAR_CATEGORIES);
+        res.products.forEach(item => {
+          if (item.category && item.category.trim()) {
+            categorySet.add(item.category.trim());
+          }
+        });
+        setDynamicCategories(Array.from(categorySet));
+      }
+    } catch (e) {
+      console.log('Error fetching existing categories:', e);
+    }
+  };
 
   const compressImage = async (uri) => {
     if (!uri) return null;
@@ -249,6 +271,8 @@ export default function AdminScanner({ navigation }) {
       return;
     }
 
+    const finalCategory = p.category.trim() || 'General';
+
     setLoading(true);
     try {
       const weightKgVal = Number(p.kg) || 0;
@@ -261,7 +285,7 @@ export default function AdminScanner({ navigation }) {
       formData.append('price', lowestVal);
       formData.append('lowestRate', lowestVal);
       formData.append('highestRate', highestVal);
-      formData.append('category', p.category.trim() || 'General');
+      formData.append('category', finalCategory);
       formData.append('color', p.color.trim());
       formData.append('description', p.description.trim());
       formData.append('weightKg', weightKgVal);
@@ -291,6 +315,13 @@ export default function AdminScanner({ navigation }) {
       setLoading(false);
 
       if (data.success || data.product) {
+        setDynamicCategories(prev => {
+          if (!prev.some(cat => cat.toLowerCase() === finalCategory.toLowerCase())) {
+            return [...prev, finalCategory];
+          }
+          return prev;
+        });
+
         Alert.alert(t('success'), data.message || 'Product saved successfully!', [
           { 
             text: t('scanNextItem'), 
@@ -642,7 +673,7 @@ export default function AdminScanner({ navigation }) {
             </View>
 
             <FlatList
-              data={POPULAR_CATEGORIES}
+              data={dynamicCategories}
               keyExtractor={(item) => item}
               showsVerticalScrollIndicator={false}
               style={{ maxHeight: 350 }}
@@ -818,103 +849,5 @@ const styles = StyleSheet.create({
   androidNavSpace: { height: 45 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(2, 6, 23, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8
-  },
-  modalCardAmber: { borderColor: 'rgba(245, 158, 11, 0.5)' },
-  modalCardSky: { borderColor: 'rgba(56, 189, 248, 0.5)' },
-
-  modalHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  modalTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1
-  },
-  tagAmber: { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: '#f59e0b' },
-  tagSky: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38bdf8' },
-  modalTagText: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
-  tagTextAmber: { color: '#f59e0b' },
-  tagTextSky: { color: '#38bdf8' },
-  modalBarcode: { color: '#64748b', fontSize: 11, fontWeight: '700' },
-
-  modalProductName: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 12
-  },
-
-  modalInfoBox: {
-    backgroundColor: '#0f172a',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    marginBottom: 12
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  infoLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
-  infoValue: { color: '#e2e8f0', fontSize: 12, fontWeight: '700' },
-  infoValueHighlight: { color: '#10b981', fontSize: 13, fontWeight: '900' },
-
-  modalPrompt: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 16
-  },
-
-  modalActionsRow: {
-    flexDirection: 'row',
-    gap: 10
-  },
-  modalCancelBtn: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#475569'
-  },
-  modalCancelBtnText: { color: '#94a3b8', fontWeight: 'bold', fontSize: 13 },
-
-  modalPrimaryBtn: {
-    flex: 1,
-    backgroundColor: '#10b981',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center'
-  },
-  modalPrimaryBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 13 }
+  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 }
 });

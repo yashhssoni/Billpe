@@ -1,22 +1,40 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, StyleSheet, Modal, ScrollView, TextInput, Button, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
 
+const POPULAR_CATEGORIES = [
+  'General',
+  'Grocery / Kirana',
+  'Apparel / Clothes',
+  'Steel / Bartan',
+  'Footwear / Shoes',
+  'Electronics & Mobiles',
+  'Stationery & Books',
+  'Cosmetics & Beauty',
+  'Snacks & Beverages',
+  'Hardware & Electrical',
+  'Medical & Pharma',
+  'Toys & Gifts'
+];
+
 export default function ManageDatabase({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [filterDropdownVisible, setFilterDropdownVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editCategoryDropdownVisible, setEditCategoryDropdownVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.get('/products');
-      if (data.success) setProducts(data.products);
+      if (data.success) setProducts(data.products || []);
     } catch (err) {
       console.log('Error fetching products', err);
     } finally {
@@ -27,6 +45,21 @@ export default function ManageDatabase({ navigation }) {
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  const availableCategories = useMemo(() => {
+    const set = new Set(POPULAR_CATEGORIES);
+    products.forEach((p) => {
+      if (p.category && p.category.trim()) {
+        set.add(p.category.trim());
+      }
+    });
+    return ['All', ...Array.from(set)];
+  }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === 'All') return products;
+    return products.filter((p) => (p.category || 'General').toLowerCase() === selectedCategory.toLowerCase());
+  }, [products, selectedCategory]);
 
   const handleOpenEdit = (item) => {
     setEditingProduct({
@@ -132,12 +165,25 @@ export default function ManageDatabase({ navigation }) {
       <Text style={styles.title}>{t('manageDbTitle')}</Text>
       <Text style={styles.subtitle}>{t('totalItemsCount')} {products.length}</Text>
 
+      <TouchableOpacity
+        style={styles.filterDropdownTrigger}
+        onPress={() => setFilterDropdownVisible(true)}
+        activeOpacity={0.7}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={styles.filterDropdownLabel}>Category:</Text>
+          <Text style={styles.filterDropdownValue}>{selectedCategory} ({filteredProducts.length})</Text>
+        </View>
+        <Text style={styles.filterDropdownArrow}>▼</Text>
+      </TouchableOpacity>
+
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={products}
+          data={filteredProducts}
           keyExtractor={(item) => item._id}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <View style={styles.itemCard}>
               {item.imageUri ? (
@@ -174,6 +220,50 @@ export default function ManageDatabase({ navigation }) {
         />
       )}
 
+      <Modal
+        visible={filterDropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFilterDropdownVisible(false)}
+      >
+        <View style={styles.modalOverlayDark}>
+          <View style={styles.dropdownModalCard}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>Filter by Category</Text>
+              <TouchableOpacity onPress={() => setFilterDropdownVisible(false)}>
+                <Text style={styles.dropdownModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={availableCategories}
+              keyExtractor={(item) => item}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 380 }}
+              renderItem={({ item }) => {
+                const isSelected = selectedCategory.toLowerCase() === item.toLowerCase();
+                const count = item === 'All' ? products.length : products.filter(p => (p.category || 'General').toLowerCase() === item.toLowerCase()).length;
+                return (
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                    onPress={() => {
+                      setSelectedCategory(item);
+                      setFilterDropdownVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]}>
+                      {item} ({count})
+                    </Text>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {editingProduct && (
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
@@ -184,7 +274,18 @@ export default function ManageDatabase({ navigation }) {
               <TextInput style={styles.input} value={editingProduct.productName} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, productName: tVal })} placeholderTextColor="#64748b" />
 
               <Text style={styles.label}>{t('categoryTypeLabel')}</Text>
-              <TextInput style={styles.input} value={editingProduct.category} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, category: tVal })} placeholderTextColor="#64748b" />
+              <TouchableOpacity 
+                style={styles.dropdownTriggerInner}
+                onPress={() => setEditCategoryDropdownVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={editingProduct.category ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
+                  {editingProduct.category ? editingProduct.category : t('selectCategoryPlaceholder')}
+                </Text>
+                <Text style={styles.dropdownArrow}>▼</Text>
+              </TouchableOpacity>
+
+              <TextInput style={styles.input} placeholder="Or type custom category..." value={editingProduct.category} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, category: tVal })} placeholderTextColor="#64748b" />
 
               <Text style={styles.label}>{t('weightKgGramsLabel')}</Text>
               <View style={styles.weightRow}>
@@ -228,15 +329,75 @@ export default function ManageDatabase({ navigation }) {
           </View>
         </Modal>
       )}
+
+      <Modal
+        visible={editCategoryDropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setEditCategoryDropdownVisible(false)}
+      >
+        <View style={styles.modalOverlayDark}>
+          <View style={styles.dropdownModalCard}>
+            <View style={styles.dropdownModalHeader}>
+              <Text style={styles.dropdownModalTitle}>{t('selectCategoryModalTitle')}</Text>
+              <TouchableOpacity onPress={() => setEditCategoryDropdownVisible(false)}>
+                <Text style={styles.dropdownModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={POPULAR_CATEGORIES}
+              keyExtractor={(item) => item}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 350 }}
+              renderItem={({ item }) => {
+                const isSelected = editingProduct && editingProduct.category.toLowerCase() === item.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                    onPress={() => {
+                      setEditingProduct({ ...editingProduct, category: item });
+                      setEditCategoryDropdownVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]}>
+                      {item}
+                    </Text>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 24, paddingTop: 40 },
+  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
   backText: { color: '#10b981', fontWeight: '600' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
-  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 20 },
+  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 12 },
+
+  filterDropdownTrigger: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14
+  },
+  filterDropdownLabel: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
+  filterDropdownValue: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
+  filterDropdownArrow: { color: '#38bdf8', fontSize: 12 },
+
   itemCard: { backgroundColor: '#1e293b', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 12, flexDirection: 'row', alignItems: 'center' },
   thumb: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#334155' },
   noThumb: { justifyContent: 'center', alignItems: 'center' },
@@ -251,6 +412,7 @@ const styles = StyleSheet.create({
   deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20, paddingTop: 40 },
   modalContent: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
@@ -260,5 +422,68 @@ const styles = StyleSheet.create({
   preview: { width: '100%', height: 160, borderRadius: 8, marginBottom: 8, resizeMode: 'cover' },
   updateBtn: { backgroundColor: '#10b981', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   updateBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
-  cancelModalBtn: { padding: 10, alignItems: 'center', marginTop: 5 }
+  cancelModalBtn: { padding: 10, alignItems: 'center', marginTop: 5 },
+
+  dropdownTriggerInner: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  dropdownPlaceholderText: { color: '#64748b', fontSize: 14 },
+  dropdownSelectedText: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
+  dropdownArrow: { color: '#38bdf8', fontSize: 12 },
+
+  modalOverlayDark: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  dropdownModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10
+  },
+  dropdownModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155'
+  },
+  dropdownModalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  dropdownModalClose: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
+
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  dropdownItemActive: { backgroundColor: 'rgba(56, 189, 248, 0.15)' },
+  dropdownItemText: { color: '#cbd5e1', fontSize: 14, fontWeight: '500' },
+  dropdownItemTextActive: { color: '#38bdf8', fontWeight: 'bold' },
+  checkmark: { color: '#38bdf8', fontSize: 16, fontWeight: 'bold' }
 });
