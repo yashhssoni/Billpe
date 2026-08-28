@@ -4,8 +4,8 @@ import { LanguageContext } from '../context/LanguageContext';
 
 export default function SupportScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
-  const SUPPORT_PHONE = '6263634900'; 
-  const SUPPORT_EMAIL = 'firstaidsupportservice@gmail.com';
+  const SUPPORT_PHONE = '916263634900'; 
+  const SUPPORT_EMAIL = 'billpesupportservice@gmail.com';
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent('Hello BillPe Support, I need assistance regarding my Store details & account.');
