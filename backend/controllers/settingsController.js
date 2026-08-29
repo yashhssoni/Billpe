@@ -118,3 +118,51 @@ exports.getCommunityReviews = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message || 'Error loading reviews' });
   }
 };
+exports.updateProfileDetails = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { ownerName, phone, email } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (email && email.toLowerCase().trim() !== user.email) {
+      const emailExists = await User.findOne({ email: email.toLowerCase().trim() });
+      if (emailExists) {
+        return res.status(400).json({ success: false, message: 'Email already in use' });
+      }
+      user.email = email.toLowerCase().trim();
+    }
+
+    if (phone && phone.trim() !== user.phone) {
+      const phoneExists = await User.findOne({ phone: phone.trim() });
+      if (phoneExists) {
+        return res.status(400).json({ success: false, message: 'Phone number already in use' });
+      }
+      user.phone = phone.trim();
+    }
+
+    if (ownerName) {
+      user.name = ownerName.trim();
+      if (user.storeId) {
+        await Store.findByIdAndUpdate(user.storeId, { ownerName: ownerName.trim() });
+      }
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully!',
+      data: {
+        ownerName: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || 'Error updating profile' });
+  }
+};

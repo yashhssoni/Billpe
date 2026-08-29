@@ -391,3 +391,48 @@ exports.resetPassword = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message || "Failed to reset password." });
   }
 };
+
+exports.deleteEmployee = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: "Only admin can delete employees." });
+    }
+
+    const { id } = req.params;
+    const deleted = await User.findOneAndDelete({ _id: id, storeId: req.user.storeId, role: 'employee' });
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Employee not found." });
+    }
+
+    res.json({ success: true, message: "Employee removed successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateEmployee = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: "Only admin can edit employees." });
+    }
+
+    const { id } = req.params;
+    const { name, email, phone } = req.body;
+
+    const employee = await User.findOne({ _id: id, storeId: req.user.storeId, role: 'employee' });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found." });
+    }
+
+    if (name) employee.name = name.trim();
+    if (email) employee.email = email.toLowerCase().trim();
+    if (phone) employee.phone = phone.trim();
+
+    await employee.save();
+
+    res.json({ success: true, message: "Employee updated successfully.", employee });
+  } catch (error) {
+    next(error);
+  }
+};

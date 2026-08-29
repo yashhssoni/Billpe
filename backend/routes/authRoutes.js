@@ -8,7 +8,9 @@ const {
   addEmployee, 
   getStoreEmployees, 
   forgotPassword, 
-  resetPassword 
+  resetPassword,
+  deleteEmployee,
+  updateEmployee
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -22,5 +24,8 @@ router.get('/employees', protect, getStoreEmployees);
 
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+
+router.delete('/employees/:id', protect, deleteEmployee);
+router.put('/employees/:id', protect, updateEmployee);
 
 module.exports = router;

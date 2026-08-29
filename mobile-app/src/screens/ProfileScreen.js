@@ -11,6 +11,11 @@ export default function ProfileScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
 
+  const [ownerName, setOwnerName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,11 +31,39 @@ export default function ProfileScreen({ navigation }) {
       const { data } = await axiosInstance.get('/settings/profile');
       if (data.success) {
         setProfile(data.data);
+        setOwnerName(data.data.ownerName || '');
+        setEmail(data.data.email || '');
+        setPhone(data.data.phone || '');
       }
     } catch (err) {
       Alert.alert(t('error'), 'Unable to load profile data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!ownerName.trim() || !email.trim() || !phone.trim()) {
+      Alert.alert(t('error'), t('fillAllFieldsError'));
+      return;
+    }
+
+    try {
+      setUpdatingProfile(true);
+      const { data } = await axiosInstance.put('/settings/profile', {
+        ownerName: ownerName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim()
+      });
+      setUpdatingProfile(false);
+
+      if (data.success) {
+        Alert.alert(t('success'), data.message || 'Profile updated successfully!');
+        fetchProfile();
+      }
+    } catch (err) {
+      setUpdatingProfile(false);
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update profile.');
     }
   };
 
@@ -120,13 +153,43 @@ export default function ProfileScreen({ navigation }) {
         <Text style={styles.cardHeader}>{t('ownerDetailsSection')}</Text>
 
         <Text style={styles.label}>{t('ownerNameField')}</Text>
-        <Text style={styles.valueText}>{profile?.ownerName || 'N/A'}</Text>
+        <TextInput
+          style={styles.input}
+          value={ownerName}
+          onChangeText={setOwnerName}
+          placeholderTextColor="#64748b"
+        />
 
         <Text style={styles.label}>{t('registeredEmailField')}</Text>
-        <Text style={styles.valueText}>{profile?.email || 'N/A'}</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholderTextColor="#64748b"
+        />
 
         <Text style={styles.label}>{t('registeredMobileField')}</Text>
-        <Text style={styles.valueText}>{profile?.phone || 'N/A'}</Text>
+        <TextInput
+          style={styles.input}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          placeholderTextColor="#64748b"
+        />
+
+        <TouchableOpacity 
+          style={styles.updateProfileBtn} 
+          onPress={handleUpdateProfile}
+          disabled={updatingProfile}
+        >
+          {updatingProfile ? (
+            <ActivityIndicator color="#0f172a" />
+          ) : (
+            <Text style={styles.updateProfileBtnText}>Save Profile Details</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       <View style={[styles.card, { marginTop: 16 }]}>
@@ -198,6 +261,8 @@ const styles = StyleSheet.create({
   supportContactBtn: { backgroundColor: 'rgba(56, 189, 248, 0.1)', borderWidth: 1, borderColor: '#38bdf8', paddingVertical: 10, borderRadius: 10, alignItems: 'center', marginTop: 12 },
   supportContactBtnText: { color: '#38bdf8', fontWeight: 'bold', fontSize: 13 },
   input: { backgroundColor: '#0f172a', color: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#334155', padding: 12, fontSize: 14, marginTop: 6 },
+  updateProfileBtn: { backgroundColor: '#38bdf8', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
+  updateProfileBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14, textTransform: 'uppercase' },
   updatePasswordBtn: { backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 16 },
   updatePasswordBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14, textTransform: 'uppercase' }
 });

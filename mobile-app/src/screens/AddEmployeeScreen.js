@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList, StyleSheet, RefreshControl, Modal } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
@@ -13,6 +13,10 @@ export default function AddEmployeeScreen({ navigation }) {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingEmp, setEditingEmp] = useState(null);
+  const [updating, setUpdating] = useState(false);
 
   const fetchEmployees = async () => {
     try {
@@ -60,6 +64,67 @@ export default function AddEmployeeScreen({ navigation }) {
       setLoading(false);
       Alert.alert(t('error'), err.response?.data?.message || 'Failed to add employee.');
     }
+  };
+
+  const handleOpenEdit = (emp) => {
+    setEditingEmp({
+      id: emp._id,
+      name: emp.name || '',
+      email: emp.email || '',
+      phone: emp.phone || ''
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!editingEmp.name.trim() || !editingEmp.email.trim() || !editingEmp.phone.trim()) {
+      Alert.alert(t('error'), t('fillAllFieldsError'));
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const { data } = await axiosInstance.put(`/auth/employees/${editingEmp.id}`, {
+        name: editingEmp.name.trim(),
+        email: editingEmp.email.trim().toLowerCase(),
+        phone: editingEmp.phone.trim()
+      });
+      setUpdating(false);
+
+      if (data.success) {
+        Alert.alert(t('success'), 'Employee updated successfully!');
+        setEditModalVisible(false);
+        fetchEmployees();
+      }
+    } catch (err) {
+      setUpdating(false);
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update employee.');
+    }
+  };
+
+  const handleDeleteEmployee = (id, empName) => {
+    Alert.alert(
+      t('confirmDeleteTitle') || 'Confirm Delete',
+      `Are you sure you want to remove ${empName}?`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('delete'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data } = await axiosInstance.delete(`/auth/employees/${id}`);
+              if (data.success) {
+                setEmployees(employees.filter(e => e._id !== id));
+                Alert.alert(t('success'), 'Employee removed successfully.');
+              }
+            } catch (err) {
+              Alert.alert(t('error'), err.response?.data?.message || 'Failed to delete employee.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -120,14 +185,80 @@ export default function AddEmployeeScreen({ navigation }) {
         }
         renderItem={({ item }) => (
           <View style={styles.empCard}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.empName}>{item.name || 'Unnamed Employee'}</Text>
-              <Text style={styles.empEmail}>{item.email} {item.phone ? `• ${item.phone}` : ''}</Text>
+              <Text style={styles.empEmail}>{item.email}</Text>
+              {item.phone ? <Text style={styles.empPhone}>📞 {item.phone}</Text> : null}
+            </View>
+
+            <View style={styles.actionBtns}>
+              <TouchableOpacity onPress={() => handleOpenEdit(item)} style={styles.editBtn}>
+                <Text style={styles.editText}>{t('edit')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDeleteEmployee(item._id, item.name)} style={styles.deleteBtn}>
+                <Text style={styles.deleteText}>{t('del')}</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.emptyText}>{t('noEmployeesYet')}</Text>}
       />
+
+      {editingEmp && (
+        <Modal visible={editModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Edit Employee Details</Text>
+
+              <Text style={styles.inputLabel}>Employee Name</Text>
+              <TextInput
+                style={styles.input}
+                value={editingEmp.name}
+                onChangeText={(text) => setEditingEmp({ ...editingEmp, name: text })}
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput
+                style={styles.input}
+                value={editingEmp.email}
+                onChangeText={(text) => setEditingEmp({ ...editingEmp, email: text })}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={styles.inputLabel}>Phone Number</Text>
+              <TextInput
+                style={styles.input}
+                value={editingEmp.phone}
+                onChangeText={(text) => setEditingEmp({ ...editingEmp, phone: text })}
+                keyboardType="phone-pad"
+                placeholderTextColor="#64748b"
+              />
+
+              <TouchableOpacity 
+                style={styles.saveModalBtn} 
+                onPress={handleUpdateEmployee}
+                disabled={updating}
+              >
+                {updating ? (
+                  <ActivityIndicator color="#0f172a" />
+                ) : (
+                  <Text style={styles.saveModalBtnText}>Update Employee</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.cancelModalBtn} 
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Text style={styles.cancelModalBtnText}>{t('cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -142,8 +273,22 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 4 },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
   listHeader: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 15, marginBottom: 10 },
-  empCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 8 },
+  empCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   empName: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   empEmail: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
-  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 20 }
+  empPhone: { color: '#38bdf8', fontSize: 12, marginTop: 2, fontWeight: '600' },
+  actionBtns: { flexDirection: 'row', gap: 8 },
+  editBtn: { backgroundColor: '#3b82f6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  editText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
+  deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11 },
+  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCard: { width: '100%', maxWidth: 360, backgroundColor: '#1e293b', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#334155' },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
+  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  saveModalBtn: { backgroundColor: '#10b981', paddingVertical: 13, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+  saveModalBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },
+  cancelModalBtn: { paddingVertical: 12, alignItems: 'center', marginTop: 4 },
+  cancelModalBtnText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 }
 });
