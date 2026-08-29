@@ -58,7 +58,7 @@ export default function ProfileScreen({ navigation }) {
       setUpdatingProfile(false);
 
       if (data.success) {
-        Alert.alert(t('success'), data.message || 'Profile updated successfully!');
+        Alert.alert(t('success'), data.message || t('profileUpdatedSuccess'));
         fetchProfile();
       }
     } catch (err) {
@@ -187,7 +187,7 @@ export default function ProfileScreen({ navigation }) {
           {updatingProfile ? (
             <ActivityIndicator color="#0f172a" />
           ) : (
-            <Text style={styles.updateProfileBtnText}>Save Profile Details</Text>
+            <Text style={styles.updateProfileBtnText}>{t('saveProfileDetailsBtn')}</Text>
           )}
         </TouchableOpacity>
       </View>

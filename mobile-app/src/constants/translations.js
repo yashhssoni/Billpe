@@ -246,6 +246,8 @@ export const translations = {
     currentPasswordPlaceholder: 'Enter current password',
     newPasswordMinCharsPlaceholder: 'Enter new password (min 6 chars)',
     updatePasswordBtn: 'Update Password',
+    saveProfileDetailsBtn: 'Save Profile Details',
+    profileUpdatedSuccess: 'Profile updated successfully!',
 
     supportTitle: 'Help & Support Desk',
     supportSubtitle: 'Contact our team for store edits, technical issues, or billing queries.',
@@ -428,6 +430,8 @@ export const translations = {
     restockBtn: 'स्टॉक में जोड़ें',
     editUpdateBtn: 'विवरण बदलें',
     itemRestockedSuccess: 'सामान वापस स्टॉक में जोड़ दिया गया है!',
+    saveProfileDetailsBtn: 'प्रोफाइल विवरण सेव करें',
+    profileUpdatedSuccess: 'प्रोफाइल सफलतापूर्वक अपडेट हो गई!',   
 
     generateBarcodeTitle: 'बारकोड जनरेटर',
     generateBarcodeSubtitle: 'एक्टिव दुकानों के लिए अनलिमिटेड बारकोड प्रिंटिंग',
