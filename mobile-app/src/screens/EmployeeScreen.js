@@ -13,7 +13,7 @@ import { useSales } from '../hooks/useSales';
 
 export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
-  const { t, language } = useContext(LanguageContext);
+  const { t } = useContext(LanguageContext);
   const { loading: salesLoading, processCheckout } = useSales();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(false);
@@ -32,11 +32,10 @@ export default function EmployeeScreen({ navigation }) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+
+  // Lowest price reveal toggle & auto-hide timer ref
   const [showLowestRate, setShowLowestRate] = useState(false);
   const revealTimerRef = useRef(null);
-  const isHindi = language === 'hi';
-  const labelLowest = t('lowestPrice') || (isHindi ? 'न्यूनतम' : 'Lowest');
-  const labelHoldHint = t('holdToView') || (isHindi ? 'दबाकर रखें' : 'Hold to View');
 
   useEffect(() => {
     if (user?.name) {
@@ -44,6 +43,7 @@ export default function EmployeeScreen({ navigation }) {
     }
   }, [user]);
 
+  // Unmount safety cleanup
   useEffect(() => {
     return () => {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
@@ -122,24 +122,29 @@ export default function EmployeeScreen({ navigation }) {
           );
           return;
         }
+
+        // Timer reset and state clean
         if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
         setShowLowestRate(false);
 
         setCurrentScanned(found);
         setPriceMode('manual');
-        setManualPrice(''); 
+        setManualPrice(''); // Scan hone par input box blank rahega
       }
     } catch (err) {
       setLoading(false);
       Alert.alert(t('error'), 'Failed to fetch product details.');
     }
   };
+
+  // Normal tap: price select hogi
   const handlePressLowest = () => {
     if (!currentScanned) return;
     setPriceMode('min');
     setManualPrice(String(currentScanned.lowestRate || currentScanned.price || 0));
   };
 
+  // Press & Hold: 2 second ke liye words reveal honge aur gayab ho jayenge
   const handleLongPressLowest = () => {
     if (!currentScanned) return;
 
@@ -397,7 +402,9 @@ export default function EmployeeScreen({ navigation }) {
             </Text>
           ) : null}
 
+          {/* Pricing Row: 🔒 Base | Custom | Store MRP */}
           <View style={styles.priceOptionRow}>
+            {/* 1. Base Price (Secret / Hold-to-View) */}
             <TouchableOpacity 
               style={[
                 styles.priceOptionBtn, 
@@ -409,7 +416,7 @@ export default function EmployeeScreen({ navigation }) {
               activeOpacity={0.8}
             >
               <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>
-                {showLowestRate ? labelLowest : `🔒 ${labelLowest}`}
+                {showLowestRate ? t('basePriceLabel') : `🔒 ${t('basePriceLabel')}`}
               </Text>
               <Text 
                 style={[
@@ -420,22 +427,30 @@ export default function EmployeeScreen({ navigation }) {
               >
                 {showLowestRate 
                   ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` 
-                  : labelHoldHint}
+                  : t('holdToView')}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} onPress={selectManual}>
+            {/* 2. Custom (Bargained Price Input) */}
+            <TouchableOpacity 
+              style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} 
+              onPress={selectManual}
+            >
               <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>
-                {isHindi ? 'कस्टम' : 'Manual'}
+                {t('manualPrice')}
               </Text>
               <Text style={[styles.priceOptionValue, priceMode === 'manual' && styles.priceOptionLabelActive]}>
-                {isHindi ? 'दर्ज करें' : 'Enter'}
+                {t('enterPriceAction')}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} onPress={selectHighest}>
+            {/* 3. Store MRP (Customer Authentic Proof) */}
+            <TouchableOpacity 
+              style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} 
+              onPress={selectHighest}
+            >
               <Text style={[styles.priceOptionLabel, priceMode === 'max' && styles.priceOptionLabelActive]}>
-                {isHindi ? 'उच्चतम' : 'Highest'}
+                {t('storeMrpLabel')}
               </Text>
               <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>
                 ₹{currentScanned?.highestRate ?? currentScanned?.price ?? '-'}

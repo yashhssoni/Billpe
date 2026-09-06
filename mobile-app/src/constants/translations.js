@@ -155,9 +155,12 @@ export const translations = {
     editUpdateBtn: 'Edit / Update',
     itemRestockedSuccess: 'Item added back to inventory!',
 
-    // Privacy button keys
-    lowestPrice: 'Lowest',
+    // Billing Rate Selection Buttons
+    basePriceLabel: 'Base',
     holdToView: 'Hold to View',
+    manualPrice: 'Custom',
+    enterPriceAction: 'Enter',
+    storeMrpLabel: 'Store MRP',
 
     generateBarcodeTitle: 'Generate Barcode',
     generateBarcodeSubtitle: 'Unlimited Barcode Generation for Active Stores',
@@ -437,9 +440,12 @@ export const translations = {
     saveProfileDetailsBtn: 'प्रोफाइल विवरण सेव करें',
     profileUpdatedSuccess: 'प्रोफाइल सफलतापूर्वक अपडेट हो गई!',
 
-    // Privacy button keys
-    lowestPrice: 'न्यूनतम',
+    // Billing Rate Selection Buttons
+    basePriceLabel: 'Base',
     holdToView: 'दबाकर रखें',
+    manualPrice: 'कस्टम',
+    enterPriceAction: 'दर्ज करें',
+    storeMrpLabel: 'दुकान MRP',
 
     generateBarcodeTitle: 'बारकोड जनरेटर',
     generateBarcodeSubtitle: 'एक्टिव दुकानों के लिए अनलिमिटेड बारकोड प्रिंटिंग',
