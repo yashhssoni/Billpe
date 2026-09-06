@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, Button, TextInput, Alert, 
   TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image 
@@ -33,14 +33,22 @@ export default function EmployeeScreen({ navigation }) {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
 
-  // Lowest price reveal toggle state
+  // Lowest price reveal toggle & auto-hide timer ref
   const [showLowestRate, setShowLowestRate] = useState(false);
+  const revealTimerRef = useRef(null);
 
   useEffect(() => {
     if (user?.name) {
       setEmployeeName(user.name);
     }
   }, [user]);
+
+  // Unmount safety cleanup
+  useEffect(() => {
+    return () => {
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    };
+  }, []);
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -115,10 +123,13 @@ export default function EmployeeScreen({ navigation }) {
           return;
         }
 
+        // Timer reset and state clean
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+        setShowLowestRate(false);
+
         setCurrentScanned(found);
-        setShowLowestRate(false); // naye scan par default me hide rahega
         setPriceMode('manual');
-        setManualPrice(String(found.lowestRate || found.price || ''));
+        setManualPrice(''); // Scan hone par input box blank rahega
       }
     } catch (err) {
       setLoading(false);
@@ -126,10 +137,23 @@ export default function EmployeeScreen({ navigation }) {
     }
   };
 
-  const selectLowest = () => {
+  // Normal tap: price select hogi
+  const handlePressLowest = () => {
     if (!currentScanned) return;
     setPriceMode('min');
     setManualPrice(String(currentScanned.lowestRate || currentScanned.price || 0));
+  };
+
+  // Press & Hold: 3 second ke liye words reveal honge aur gayab ho jayenge
+  const handleLongPressLowest = () => {
+    if (!currentScanned) return;
+
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    setShowLowestRate(true);
+
+    revealTimerRef.current = setTimeout(() => {
+      setShowLowestRate(false);
+    }, 3000);
   };
 
   const selectHighest = () => {
@@ -165,6 +189,7 @@ export default function EmployeeScreen({ navigation }) {
     };
 
     setCart([...cart, newItem]);
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
     setCurrentScanned(null);
     setShowLowestRate(false);
     setManualPrice('');
@@ -378,30 +403,26 @@ export default function EmployeeScreen({ navigation }) {
           ) : null}
 
           <View style={styles.priceOptionRow}>
-            {/* Lowest Price Block with Eye Toggle */}
-            <View style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive, { position: 'relative' }]}>
-              <TouchableOpacity 
-                style={styles.priceSelectInnerArea} 
-                onPress={selectLowest}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>Lowest</Text>
-                <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive]}>
-                  {showLowestRate 
-                    ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` 
-                    : '••••••'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.eyeIconBtn}
-                onPress={() => setShowLowestRate(prev => !prev)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.6}
-              >
-                <Text style={styles.eyeIconText}>{showLowestRate ? '🙈' : '👁️'}</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Press & Hold to Reveal Lowest Price */}
+            <TouchableOpacity 
+              style={[
+                styles.priceOptionBtn, 
+                priceMode === 'min' && styles.priceOptionBtnActive
+              ]} 
+              onPress={handlePressLowest}
+              onLongPress={handleLongPressLowest}
+              delayLongPress={350}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>
+                {showLowestRate ? 'Lowest' : '••••••'}
+              </Text>
+              <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive]}>
+                {showLowestRate 
+                  ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` 
+                  : '••••••'}
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} onPress={selectManual}>
               <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>Manual</Text>
@@ -410,7 +431,7 @@ export default function EmployeeScreen({ navigation }) {
 
             <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} onPress={selectHighest}>
               <Text style={[styles.priceOptionLabel, priceMode === 'max' && styles.priceOptionLabelActive]}>Highest</Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>₹{currentScanned?.highestRate ?? currentScanned?.price ?? '-'}</Text>
+              <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>₹${currentScanned?.highestRate ?? currentScanned?.price ?? '-'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -427,7 +448,15 @@ export default function EmployeeScreen({ navigation }) {
           <View style={{ marginVertical: 10 }}>
             <Button title="Add to Cart" onPress={handleAddToCart} color="#10b981" />
           </View>
-          <Button title={t('cancel')} onPress={() => { setCurrentScanned(null); setShowLowestRate(false); }} color="#64748b" />
+          <Button 
+            title={t('cancel')} 
+            onPress={() => { 
+              if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+              setCurrentScanned(null); 
+              setShowLowestRate(false); 
+            }} 
+            color="#64748b" 
+          />
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -553,7 +582,10 @@ export default function EmployeeScreen({ navigation }) {
                 <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={{ padding: 10, alignItems: 'center', marginTop: 5 }}>
+              <TouchableOpacity 
+                onPress={() => setEditModalVisible(false)} 
+                style={{ padding: 10, alignItems: 'center', marginTop: 5 }}
+              >
                 <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
@@ -610,10 +642,6 @@ const styles = StyleSheet.create({
   priceOptionLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8' },
   priceOptionValue: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginTop: 2 },
   priceOptionLabelActive: { color: '#0f172a' },
-
-  priceSelectInnerArea: { width: '100%', alignItems: 'center', justifyContent: 'center' },
-  eyeIconBtn: { position: 'absolute', top: 5, right: 5, padding: 3, zIndex: 10 },
-  eyeIconText: { fontSize: 11 },
   
   backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
 
