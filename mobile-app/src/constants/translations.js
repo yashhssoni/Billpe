@@ -155,12 +155,15 @@ export const translations = {
     editUpdateBtn: 'Edit / Update',
     itemRestockedSuccess: 'Item added back to inventory!',
 
-    // Billing Rate Selection Buttons
+    // Billing Rate Selection & Add To Cart Keys
     basePriceLabel: 'Base',
     holdToView: 'Hold to View',
     manualPrice: 'Custom',
     enterPriceAction: 'Enter',
     storeMrpLabel: 'Store MRP',
+    addToCartBtn: 'Add to Cart',
+    agreedSellingPriceLabel: 'Agreed Selling Price *',
+    enterPricePlaceholder: 'Enter price',
 
     generateBarcodeTitle: 'Generate Barcode',
     generateBarcodeSubtitle: 'Unlimited Barcode Generation for Active Stores',
@@ -440,12 +443,15 @@ export const translations = {
     saveProfileDetailsBtn: 'प्रोफाइल विवरण सेव करें',
     profileUpdatedSuccess: 'प्रोफाइल सफलतापूर्वक अपडेट हो गई!',
 
-    // Billing Rate Selection Buttons
+    // Billing Rate Selection & Add To Cart Keys
     basePriceLabel: 'Base',
     holdToView: 'दबाकर रखें',
     manualPrice: 'कस्टम',
     enterPriceAction: 'दर्ज करें',
     storeMrpLabel: 'दुकान MRP',
+    addToCartBtn: 'कार्ट में जोड़ें',
+    agreedSellingPriceLabel: 'तय किया गया विक्रय मूल्य *',
+    enterPricePlaceholder: 'रेट दर्ज करें',
 
     generateBarcodeTitle: 'बारकोड जनरेटर',
     generateBarcodeSubtitle: 'एक्टिव दुकानों के लिए अनलिमिटेड बारकोड प्रिंटिंग',

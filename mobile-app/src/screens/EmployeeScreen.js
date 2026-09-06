@@ -458,10 +458,10 @@ export default function EmployeeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.label}>Agreed Selling Price *</Text>
+          <Text style={styles.label}>{t('agreedSellingPriceLabel')}</Text>
           <TextInput 
             style={styles.input} 
-            placeholder="Enter price" 
+            placeholder={t('enterPricePlaceholder')} 
             placeholderTextColor="#64748b" 
             value={manualPrice} 
             onChangeText={(tVal) => { setManualPrice(tVal); setPriceMode('manual'); }} 
@@ -469,7 +469,7 @@ export default function EmployeeScreen({ navigation }) {
           />
 
           <View style={{ marginVertical: 10 }}>
-            <Button title="Add to Cart" onPress={handleAddToCart} color="#10b981" />
+            <Button title={t('addToCartBtn')} onPress={handleAddToCart} color="#10b981" />
           </View>
           <Button 
             title={t('cancel')} 
