@@ -33,6 +33,9 @@ export default function EmployeeScreen({ navigation }) {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
 
+  // Lowest price reveal toggle state
+  const [showLowestRate, setShowLowestRate] = useState(false);
+
   useEffect(() => {
     if (user?.name) {
       setEmployeeName(user.name);
@@ -113,6 +116,7 @@ export default function EmployeeScreen({ navigation }) {
         }
 
         setCurrentScanned(found);
+        setShowLowestRate(false); // naye scan par default me hide rahega
         setPriceMode('manual');
         setManualPrice(String(found.lowestRate || found.price || ''));
       }
@@ -162,6 +166,7 @@ export default function EmployeeScreen({ navigation }) {
 
     setCart([...cart, newItem]);
     setCurrentScanned(null);
+    setShowLowestRate(false);
     setManualPrice('');
     setPriceMode('manual');
   };
@@ -373,10 +378,30 @@ export default function EmployeeScreen({ navigation }) {
           ) : null}
 
           <View style={styles.priceOptionRow}>
-            <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} onPress={selectLowest}>
-              <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>Lowest</Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive]}>₹{currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}</Text>
-            </TouchableOpacity>
+            {/* Lowest Price Block with Eye Toggle */}
+            <View style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive, { position: 'relative' }]}>
+              <TouchableOpacity 
+                style={styles.priceSelectInnerArea} 
+                onPress={selectLowest}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>Lowest</Text>
+                <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive]}>
+                  {showLowestRate 
+                    ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` 
+                    : '••••••'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.eyeIconBtn}
+                onPress={() => setShowLowestRate(prev => !prev)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.6}
+              >
+                <Text style={styles.eyeIconText}>{showLowestRate ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} onPress={selectManual}>
               <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>Manual</Text>
@@ -402,7 +427,7 @@ export default function EmployeeScreen({ navigation }) {
           <View style={{ marginVertical: 10 }}>
             <Button title="Add to Cart" onPress={handleAddToCart} color="#10b981" />
           </View>
-          <Button title={t('cancel')} onPress={() => setCurrentScanned(null)} color="#64748b" />
+          <Button title={t('cancel')} onPress={() => { setCurrentScanned(null); setShowLowestRate(false); }} color="#64748b" />
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -580,11 +605,15 @@ const styles = StyleSheet.create({
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
   priceOptionRow: { flexDirection: 'row', marginVertical: 10, gap: 8 },
-  priceOptionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center' },
+  priceOptionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
   priceOptionBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   priceOptionLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8' },
   priceOptionValue: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginTop: 2 },
   priceOptionLabelActive: { color: '#0f172a' },
+
+  priceSelectInnerArea: { width: '100%', alignItems: 'center', justifyContent: 'center' },
+  eyeIconBtn: { position: 'absolute', top: 5, right: 5, padding: 3, zIndex: 10 },
+  eyeIconText: { fontSize: 11 },
   
   backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
 
