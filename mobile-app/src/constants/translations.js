@@ -155,6 +155,10 @@ export const translations = {
     editUpdateBtn: 'Edit / Update',
     itemRestockedSuccess: 'Item added back to inventory!',
 
+    // Privacy button keys
+    lowestPrice: 'Lowest',
+    holdToView: 'Hold to View',
+
     generateBarcodeTitle: 'Generate Barcode',
     generateBarcodeSubtitle: 'Unlimited Barcode Generation for Active Stores',
     subscriptionStatus: 'Subscription Status',
@@ -431,7 +435,11 @@ export const translations = {
     editUpdateBtn: 'विवरण बदलें',
     itemRestockedSuccess: 'सामान वापस स्टॉक में जोड़ दिया गया है!',
     saveProfileDetailsBtn: 'प्रोफाइल विवरण सेव करें',
-    profileUpdatedSuccess: 'प्रोफाइल सफलतापूर्वक अपडेट हो गई!',   
+    profileUpdatedSuccess: 'प्रोफाइल सफलतापूर्वक अपडेट हो गई!',
+
+    // Privacy button keys
+    lowestPrice: 'न्यूनतम',
+    holdToView: 'दबाकर रखें',
 
     generateBarcodeTitle: 'बारकोड जनरेटर',
     generateBarcodeSubtitle: 'एक्टिव दुकानों के लिए अनलिमिटेड बारकोड प्रिंटिंग',

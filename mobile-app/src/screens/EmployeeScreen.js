@@ -13,7 +13,7 @@ import { useSales } from '../hooks/useSales';
 
 export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
-  const { t } = useContext(LanguageContext);
+  const { t, language } = useContext(LanguageContext);
   const { loading: salesLoading, processCheckout } = useSales();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(false);
@@ -32,10 +32,11 @@ export default function EmployeeScreen({ navigation }) {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-
-  // Lowest price reveal toggle & auto-hide timer ref
   const [showLowestRate, setShowLowestRate] = useState(false);
   const revealTimerRef = useRef(null);
+  const isHindi = language === 'hi';
+  const labelLowest = t('lowestPrice') || (isHindi ? 'न्यूनतम' : 'Lowest');
+  const labelHoldHint = t('holdToView') || (isHindi ? 'दबाकर रखें' : 'Hold to View');
 
   useEffect(() => {
     if (user?.name) {
@@ -43,7 +44,6 @@ export default function EmployeeScreen({ navigation }) {
     }
   }, [user]);
 
-  // Unmount safety cleanup
   useEffect(() => {
     return () => {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
@@ -122,29 +122,24 @@ export default function EmployeeScreen({ navigation }) {
           );
           return;
         }
-
-        // Timer reset and state clean
         if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
         setShowLowestRate(false);
 
         setCurrentScanned(found);
         setPriceMode('manual');
-        setManualPrice(''); // Scan hone par input box blank rahega
+        setManualPrice(''); 
       }
     } catch (err) {
       setLoading(false);
       Alert.alert(t('error'), 'Failed to fetch product details.');
     }
   };
-
-  // Normal tap: price select hogi
   const handlePressLowest = () => {
     if (!currentScanned) return;
     setPriceMode('min');
     setManualPrice(String(currentScanned.lowestRate || currentScanned.price || 0));
   };
 
-  // Press & Hold: 3 second ke liye words reveal honge aur gayab ho jayenge
   const handleLongPressLowest = () => {
     if (!currentScanned) return;
 
@@ -153,7 +148,7 @@ export default function EmployeeScreen({ navigation }) {
 
     revealTimerRef.current = setTimeout(() => {
       setShowLowestRate(false);
-    }, 3000);
+    }, 2000); // 2 Seconds Auto-Hide
   };
 
   const selectHighest = () => {
@@ -403,7 +398,6 @@ export default function EmployeeScreen({ navigation }) {
           ) : null}
 
           <View style={styles.priceOptionRow}>
-            {/* Press & Hold to Reveal Lowest Price */}
             <TouchableOpacity 
               style={[
                 styles.priceOptionBtn, 
@@ -415,23 +409,37 @@ export default function EmployeeScreen({ navigation }) {
               activeOpacity={0.8}
             >
               <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>
-                {showLowestRate ? 'Lowest' : '••••••'}
+                {showLowestRate ? labelLowest : `🔒 ${labelLowest}`}
               </Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive]}>
+              <Text 
+                style={[
+                  styles.priceOptionValue, 
+                  priceMode === 'min' && styles.priceOptionLabelActive,
+                  !showLowestRate && styles.hintText
+                ]}
+              >
                 {showLowestRate 
                   ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` 
-                  : '••••••'}
+                  : labelHoldHint}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} onPress={selectManual}>
-              <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>Manual</Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'manual' && styles.priceOptionLabelActive]}>Enter</Text>
+              <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>
+                {isHindi ? 'कस्टम' : 'Manual'}
+              </Text>
+              <Text style={[styles.priceOptionValue, priceMode === 'manual' && styles.priceOptionLabelActive]}>
+                {isHindi ? 'दर्ज करें' : 'Enter'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} onPress={selectHighest}>
-              <Text style={[styles.priceOptionLabel, priceMode === 'max' && styles.priceOptionLabelActive]}>Highest</Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>₹${currentScanned?.highestRate ?? currentScanned?.price ?? '-'}</Text>
+              <Text style={[styles.priceOptionLabel, priceMode === 'max' && styles.priceOptionLabelActive]}>
+                {isHindi ? 'उच्चतम' : 'Highest'}
+              </Text>
+              <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>
+                ₹{currentScanned?.highestRate ?? currentScanned?.price ?? '-'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -636,12 +644,14 @@ const styles = StyleSheet.create({
   scanBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
+  
   priceOptionRow: { flexDirection: 'row', marginVertical: 10, gap: 8 },
-  priceOptionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
+  priceOptionBtn: { flex: 1, minHeight: 52, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
   priceOptionBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   priceOptionLabel: { fontSize: 12, fontWeight: '600', color: '#94a3b8' },
   priceOptionValue: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginTop: 2 },
   priceOptionLabelActive: { color: '#0f172a' },
+  hintText: { fontSize: 10, color: '#64748b', fontWeight: '600', letterSpacing: 0.2, marginTop: 3 },
   
   backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
 
