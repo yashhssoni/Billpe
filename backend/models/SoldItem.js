@@ -74,6 +74,11 @@ const soldItemSchema = new mongoose.Schema({
   onlineAmount: {
     type: Number,
     default: 0
+  },
+  // Soft delete flag (UI se hide, DB audit mein safe)
+  isArchived: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

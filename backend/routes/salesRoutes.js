@@ -1,11 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { checkout, getSalesHistory, processReturn } = require('../controllers/salesController');
+const { 
+  checkout, 
+  getSalesHistory, 
+  processReturn,
+  archiveSales,
+  exportSalesRange,
+  permanentDeleteRange
+} = require('../controllers/salesController');
 const { protect } = require('../middleware/authMiddleware');
 const { checkSubscriptionAndQuota } = require('../middleware/checkLimit');
 
 router.post('/checkout', protect, checkSubscriptionAndQuota, checkout);
 router.get('/history', protect, getSalesHistory);
 router.post('/return', protect, processReturn);
+
+// History Soft-Delete & Permanent Range Actions
+router.post('/history/archive', protect, archiveSales);
+router.post('/history/export-range', protect, exportSalesRange);
+router.post('/history/permanent-delete-range', protect, permanentDeleteRange);
 
 module.exports = router;

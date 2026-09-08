@@ -69,7 +69,8 @@ exports.checkout = async (req, res, next) => {
         soldByName: finalEmployeeName,
         paymentMode: finalPaymentMode,
         cashAmount: parsedCash,
-        onlineAmount: parsedOnline
+        onlineAmount: parsedOnline,
+        isArchived: false
       });
     }
 
@@ -101,7 +102,11 @@ exports.checkout = async (req, res, next) => {
 
 exports.getSalesHistory = async (req, res, next) => {
   try {
-    const sales = await SoldItem.find({ storeId: req.user.storeId })
+    // Only non-archived items are fetched
+    const sales = await SoldItem.find({ 
+      storeId: req.user.storeId,
+      isArchived: { $ne: true }
+    })
       .populate('soldBy', 'name email')
       .sort({ createdAt: -1 });
     res.json({ success: true, sales });
@@ -153,6 +158,93 @@ exports.processReturn = async (req, res, next) => {
       message: `${qtyToReturn} unit(s) returned to stock successfully.`,
       refundAmount: qtyToReturn * soldRecord.price,
       currentStock: product ? product.stock : null
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Soft Delete (Single Item ID ya Multiple Selected Item IDs)
+exports.archiveSales = async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+    const storeId = req.user.storeId;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: "No items selected to delete." });
+    }
+
+    const result = await SoldItem.updateMany(
+      { _id: { $in: ids }, storeId },
+      { $set: { isArchived: true } }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} item(s) removed from history.`,
+      count: result.modifiedCount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Date Range Backup Data Fetch (PDF / Printable Sheet ke liye)
+exports.exportSalesRange = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.body;
+    const storeId = req.user.storeId;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: "Start date and End date are required." });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const sales = await SoldItem.find({
+      storeId,
+      createdAt: { $gte: start, $lte: end }
+    }).sort({ createdAt: -1 });
+
+    res.json({ success: true, sales, count: sales.length });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Date Range Permanent Delete (Database se permanently clear)
+exports.permanentDeleteRange = async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.body;
+    const storeId = req.user.storeId;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: "Start date and End date are required." });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (start > end) {
+      return res.status(400).json({ success: false, message: "Start date cannot be after End date." });
+    }
+
+    const result = await SoldItem.deleteMany({
+      storeId,
+      createdAt: { $gte: start, $lte: end }
+    });
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} records permanently deleted from database.`,
+      deletedCount: result.deletedCount
     });
   } catch (error) {
     next(error);

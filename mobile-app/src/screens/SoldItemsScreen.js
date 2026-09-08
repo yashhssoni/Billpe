@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { View, Text, TouchableOpacity, SectionList, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { 
+  View, Text, TouchableOpacity, SectionList, Alert, ActivityIndicator, 
+  StyleSheet, Modal, TextInput 
+} from 'react-native';
+import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
 
@@ -8,6 +12,17 @@ export default function SoldItemsScreen({ navigation }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedSplitIds, setExpandedSplitIds] = useState(new Set());
+
+  // Multi-Select States (File Manager Style)
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [archiving, setArchiving] = useState(false);
+
+  // Date Range Modal States
+  const [rangeModalVisible, setRangeModalVisible] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchSalesHistory = async () => {
     try {
@@ -30,13 +45,208 @@ export default function SoldItemsScreen({ navigation }) {
   const toggleSplitExpand = (id) => {
     setExpandedSplitIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
+  };
+
+  const toggleSelectItem = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === sales.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sales.map(s => s._id)));
+    }
+  };
+
+  const exitSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  // Soft Delete (UI se hide, DB mein safe)
+  const executeSoftDelete = async (idsArray) => {
+    if (!idsArray || idsArray.length === 0) return;
+
+    setArchiving(true);
+    try {
+      const { data } = await axiosInstance.post('/sales/history/archive', { ids: idsArray });
+      setArchiving(false);
+
+      if (data.success) {
+        setSales(prev => prev.filter(item => !idsArray.includes(item._id)));
+        exitSelectMode();
+        Alert.alert(t('success'), data.message || 'Records removed from history.');
+      }
+    } catch (err) {
+      setArchiving(false);
+      Alert.alert(t('error'), err.response?.data?.message || 'Failed to remove records.');
+    }
+  };
+
+  const handleSingleDelete = (id, productName) => {
+    Alert.alert(
+      'Remove from History?',
+      `Remove "${productName}" from sales history?`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        { 
+          text: t('delete'), 
+          style: 'destructive',
+          onPress: () => executeSoftDelete([id])
+        }
+      ]
+    );
+  };
+
+  const handleBulkDeleteSelected = () => {
+    if (selectedIds.size === 0) {
+      Alert.alert('No Items Selected', 'Please tap on items to select them first.');
+      return;
+    }
+
+    Alert.alert(
+      'Remove Selected?',
+      `Remove ${selectedIds.size} selected item(s) from history?`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        { 
+          text: `Delete (${selectedIds.size})`, 
+          style: 'destructive',
+          onPress: () => executeSoftDelete(Array.from(selectedIds))
+        }
+      ]
+    );
+  };
+
+  const validateDates = () => {
+    if (!startDate.trim() || !endDate.trim()) {
+      Alert.alert(t('error'), 'Please enter both Start Date and End Date.');
+      return false;
+    }
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate.trim()) || !dateRegex.test(endDate.trim())) {
+      Alert.alert(t('error'), 'Please use YYYY-MM-DD format (e.g. 2026-08-01).');
+      return false;
+    }
+    return true;
+  };
+
+  // Action 1: Sirf File Download/Print (Zero Risk - Kuch Delete Nahi Hoga)
+  const handleDownloadBackup = async () => {
+    if (!validateDates()) return;
+
+    setActionLoading(true);
+    try {
+      const { data: res } = await axiosInstance.post('/sales/history/export-range', {
+        startDate: startDate.trim(),
+        endDate: endDate.trim()
+      });
+      setActionLoading(false);
+
+      if (!res.success || !res.sales || res.sales.length === 0) {
+        Alert.alert('No Records', 'No sales found in this date range.');
+        return;
+      }
+
+      const rows = res.sales.map((item, idx) => `
+        <tr>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
+          <td style="padding: 6px; border: 1px solid #ddd;">${new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
+          <td style="padding: 6px; border: 1px solid #ddd;">${item.invoiceNo}</td>
+          <td style="padding: 6px; border: 1px solid #ddd;">${item.productName}</td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">₹${item.price}</td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: right;"><strong>₹${item.totalAmount}</strong></td>
+          <td style="padding: 6px; border: 1px solid #ddd;">${item.customerName || 'N/A'}</td>
+          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${item.paymentMode}</td>
+        </tr>
+      `).join('');
+
+      const grandTotal = res.sales.reduce((acc, curr) => acc + Number(curr.totalAmount || curr.price || 0), 0);
+
+      const html = `
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 15px; color: #222; }
+              h2 { margin-bottom: 4px; text-align: center; }
+              p { margin: 2px 0; font-size: 13px; text-align: center; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+              th { background-color: #f1f5f9; padding: 8px; border: 1px solid #cbd5e1; text-align: left; }
+            </style>
+          </head>
+          <body>
+            <h2>BILLPE STORE SALES REPORT</h2>
+            <p><strong>Period:</strong> ${startDate.trim()} to ${endDate.trim()}</p>
+            <p><strong>Export Date:</strong> ${new Date().toLocaleString('en-IN')}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Date</th><th>Invoice</th><th>Product</th><th>Qty</th><th>Rate</th><th>Total</th><th>Customer</th><th>Mode</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <div style="margin-top: 15px; text-align: right; font-size: 14px;">
+              <strong>Total Sales: ₹${grandTotal.toFixed(2)}</strong>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await Print.printAsync({ html });
+    } catch (err) {
+      setActionLoading(false);
+      Alert.alert(t('error'), 'Failed to export backup sheet.');
+    }
+  };
+
+  // Action 2: Permanent Delete (Confirmation ke baad seedha clear)
+  const handlePermanentDelete = () => {
+    if (!validateDates()) return;
+
+    Alert.alert(
+      'Permanent Delete?',
+      `Are you sure you want to permanently delete records from ${startDate.trim()} to ${endDate.trim()}? This cannot be undone.`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: 'Delete Permanently',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const { data } = await axiosInstance.post('/sales/history/permanent-delete-range', {
+                startDate: startDate.trim(),
+                endDate: endDate.trim()
+              });
+              setActionLoading(false);
+
+              if (data.success) {
+                Alert.alert(t('success'), data.message || 'Records permanently deleted.');
+                setRangeModalVisible(false);
+                setStartDate('');
+                setEndDate('');
+                fetchSalesHistory();
+              }
+            } catch (err) {
+              setActionLoading(false);
+              Alert.alert(t('error'), err.response?.data?.message || 'Permanent deletion failed.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const groupedSales = useMemo(() => {
@@ -65,11 +275,64 @@ export default function SoldItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>{t('backToDashboard')}</Text>
-      </TouchableOpacity>
+      {/* Top Header Row */}
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>{t('backToDashboard')}</Text>
+        </TouchableOpacity>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {/* File Manager Style Select Toggle */}
+          <TouchableOpacity 
+            style={[styles.selectModeBtn, isSelectMode && styles.selectModeBtnActive]}
+            onPress={() => {
+              if (isSelectMode) exitSelectMode();
+              else setIsSelectMode(true);
+            }}
+          >
+            <Text style={[styles.selectModeBtnText, isSelectMode && styles.selectModeBtnTextActive]}>
+              {isSelectMode ? 'Cancel' : 'Select'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Date Range Clear Modal Trigger */}
+          {!isSelectMode && (
+            <TouchableOpacity 
+              style={styles.clearRangeTrigger}
+              onPress={() => setRangeModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.clearRangeTriggerText}>🧹 Date Range</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       <Text style={styles.title}>{t('soldItemsTitle')}</Text>
       <Text style={styles.subtitle}>{t('totalSalesRecords')} {sales.length}</Text>
+
+      {/* Multi-Select Action Bar (Visible in Select Mode) */}
+      {isSelectMode && (
+        <View style={styles.multiSelectBar}>
+          <TouchableOpacity onPress={handleSelectAll} style={styles.multiSelectActionBtn}>
+            <Text style={styles.multiSelectActionText}>
+              {selectedIds.size === sales.length ? 'Deselect All' : 'Select All'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={handleBulkDeleteSelected} 
+            disabled={archiving || selectedIds.size === 0}
+            style={[styles.multiDeleteBtn, selectedIds.size === 0 && { opacity: 0.5 }]}
+          >
+            {archiving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.multiDeleteText}>🗑️ Delete ({selectedIds.size})</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
@@ -90,34 +353,63 @@ export default function SoldItemsScreen({ navigation }) {
           renderItem={({ item }) => {
             const isSplit = item.paymentMode === 'Split';
             const isExpanded = expandedSplitIds.has(item._id);
+            const isSelected = selectedIds.has(item._id);
 
             return (
-              <View style={styles.itemCard}>
+              <TouchableOpacity 
+                activeOpacity={isSelectMode ? 0.7 : 1}
+                onPress={() => {
+                  if (isSelectMode) toggleSelectItem(item._id);
+                }}
+                style={[
+                  styles.itemCard, 
+                  isSelectMode && isSelected && styles.itemCardSelected
+                ]}
+              >
                 <View style={{ flex: 1 }}>
-                  {/* Header Row: Invoice + Payment Badge */}
+                  {/* Header Row */}
                   <View style={styles.cardHeaderRow}>
-                    <View style={styles.invoiceBadge}>
-                      <Text style={styles.invoiceText}>#{item.invoiceNo || 'N/A'}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
+                      {isSelectMode && (
+                        <View style={[styles.checkbox, isSelected && styles.checkboxActive]}>
+                          {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                        </View>
+                      )}
+
+                      <View style={styles.invoiceBadge}>
+                        <Text style={styles.invoiceText}>#{item.invoiceNo || 'N/A'}</Text>
+                      </View>
+
+                      {isSplit ? (
+                        <TouchableOpacity 
+                          style={[styles.paymentBadge, styles.splitBadge]} 
+                          onPress={() => toggleSplitExpand(item._id)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.splitBadgeText}>
+                            {isExpanded 
+                              ? `💵 ₹${item.cashAmount || 0}  |  📲 ₹${item.onlineAmount || 0}`
+                              : '⚖️ SPLIT (Tap)'}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={[styles.paymentBadge, item.paymentMode === 'Online' ? styles.onlineBadge : styles.cashBadge]}>
+                          <Text style={styles.paymentBadgeText}>
+                            {item.paymentMode === 'Online' ? t('paymentOnline') : t('paymentCash')}
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
-                    {isSplit ? (
+                    {/* Single Delete Button */}
+                    {!isSelectMode && (
                       <TouchableOpacity 
-                        style={[styles.paymentBadge, styles.splitBadge]} 
-                        onPress={() => toggleSplitExpand(item._id)}
+                        style={styles.singleDeleteBtn}
+                        onPress={() => handleSingleDelete(item._id, item.productName)}
                         activeOpacity={0.7}
                       >
-                        <Text style={styles.splitBadgeText}>
-                          {isExpanded 
-                            ? `💵 ₹${item.cashAmount || 0}  |  📲 ₹${item.onlineAmount || 0}`
-                            : '⚖️ SPLIT (Tap)'}
-                        </Text>
+                        <Text style={styles.singleDeleteText}>🗑️</Text>
                       </TouchableOpacity>
-                    ) : (
-                      <View style={[styles.paymentBadge, item.paymentMode === 'Online' ? styles.onlineBadge : styles.cashBadge]}>
-                        <Text style={styles.paymentBadgeText}>
-                          {item.paymentMode === 'Online' ? t('paymentOnline') : t('paymentCash')}
-                        </Text>
-                      </View>
                     )}
                   </View>
 
@@ -155,21 +447,115 @@ export default function SoldItemsScreen({ navigation }) {
                     </Text>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noSalesHistory')}</Text>}
         />
       )}
+
+      {/* Clean Date Range Modal */}
+      <Modal
+        visible={rangeModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setRangeModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📅 Date Range Options</Text>
+              <TouchableOpacity onPress={() => setRangeModalVisible(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD):</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 2026-08-01"
+              placeholderTextColor="#64748b"
+              value={startDate}
+              onChangeText={setStartDate}
+            />
+
+            <Text style={styles.inputLabel}>End Date (YYYY-MM-DD):</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 2026-08-31"
+              placeholderTextColor="#64748b"
+              value={endDate}
+              onChangeText={setEndDate}
+            />
+
+            {actionLoading ? (
+              <ActivityIndicator color="#38bdf8" style={{ marginVertical: 20 }} />
+            ) : (
+              <View style={{ gap: 10, marginTop: 10 }}>
+                {/* Download / Print Backup Sheet Button */}
+                <TouchableOpacity 
+                  style={styles.downloadBtn}
+                  onPress={handleDownloadBackup}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.downloadBtnText}>📥 Download / Print Backup</Text>
+                </TouchableOpacity>
+
+                {/* Permanent Delete Button */}
+                <TouchableOpacity 
+                  style={styles.permanentBtn}
+                  onPress={handlePermanentDelete}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.permanentBtnText}>🗑️ Permanent Delete</Text>
+                </TouchableOpacity>
+
+                {/* Cancel Button */}
+                <TouchableOpacity 
+                  style={styles.cancelBtn}
+                  onPress={() => setRangeModalVisible(false)}
+                >
+                  <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   backText: { color: '#10b981', fontWeight: '600' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
-  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16 },
+  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 12 },
+
+  selectModeBtn: { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8 },
+  selectModeBtnActive: { backgroundColor: '#38bdf8' },
+  selectModeBtnText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
+  selectModeBtnTextActive: { color: '#0f172a' },
+
+  clearRangeTrigger: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 1, borderColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  clearRangeTriggerText: { color: '#ef4444', fontSize: 12, fontWeight: 'bold' },
+
+  multiSelectBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    marginBottom: 12
+  },
+  multiSelectActionBtn: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#0f172a', borderRadius: 8 },
+  multiSelectActionText: { color: '#38bdf8', fontWeight: 'bold', fontSize: 12 },
+  multiDeleteBtn: { backgroundColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 },
+  multiDeleteText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
 
   sectionHeader: {
     backgroundColor: '#0f172a',
@@ -188,7 +574,13 @@ const styles = StyleSheet.create({
   sectionHeaderTotal: { color: '#10b981', fontSize: 14, fontWeight: 'bold' },
 
   itemCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
+  itemCardSelected: { borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.12)' },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: '#94a3b8', justifyContent: 'center', alignItems: 'center' },
+  checkboxActive: { backgroundColor: '#38bdf8', borderColor: '#38bdf8' },
+  checkmark: { color: '#0f172a', fontWeight: 'bold', fontSize: 13 },
+
   invoiceBadge: { backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
   invoiceText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
 
@@ -198,6 +590,9 @@ const styles = StyleSheet.create({
   splitBadge: { backgroundColor: 'rgba(245, 158, 11, 0.2)', borderWidth: 1, borderColor: '#f59e0b' },
   paymentBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#fff' },
   splitBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#f59e0b' },
+
+  singleDeleteBtn: { padding: 4 },
+  singleDeleteText: { fontSize: 15 },
 
   productRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   itemName: { color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 8 },
@@ -212,5 +607,63 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   staffMeta: { color: '#64748b', fontSize: 11 },
   itemDate: { color: '#64748b', fontSize: 11 },
-  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 }
+  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#38bdf8'
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  modalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  modalCloseText: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
+
+  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 4 },
+  modalInput: {
+    backgroundColor: '#0f172a',
+    color: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 12,
+    fontSize: 14
+  },
+  downloadBtn: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  downloadBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  permanentBtn: {
+    backgroundColor: '#ef4444',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  permanentBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  cancelBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
+    marginTop: 2
+  },
+  cancelBtnText: { color: '#94a3b8', fontWeight: 'bold', fontSize: 13 }
 });
