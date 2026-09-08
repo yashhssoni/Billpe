@@ -154,8 +154,8 @@ export const translations = {
     restockBtn: 'Restock',
     editUpdateBtn: 'Edit / Update',
     itemRestockedSuccess: 'Item added back to inventory!',
+    walkInCustomer: 'Walk-in Customer',
 
-    // Billing Rate Selection & Add To Cart Keys
     basePriceLabel: 'Base',
     holdToView: 'Hold to View',
     manualPrice: 'Custom',
@@ -426,7 +426,7 @@ export const translations = {
     pricingInvalidError: 'न्यूनतम रेट अधिकतम रेट से अधिक नहीं हो सकता।',
     scanNextItem: 'अगला आइटम स्कैन करें',
     dashboardBtn: 'डैशबोर्ड',
-    soldOutBadge: '🔒 बिक चुका है (SOLD OUT)',
+    soldOutBadge: '🔒 बिक चुका है',
     inInventoryBadge: '📦 स्टॉक में उपलब्ध',
     soldPriceModalLabel: 'बिका हुआ रेट:',
     customerModalLabel: 'ग्राहक का नाम:',
@@ -440,10 +440,8 @@ export const translations = {
     restockBtn: 'स्टॉक में जोड़ें',
     editUpdateBtn: 'विवरण बदलें',
     itemRestockedSuccess: 'सामान वापस स्टॉक में जोड़ दिया गया है!',
-    saveProfileDetailsBtn: 'प्रोफाइल विवरण सेव करें',
-    profileUpdatedSuccess: 'प्रोफाइल सफलतापूर्वक अपडेट हो गई!',
+    walkInCustomer: 'वॉक-इन ग्राहक',
 
-    // Billing Rate Selection & Add To Cart Keys
     basePriceLabel: 'Base',
     holdToView: 'दबाकर रखें',
     manualPrice: 'कस्टम',
