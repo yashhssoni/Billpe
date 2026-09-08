@@ -33,7 +33,7 @@ export default function ManageDatabase({ navigation }) {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data } = await axiosInstance.get('/products');
+      const { data } = await axiosInstance.get('/products?includeSold=true');
       if (data.success) setProducts(data.products || []);
     } catch (err) {
       console.log('Error fetching products', err);
@@ -65,6 +65,7 @@ export default function ManageDatabase({ navigation }) {
     setEditingProduct({
       id: item._id,
       productName: item.productName || '',
+      stock: String(item.stock ?? 1),
       category: item.category || '',
       kg: item.weightKg !== undefined && item.weightKg !== null ? String(item.weightKg) : '',
       grams: item.weightGrams !== undefined && item.weightGrams !== null ? String(item.weightGrams) : '',
@@ -108,9 +109,11 @@ export default function ManageDatabase({ navigation }) {
       const weightKgVal = Number(editingProduct.kg) || 0;
       const weightGramsVal = Number(editingProduct.grams) || 0;
       const totalWeightKg = weightKgVal + (weightGramsVal / 1000);
+      const stockVal = Math.max(0, parseInt(editingProduct.stock, 10) || 0);
 
       const payload = {
         productName: editingProduct.productName.trim(),
+        stock: stockVal,
         category: editingProduct.category.trim() || 'General',
         price: Number(editingProduct.lowestRate),
         lowestRate: Number(editingProduct.lowestRate),
@@ -193,7 +196,15 @@ export default function ManageDatabase({ navigation }) {
               )}
 
               <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                <Text style={styles.itemName} numberOfLines={1}>{item.productName}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.itemName} numberOfLines={1}>{item.productName}</Text>
+                  <View style={[styles.stockTag, item.stock <= 0 && styles.outOfStockTag]}>
+                    <Text style={[styles.stockTagText, item.stock <= 0 && styles.outOfStockText]}>
+                      {item.stock > 0 ? `${item.stock} in stock` : 'Sold Out'}
+                    </Text>
+                  </View>
+                </View>
+
                 <Text style={styles.itemDetails}>₹{item.lowestRate || item.price} {item.highestRate ? `- ₹${item.highestRate}` : ''}</Text>
                 <Text style={styles.itemCategory}>Cat: {item.category || 'General'}</Text>
                 
@@ -220,6 +231,7 @@ export default function ManageDatabase({ navigation }) {
         />
       )}
 
+      {/* Filter Category Modal */}
       <Modal
         visible={filterDropdownVisible}
         transparent={true}
@@ -264,6 +276,7 @@ export default function ManageDatabase({ navigation }) {
         </View>
       </Modal>
 
+      {/* Edit Product Modal */}
       {editingProduct && (
         <Modal visible={modalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
@@ -272,6 +285,16 @@ export default function ManageDatabase({ navigation }) {
 
               <Text style={styles.label}>{t('productNameReqLabel')}</Text>
               <TextInput style={styles.input} value={editingProduct.productName} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, productName: tVal })} placeholderTextColor="#64748b" />
+
+              {/* Editable Stock / Quantity */}
+              <Text style={styles.label}>Stock / Quantity Units *</Text>
+              <TextInput 
+                style={styles.input} 
+                keyboardType="numeric" 
+                value={editingProduct.stock} 
+                onChangeText={(tVal) => setEditingProduct({ ...editingProduct, stock: tVal })} 
+                placeholderTextColor="#64748b" 
+              />
 
               <Text style={styles.label}>{t('categoryTypeLabel')}</Text>
               <TouchableOpacity 
@@ -330,6 +353,7 @@ export default function ManageDatabase({ navigation }) {
         </Modal>
       )}
 
+      {/* Edit Category Selection Dropdown Modal */}
       <Modal
         visible={editCategoryDropdownVisible}
         transparent={true}
@@ -401,7 +425,12 @@ const styles = StyleSheet.create({
   itemCard: { backgroundColor: '#1e293b', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 12, flexDirection: 'row', alignItems: 'center' },
   thumb: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#334155' },
   noThumb: { justifyContent: 'center', alignItems: 'center' },
-  itemName: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 2 },
+  itemName: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 2, flex: 1 },
+  stockTag: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, marginLeft: 6 },
+  stockTagText: { color: '#10b981', fontSize: 10, fontWeight: 'bold' },
+  outOfStockTag: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444' },
+  outOfStockText: { color: '#ef4444' },
+
   itemDetails: { color: '#10b981', fontWeight: '600', fontSize: 13, marginBottom: 1 },
   itemCategory: { color: '#cbd5e1', fontSize: 12, marginBottom: 1 },
   itemExtraInfo: { color: '#94a3b8', fontSize: 11, marginBottom: 1 },
@@ -413,7 +442,7 @@ const styles = StyleSheet.create({
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20, paddingTop: 40 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20, paddingTop: 40 },
   modalContent: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
   label: { color: '#cbd5e1', fontWeight: '600', fontSize: 13, marginBottom: 5 },

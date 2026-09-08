@@ -9,7 +9,10 @@ export default function BarcodeGenerator({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
   const [fetchingQuota, setFetchingQuota] = useState(true);
-  const [countInput, setCountInput] = useState('44'); 
+  const [mode, setMode] = useState('unique'); // 'unique' or 'copies'
+  const [countInput, setCountInput] = useState('44');
+  const [copiesInput, setCopiesInput] = useState('24');
+  const [customBarcode, setCustomBarcode] = useState('');
   const [subActive, setSubActive] = useState(false);
 
   const fetchStatus = async () => {
@@ -121,15 +124,27 @@ export default function BarcodeGenerator({ navigation }) {
       return;
     }
 
-    const requestedCount = parseInt(countInput, 10);
-    if (isNaN(requestedCount) || requestedCount <= 0 || requestedCount > 500) {
-      Alert.alert(t('error'), t('invalidCountError'));
-      return;
+    let ids = [];
+
+    if (mode === 'unique') {
+      const requestedCount = parseInt(countInput, 10);
+      if (isNaN(requestedCount) || requestedCount <= 0 || requestedCount > 500) {
+        Alert.alert(t('error'), t('invalidCountError'));
+        return;
+      }
+      ids = generateUniqueIds(requestedCount);
+    } else {
+      const requestedCopies = parseInt(copiesInput, 10);
+      if (isNaN(requestedCopies) || requestedCopies <= 0 || requestedCopies > 500) {
+        Alert.alert(t('error'), 'Please enter a valid number of copies (1 - 500).');
+        return;
+      }
+      const singleCode = customBarcode.trim() || generateUniqueIds(1)[0];
+      ids = Array(requestedCopies).fill(singleCode);
     }
 
     setLoading(true);
     try {
-      const ids = generateUniqueIds(requestedCount);
       const boxesHtml = ids.map((id) => `<div class="box">${generateBarcodeSVG(id)}</div>`).join('');
 
       const html = `<html>
@@ -180,16 +195,60 @@ export default function BarcodeGenerator({ navigation }) {
             )}
           </View>
 
+          {/* Mode Switcher */}
+          <View style={styles.modeToggleRow}>
+            <TouchableOpacity 
+              style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
+              onPress={() => setMode('unique')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>Unique Barcodes</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.modeBtn, mode === 'copies' && styles.modeBtnActive]} 
+              onPress={() => setMode('copies')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.modeBtnText, mode === 'copies' && styles.modeBtnTextActive]}>Same Barcode Copies</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.card}>
-            <Text style={styles.label}>{t('numberOfBarcodesLabel')}</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={countInput}
-              onChangeText={setCountInput}
-              placeholder={t('enterQuantityPlaceholder')}
-              placeholderTextColor="#64748b"
-            />
+            {mode === 'unique' ? (
+              <>
+                <Text style={styles.label}>{t('numberOfBarcodesLabel')}</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={countInput}
+                  onChangeText={setCountInput}
+                  placeholder={t('enterQuantityPlaceholder')}
+                  placeholderTextColor="#64748b"
+                />
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Barcode ID (Leave blank to generate fresh):</Text>
+                <TextInput
+                  style={styles.input}
+                  value={customBarcode}
+                  onChangeText={setCustomBarcode}
+                  placeholder="e.g. 89012345 (Optional)"
+                  placeholderTextColor="#64748b"
+                />
+
+                <Text style={styles.label}>Number of Sticker Copies (Max 500):</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={copiesInput}
+                  onChangeText={setCopiesInput}
+                  placeholder="e.g. 50"
+                  placeholderTextColor="#64748b"
+                />
+              </>
+            )}
 
             <TouchableOpacity onPress={handleGeneratePrint} disabled={loading || !subActive} style={[styles.btn, !subActive && { backgroundColor: '#475569' }]}>
               {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('printBarcodeStickersBtn')}</Text>}
@@ -207,13 +266,20 @@ const styles = StyleSheet.create({
   centerWrapper: { width: '100%', maxWidth: 400, alignItems: 'center' },
   backText: { color: '#10b981', fontWeight: '600' },
   title: { fontSize: 26, fontWeight: 'bold', color: '#fff', marginBottom: 6, textAlign: 'center' },
-  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 20, textAlign: 'center', paddingHorizontal: 10 },
+  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16, textAlign: 'center', paddingHorizontal: 10 },
   quotaCard: { width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)', padding: 16, borderRadius: 16, alignItems: 'center', marginBottom: 16 },
   quotaTitle: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 },
   quotaCount: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
+  
+  modeToggleRow: { flexDirection: 'row', width: '100%', gap: 8, marginBottom: 14 },
+  modeBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', backgroundColor: '#1e293b', alignItems: 'center' },
+  modeBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
+  modeBtnText: { color: '#94a3b8', fontSize: 13, fontWeight: 'bold' },
+  modeBtnTextActive: { color: '#0f172a' },
+
   card: { width: '100%', backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
-  label: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 14, marginBottom: 8 },
-  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 16, marginBottom: 16 },
+  label: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 13, marginBottom: 8 },
+  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 15, marginBottom: 14 },
   btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 }
 });

@@ -15,9 +15,33 @@ const soldItemSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+  barcode: {
+    type: String,
+    required: true
+  },
+  invoiceNo: {
+    type: String,
+    required: true,
+    index: true
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    default: 1,
+    min: 1
+  },
+  returnedQuantity: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   price: { 
     type: Number, 
     required: true 
+  },
+  totalAmount: {
+    type: Number,
+    required: true
   },
   customerName: { 
     type: String, 
@@ -26,6 +50,10 @@ const soldItemSchema = new mongoose.Schema({
   customerPhone: { 
     type: String, 
     default: 'N/A' 
+  },
+  customerAddress: {
+    type: String,
+    default: 'N/A'
   },
   soldBy: { 
     type: mongoose.Schema.Types.ObjectId, 

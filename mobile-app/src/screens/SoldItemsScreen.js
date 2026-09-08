@@ -44,7 +44,7 @@ export default function SoldItemsScreen({ navigation }) {
       }
 
       groups[dateKey].data.push(item);
-      groups[dateKey].totalAmount += Number(item.price) || 0;
+      groups[dateKey].totalAmount += Number(item.totalAmount || item.price) || 0;
     });
 
     return Object.values(groups);
@@ -69,7 +69,7 @@ export default function SoldItemsScreen({ navigation }) {
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
                 <Text style={styles.sectionHeaderDate}>📅 {title}</Text>
-                <Text style={styles.sectionHeaderCount}>({data.length} items)</Text>
+                <Text style={styles.sectionHeaderCount}>({data.length} records)</Text>
               </View>
               <Text style={styles.sectionHeaderTotal}>₹{totalAmount.toFixed(2)}</Text>
             </View>
@@ -77,8 +77,11 @@ export default function SoldItemsScreen({ navigation }) {
           renderItem={({ item }) => (
             <View style={styles.itemCard}>
               <View style={{ flex: 1 }}>
+                {/* Header Row: Invoice + Pay Mode */}
                 <View style={styles.cardHeaderRow}>
-                  <Text style={styles.itemName}>{item.productName}</Text>
+                  <View style={styles.invoiceBadge}>
+                    <Text style={styles.invoiceText}>#{item.invoiceNo || 'N/A'}</Text>
+                  </View>
                   <View style={[styles.paymentBadge, item.paymentMode === 'Online' ? styles.onlineBadge : styles.cashBadge]}>
                     <Text style={styles.paymentBadgeText}>
                       {item.paymentMode === 'Online' ? t('paymentOnline') : t('paymentCash')}
@@ -86,21 +89,39 @@ export default function SoldItemsScreen({ navigation }) {
                   </View>
                 </View>
 
-                <Text style={styles.itemTotal}>Sold Price: ₹{item.price}</Text>
+                {/* Product & Qty */}
+                <View style={styles.productRow}>
+                  <Text style={styles.itemName}>{item.productName}</Text>
+                  <Text style={styles.itemTotal}>₹{(item.totalAmount || (item.price * (item.quantity || 1))).toFixed(2)}</Text>
+                </View>
 
-                <Text style={styles.itemMeta}>
-                  {t('billedByLabel')} <Text style={styles.metaHighlight}>{item.soldByName || item.soldBy?.name || 'Staff'}</Text>
+                <Text style={styles.itemSubDetail}>
+                  Rate: ₹{item.price} × {item.quantity || 1} pcs
+                  {item.returnedQuantity > 0 ? (
+                    <Text style={{ color: '#f59e0b', fontWeight: 'bold' }}> ({item.returnedQuantity} Returned)</Text>
+                  ) : null}
                 </Text>
 
-                {item.customerName && item.customerName !== 'N/A' && (
+                {/* Customer Details Box */}
+                <View style={styles.customerBox}>
                   <Text style={styles.itemMeta}>
-                    {t('customerHistoryLabel')} {item.customerName} {item.customerPhone !== 'N/A' ? `(${item.customerPhone})` : ''}
+                    {t('customerHistoryLabel')} <Text style={styles.metaHighlight}>{item.customerName || 'Walk-in Customer'}</Text>
+                    {item.customerPhone && item.customerPhone !== 'N/A' ? ` • 📞 ${item.customerPhone}` : ''}
                   </Text>
-                )}
+                  {item.customerAddress && item.customerAddress !== 'N/A' ? (
+                    <Text style={styles.addressMeta}>📍 {item.customerAddress}</Text>
+                  ) : null}
+                </View>
 
-                <Text style={styles.itemDate}>
-                  🕒 {new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
+                {/* Footer Staff & Time */}
+                <View style={styles.footerRow}>
+                  <Text style={styles.staffMeta}>
+                    {t('billedByLabel')} {item.soldByName || item.soldBy?.name || 'Staff'}
+                  </Text>
+                  <Text style={styles.itemDate}>
+                    🕒 {new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
               </View>
             </View>
           )}
@@ -133,16 +154,28 @@ const styles = StyleSheet.create({
   sectionHeaderCount: { color: '#64748b', fontSize: 12, fontWeight: '600' },
   sectionHeaderTotal: { color: '#10b981', fontSize: 14, fontWeight: 'bold' },
 
-  itemCard: { backgroundColor: '#1e293b', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  itemName: { color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 8 },
+  itemCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  invoiceBadge: { backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
+  invoiceText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
+
   paymentBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   cashBadge: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderWidth: 1, borderColor: '#10b981' },
   onlineBadge: { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 1, borderColor: '#3b82f6' },
   paymentBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#fff' },
-  itemTotal: { color: '#10b981', fontWeight: 'bold', fontSize: 15, marginBottom: 6 },
-  itemMeta: { color: '#cbd5e1', fontSize: 13, marginBottom: 3 },
-  metaHighlight: { color: '#38bdf8', fontWeight: 'bold' },
-  itemDate: { color: '#64748b', fontSize: 11, marginTop: 4 },
+
+  productRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  itemName: { color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 8 },
+  itemTotal: { color: '#10b981', fontWeight: 'bold', fontSize: 16 },
+  itemSubDetail: { color: '#94a3b8', fontSize: 12, marginBottom: 8 },
+
+  customerBox: { backgroundColor: '#0f172a', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 6 },
+  itemMeta: { color: '#cbd5e1', fontSize: 12 },
+  metaHighlight: { color: '#fff', fontWeight: 'bold' },
+  addressMeta: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
+
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  staffMeta: { color: '#64748b', fontSize: 11 },
+  itemDate: { color: '#64748b', fontSize: 11 },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 }
 });

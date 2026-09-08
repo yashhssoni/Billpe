@@ -14,11 +14,12 @@ import { useSales } from '../hooks/useSales';
 export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
   const { t } = useContext(LanguageContext);
-  const { loading: salesLoading, processCheckout } = useSales();
+  const { loading: salesLoading, processCheckout, processReturn } = useSales();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(false);
   const [cart, setCart] = useState([]);
   const [currentScanned, setCurrentScanned] = useState(null);
+  const [selectedQty, setSelectedQty] = useState('1');
   const [manualPrice, setManualPrice] = useState('');
   const [priceMode, setPriceMode] = useState('manual');
   const [loading, setLoading] = useState(false);
@@ -29,9 +30,16 @@ export default function EmployeeScreen({ navigation }) {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
+  const [editQty, setEditQty] = useState('1');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+
+  // Return Modal State
+  const [returnModalVisible, setReturnModalVisible] = useState(false);
+  const [returnItemData, setReturnItemData] = useState(null);
+  const [returnQtyInput, setReturnQtyInput] = useState('1');
+  const [returning, setReturning] = useState(false);
 
   // Lowest price reveal toggle & auto-hide timer ref
   const [showLowestRate, setShowLowestRate] = useState(false);
@@ -43,7 +51,6 @@ export default function EmployeeScreen({ navigation }) {
     }
   }, [user]);
 
-  // Unmount safety cleanup
   useEffect(() => {
     return () => {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
@@ -85,51 +92,50 @@ export default function EmployeeScreen({ navigation }) {
           return;
         }
 
-        const alreadyInCart = cart.some(cartItem => cartItem.barcode === data || cartItem._id === found._id);
-        if (alreadyInCart) {
-          Alert.alert(t('error'), `${found.productName} is already added in cart.`);
+        // Return flow trigger: Item sold out or customer returning past sale
+        if (found.stock <= 0 || found.sold === true) {
+          // Fetch latest sold record for this barcode to verify customer limit
+          try {
+            const { data: saleRes } = await axiosInstance.get('/sales/history');
+            const pastSale = (saleRes.sales || []).find(s => s.barcode === data || (s.productId && s.productId._id === found._id));
+
+            setReturnItemData({
+              product: found,
+              pastSale: pastSale || null,
+              soldQty: pastSale ? (pastSale.quantity - (pastSale.returnedQuantity || 0)) : 1,
+              barcode: data
+            });
+            setReturnQtyInput('1');
+            setReturnModalVisible(true);
+          } catch (e) {
+            setReturnItemData({
+              product: found,
+              pastSale: null,
+              soldQty: 1,
+              barcode: data
+            });
+            setReturnQtyInput('1');
+            setReturnModalVisible(true);
+          }
           return;
         }
 
-        if (found.sold === true || found.stock <= 0) {
-          Alert.alert(
-            '⚠️ ' + t('soldOutBadge'),
-            `Product Name: ${found.productName}\n` +
-            `Sold Price: ₹${found.soldPrice || found.price}\n` +
-            `Sold To: ${found.soldCustomerName || 'N/A'}\n` +
-            `Mobile: ${found.soldCustomerPhone || 'N/A'}\n\n` +
-            `${t('restockPrompt')}`,
-            [
-              { text: t('cancel'), style: 'cancel' },
-              {
-                text: t('restockBtn'),
-                onPress: async () => {
-                  try {
-                    await axiosInstance.put(`/products/${found._id}`, { 
-                      stock: 1, 
-                      sold: false, 
-                      soldPrice: null,
-                      soldCustomerName: '',
-                      soldCustomerPhone: ''
-                    });
-                    Alert.alert(t('success'), t('itemRestockedSuccess'));
-                  } catch (e) {
-                    Alert.alert(t('error'), 'Stock update failed.');
-                  }
-                }
-              }
-            ]
-          );
+        const existingCartItem = cart.find(c => c.productId === found._id || c.barcode === data);
+        const currentCartQty = existingCartItem ? existingCartItem.quantity : 0;
+        const availableStock = found.stock - currentCartQty;
+
+        if (availableStock <= 0) {
+          Alert.alert(t('error'), `All available units (${found.stock}) are already in your cart.`);
           return;
         }
 
-        // Timer reset and state clean
         if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
         setShowLowestRate(false);
 
         setCurrentScanned(found);
+        setSelectedQty('1');
         setPriceMode('manual');
-        setManualPrice(''); // Scan hone par input box blank rahega
+        setManualPrice('');
       }
     } catch (err) {
       setLoading(false);
@@ -137,23 +143,50 @@ export default function EmployeeScreen({ navigation }) {
     }
   };
 
-  // Normal tap: price select hogi
+  const handleConfirmReturn = async () => {
+    if (!returnItemData) return;
+    const qty = Number(returnQtyInput);
+
+    if (isNaN(qty) || qty <= 0) {
+      Alert.alert(t('error'), 'Please enter a valid return quantity.');
+      return;
+    }
+
+    if (qty > returnItemData.soldQty) {
+      Alert.alert(t('error'), `Cannot return more than ${returnItemData.soldQty} units.`);
+      return;
+    }
+
+    setReturning(true);
+    const res = await processReturn(
+      returnItemData.barcode,
+      qty,
+      returnItemData.pastSale?.invoiceNo
+    );
+    setReturning(false);
+
+    if (res.success) {
+      Alert.alert(t('success'), `${res.message}\nRefund Amount: ₹${res.refundAmount}`);
+      setReturnModalVisible(false);
+      setReturnItemData(null);
+    } else {
+      Alert.alert(t('error'), res.message || 'Failed to process return.');
+    }
+  };
+
   const handlePressLowest = () => {
     if (!currentScanned) return;
     setPriceMode('min');
     setManualPrice(String(currentScanned.lowestRate || currentScanned.price || 0));
   };
 
-  // Press & Hold: 2 second ke liye words reveal honge aur gayab ho jayenge
   const handleLongPressLowest = () => {
     if (!currentScanned) return;
-
     if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
     setShowLowestRate(true);
-
     revealTimerRef.current = setTimeout(() => {
       setShowLowestRate(false);
-    }, 2000); // 2 Seconds Auto-Hide
+    }, 2000);
   };
 
   const selectHighest = () => {
@@ -180,19 +213,45 @@ export default function EmployeeScreen({ navigation }) {
       return;
     }
 
-    const newItem = {
-      ...currentScanned,
-      productId: currentScanned._id,
-      agreedPrice: enteredPrice,
-      price: enteredPrice,
-      cartKey: Date.now().toString() + Math.random().toString(36).slice(2)
-    };
+    const qtyToAdd = parseInt(selectedQty, 10);
+    if (isNaN(qtyToAdd) || qtyToAdd <= 0) {
+      Alert.alert(t('error'), 'Please enter a valid quantity.');
+      return;
+    }
 
-    setCart([...cart, newItem]);
+    const existingIndex = cart.findIndex(item => item.productId === currentScanned._id || item.barcode === currentScanned.barcode);
+    const currentInCart = existingIndex > -1 ? cart[existingIndex].quantity : 0;
+    const totalDesired = currentInCart + qtyToAdd;
+
+    if (totalDesired > currentScanned.stock) {
+      Alert.alert(t('error'), `Only ${currentScanned.stock} units available in stock. You already have ${currentInCart} in cart.`);
+      return;
+    }
+
+    if (existingIndex > -1) {
+      // Single-Row Cart Aggregation
+      const updatedCart = [...cart];
+      updatedCart[existingIndex].quantity = totalDesired;
+      updatedCart[existingIndex].agreedPrice = enteredPrice;
+      updatedCart[existingIndex].price = enteredPrice;
+      setCart(updatedCart);
+    } else {
+      const newItem = {
+        ...currentScanned,
+        productId: currentScanned._id,
+        quantity: qtyToAdd,
+        agreedPrice: enteredPrice,
+        price: enteredPrice,
+        cartKey: Date.now().toString() + Math.random().toString(36).slice(2)
+      };
+      setCart([...cart, newItem]);
+    }
+
     if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
     setCurrentScanned(null);
     setShowLowestRate(false);
     setManualPrice('');
+    setSelectedQty('1');
     setPriceMode('manual');
   };
 
@@ -203,6 +262,7 @@ export default function EmployeeScreen({ navigation }) {
   const handleOpenEditCartItem = (item) => {
     setEditingCartItem(item);
     setEditPrice(String(item.agreedPrice));
+    setEditQty(String(item.quantity));
     setEditModalVisible(true);
   };
 
@@ -220,9 +280,20 @@ export default function EmployeeScreen({ navigation }) {
       return;
     }
 
+    const newQuantity = parseInt(editQty, 10);
+    if (isNaN(newQuantity) || newQuantity <= 0) {
+      Alert.alert(t('error'), 'Quantity must be at least 1.');
+      return;
+    }
+
+    if (newQuantity > editingCartItem.stock) {
+      Alert.alert(t('error'), `Only ${editingCartItem.stock} units available in stock.`);
+      return;
+    }
+
     setCart(cart.map(item => {
       if (item.cartKey === editingCartItem.cartKey) {
-        return { ...item, agreedPrice: newPrice, price: newPrice };
+        return { ...item, agreedPrice: newPrice, price: newPrice, quantity: newQuantity };
       }
       return item;
     }));
@@ -237,7 +308,8 @@ export default function EmployeeScreen({ navigation }) {
       return;
     }
 
-    let totalAmount = cart.reduce((sum, item) => sum + item.agreedPrice, 0);
+    const invoiceNo = `BP-${Date.now().toString().slice(-6)}`;
+    let totalAmount = cart.reduce((sum, item) => sum + (item.agreedPrice * item.quantity), 0);
 
     const result = await processCheckout(
       cart, 
@@ -245,14 +317,14 @@ export default function EmployeeScreen({ navigation }) {
       paymentMode, 
       customerName, 
       customerPhone, 
-      employeeName
+      employeeName,
+      customerAddress,
+      invoiceNo
     );
     
     if (result.success) {
       if (shouldPrint) {
-        const invoiceNo = `BP-${Date.now().toString().slice(-6)}`;
         const now = new Date();
-        
         let hours = now.getHours();
         const minutes = now.getMinutes().toString().padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -264,9 +336,9 @@ export default function EmployeeScreen({ navigation }) {
           <tr>
             <td style="padding: 6px 0; border-bottom: 1px dotted #ccc; text-align: left; font-size: 13px;">
               <strong>${item.productName}</strong><br>
-              <span style="color: #555; font-size: 11px;">Color: ${item.color || 'N/A'} | Wt: ${item.weightKg || 0}kg ${item.weightGrams || 0}g</span>
+              <span style="color: #555; font-size: 11px;">Qty: ${item.quantity} x ₹${item.agreedPrice}</span>
             </td>
-            <td style="text-align: right; border-bottom: 1px dotted #ccc; font-size: 13px; vertical-align: top;">₹${item.agreedPrice.toFixed(2)}</td>
+            <td style="text-align: right; border-bottom: 1px dotted #ccc; font-size: 13px; vertical-align: top;">₹${(item.agreedPrice * item.quantity).toFixed(2)}</td>
           </tr>
         `).join('');
 
@@ -329,7 +401,7 @@ export default function EmployeeScreen({ navigation }) {
 
       Alert.alert(
         'Success ✅', 
-        shouldPrint ? 'Bill generated & item marked as sold!' : 'Item marked as sold successfully!'
+        `Invoice: #${invoiceNo}\n${shouldPrint ? 'Bill printed & sold successfully!' : 'Sale saved successfully!'}`
       );
       setCart([]);
       setCustomerName('');
@@ -357,7 +429,7 @@ export default function EmployeeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Header with Switcher + Logout */}
+      {/* Top Bar */}
       <View style={styles.topBar}>
         <Text style={styles.header}>Employee Portal</Text>
         <View style={styles.headerActions}>
@@ -382,34 +454,16 @@ export default function EmployeeScreen({ navigation }) {
               <Text style={styles.productTitle}>{currentScanned?.productName}</Text>
               <Text style={styles.subText}>{t('categoryModalLabel')} {currentScanned?.category || 'General'}</Text>
             </View>
-          </View>
-
-          <View style={styles.metaBadgeContainer}>
-            <View style={styles.metaBadge}>
-              <Text style={styles.metaLabel}>{t('colorInfoLabel')}</Text>
-              <Text style={styles.metaVal}>{currentScanned?.color || 'N/A'}</Text>
-            </View>
-            <View style={styles.metaBadge}>
-              <Text style={styles.metaLabel}>{t('weightLabel')}</Text>
-              <Text style={styles.metaVal}>{currentScanned?.weightKg || 0}kg {currentScanned?.weightGrams || 0}g</Text>
+            {/* Realtime Stock Badge */}
+            <View style={styles.stockBadge}>
+              <Text style={styles.stockBadgeText}>In Stock: {currentScanned?.stock || 0}</Text>
             </View>
           </View>
-
-          {currentScanned?.description ? (
-            <Text style={styles.descText} numberOfLines={2}>
-              <Text style={{fontWeight: 'bold', color: '#cbd5e1'}}>{t('infoLabel')} </Text>
-              {currentScanned.description}
-            </Text>
-          ) : null}
 
           {/* Pricing Row: 🔒 Base | Custom | Store MRP */}
           <View style={styles.priceOptionRow}>
-            {/* 1. Base Price (Secret / Hold-to-View) */}
             <TouchableOpacity 
-              style={[
-                styles.priceOptionBtn, 
-                priceMode === 'min' && styles.priceOptionBtnActive
-              ]} 
+              style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} 
               onPress={handlePressLowest}
               onLongPress={handleLongPressLowest}
               delayLongPress={350}
@@ -418,20 +472,11 @@ export default function EmployeeScreen({ navigation }) {
               <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>
                 {showLowestRate ? t('basePriceLabel') : `🔒 ${t('basePriceLabel')}`}
               </Text>
-              <Text 
-                style={[
-                  styles.priceOptionValue, 
-                  priceMode === 'min' && styles.priceOptionLabelActive,
-                  !showLowestRate && styles.hintText
-                ]}
-              >
-                {showLowestRate 
-                  ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` 
-                  : t('holdToView')}
+              <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive, !showLowestRate && styles.hintText]}>
+                {showLowestRate ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` : t('holdToView')}
               </Text>
             </TouchableOpacity>
 
-            {/* 2. Custom (Bargained Price Input) */}
             <TouchableOpacity 
               style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} 
               onPress={selectManual}
@@ -444,7 +489,6 @@ export default function EmployeeScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
 
-            {/* 3. Store MRP (Customer Authentic Proof) */}
             <TouchableOpacity 
               style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} 
               onPress={selectHighest}
@@ -467,6 +511,31 @@ export default function EmployeeScreen({ navigation }) {
             onChangeText={(tVal) => { setManualPrice(tVal); setPriceMode('manual'); }} 
             keyboardType="numeric" 
           />
+
+          {/* Quantity Selector Input */}
+          <Text style={[styles.label, { marginTop: 8 }]}>Quantity (Max: {currentScanned?.stock})</Text>
+          <View style={styles.qtyRow}>
+            <TouchableOpacity 
+              style={styles.qtyBtn}
+              onPress={() => setSelectedQty(String(Math.max(1, (parseInt(selectedQty, 10) || 1) - 1)))}
+            >
+              <Text style={styles.qtyBtnText}>-</Text>
+            </TouchableOpacity>
+
+            <TextInput 
+              style={[styles.input, styles.qtyInput]} 
+              value={selectedQty}
+              onChangeText={setSelectedQty}
+              keyboardType="numeric"
+            />
+
+            <TouchableOpacity 
+              style={styles.qtyBtn}
+              onPress={() => setSelectedQty(String(Math.min(currentScanned?.stock || 1, (parseInt(selectedQty, 10) || 1) + 1)))}
+            >
+              <Text style={styles.qtyBtnText}>+</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={{ marginVertical: 10 }}>
             <Button title={t('addToCartBtn')} onPress={handleAddToCart} color="#10b981" />
@@ -526,7 +595,7 @@ export default function EmployeeScreen({ navigation }) {
             <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
           </View>
 
-          <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
+          <Text style={styles.subHeader}>Current Cart ({cart.length} unique items)</Text>
           
           <View style={styles.list}>
             {cart.length === 0 ? (
@@ -538,9 +607,13 @@ export default function EmployeeScreen({ navigation }) {
                 <View key={item.cartKey} style={styles.cartItem}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#fff' }}>{item.productName}</Text>
-                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>₹{item.agreedPrice} {item.color ? `| ${item.color}` : ''}</Text>
+                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                      ₹{item.agreedPrice} × {item.quantity} pcs
+                    </Text>
                   </View>
-                  <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>₹{item.agreedPrice}</Text>
+                  <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>
+                    ₹{(item.agreedPrice * item.quantity).toFixed(2)}
+                  </Text>
                   
                   <TouchableOpacity style={styles.editBtn} onPress={() => handleOpenEditCartItem(item)}>
                     <Text style={styles.editText}>{t('edit')}</Text>
@@ -562,7 +635,7 @@ export default function EmployeeScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.doneBtnText}>
-                  ✓ Done (₹{cart.reduce((sum, item) => sum + item.agreedPrice, 0)})
+                  ✓ Done (₹{cart.reduce((sum, item) => sum + (item.agreedPrice * item.quantity), 0)})
                 </Text>
               </TouchableOpacity>
 
@@ -578,6 +651,70 @@ export default function EmployeeScreen({ navigation }) {
         </ScrollView>
       )}
 
+      {/* Customer-Linked Anti-Fraud Return Modal */}
+      {returnItemData && (
+        <Modal visible={returnModalVisible} transparent={true} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.returnModalCard}>
+              <Text style={styles.returnModalTitle}>🔄 Return to Inventory</Text>
+              <Text style={styles.returnItemName}>{returnItemData.product?.productName}</Text>
+
+              <View style={styles.returnMetaBox}>
+                <Text style={styles.returnMetaText}>
+                  👤 Customer: <Text style={{ color: '#fff', fontWeight: 'bold' }}>{returnItemData.pastSale?.customerName || returnItemData.product?.soldCustomerName || 'Walk-in'}</Text>
+                </Text>
+                <Text style={styles.returnMetaText}>
+                  📞 Phone: <Text style={{ color: '#fff', fontWeight: 'bold' }}>{returnItemData.pastSale?.customerPhone || returnItemData.product?.soldCustomerPhone || 'N/A'}</Text>
+                </Text>
+                <Text style={styles.returnMetaText}>
+                  🏷️ Invoice: <Text style={{ color: '#38bdf8', fontWeight: 'bold' }}>#{returnItemData.pastSale?.invoiceNo || returnItemData.product?.lastInvoiceNo || 'N/A'}</Text>
+                </Text>
+                <Text style={styles.returnMetaText}>
+                  📦 Available to Return: <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{returnItemData.soldQty} Unit(s)</Text>
+                </Text>
+              </View>
+
+              {returnItemData.soldQty > 1 ? (
+                <>
+                  <Text style={[styles.label, { marginTop: 8 }]}>Enter Return Quantity (Max {returnItemData.soldQty}):</Text>
+                  <TextInput 
+                    style={[styles.input, { textAlign: 'center', fontSize: 16, fontWeight: 'bold' }]} 
+                    keyboardType="numeric"
+                    value={returnQtyInput}
+                    onChangeText={setReturnQtyInput}
+                  />
+                </>
+              ) : (
+                <Text style={{ color: '#94a3b8', fontSize: 13, marginVertical: 10, textAlign: 'center' }}>
+                  This was a single-unit sale. Confirm to restock 1 unit.
+                </Text>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity 
+                  style={[styles.modalCancelBtn, { flex: 1 }]}
+                  onPress={() => { setReturnModalVisible(false); setReturnItemData(null); }}
+                >
+                  <Text style={styles.modalCancelBtnText}>{t('cancel')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.modalConfirmBtn, { flex: 1.3 }]}
+                  onPress={handleConfirmReturn}
+                  disabled={returning}
+                >
+                  {returning ? (
+                    <ActivityIndicator color="#0f172a" size="small" />
+                  ) : (
+                    <Text style={styles.modalConfirmBtnText}>Confirm Return</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* Image Preview Modal */}
       <Modal visible={imageModalVisible} transparent={true} animationType="fade">
         <View style={styles.imageModalOverlay}>
@@ -590,7 +727,7 @@ export default function EmployeeScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Edit Price Modal */}
+      {/* Edit Price & Qty Modal */}
       {editingCartItem && (
         <Modal visible={editModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
@@ -600,6 +737,9 @@ export default function EmployeeScreen({ navigation }) {
 
               <Text style={styles.label}>Agreed Price (₹)</Text>
               <TextInput style={styles.input} keyboardType="numeric" value={editPrice} onChangeText={setEditPrice} placeholderTextColor="#64748b" />
+
+              <Text style={styles.label}>Quantity (Max: {editingCartItem.stock})</Text>
+              <TextInput style={styles.input} keyboardType="numeric" value={editQty} onChangeText={setEditQty} placeholderTextColor="#64748b" />
 
               <TouchableOpacity onPress={handleSaveCartEdit} style={styles.updateBtn}>
                 <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>
@@ -644,12 +784,8 @@ const styles = StyleSheet.create({
   noImgBox: { justifyContent: 'center', alignItems: 'center' },
   productTitle: { fontSize: 16, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
   subText: { color: '#cbd5e1', fontSize: 12 },
-
-  metaBadgeContainer: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  metaBadge: { flexDirection: 'row', backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
-  metaLabel: { color: '#94a3b8', fontSize: 11, marginRight: 4 },
-  metaVal: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  descText: { color: '#94a3b8', fontSize: 12, marginBottom: 10, backgroundColor: '#0f172a', padding: 8, borderRadius: 6 },
+  stockBadge: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  stockBadgeText: { color: '#10b981', fontWeight: 'bold', fontSize: 11 },
 
   imageModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   closeImageModal: { position: 'absolute', top: 40, right: 20, padding: 10, backgroundColor: '#334155', borderRadius: 8 },
@@ -668,6 +804,11 @@ const styles = StyleSheet.create({
   priceOptionLabelActive: { color: '#0f172a' },
   hintText: { fontSize: 10, color: '#64748b', fontWeight: '600', letterSpacing: 0.2, marginTop: 3 },
   
+  qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
+  qtyBtn: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#334155', justifyContent: 'center', alignItems: 'center' },
+  qtyBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  qtyInput: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
+
   backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
 
   list: { backgroundColor: '#1e293b', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#334155' },
@@ -676,12 +817,23 @@ const styles = StyleSheet.create({
   editText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   removeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(239, 68, 68, 0.2)', alignItems: 'center', justifyContent: 'center' },
   removeBtnText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', marginBottom: 15, textAlign: 'center' },
   updateBtn: { backgroundColor: '#10b981', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 10 },
   updateBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
   
+  returnModalCard: { backgroundColor: '#1e293b', padding: 20, borderRadius: 18, borderWidth: 1.5, borderColor: '#f59e0b' },
+  returnModalTitle: { color: '#f59e0b', fontSize: 18, fontWeight: '900', textAlign: 'center', marginBottom: 6 },
+  returnItemName: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
+  returnMetaBox: { backgroundColor: '#0f172a', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', gap: 4 },
+  returnMetaText: { color: '#94a3b8', fontSize: 13 },
+  modalCancelBtn: { backgroundColor: '#334155', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  modalCancelBtnText: { color: '#cbd5e1', fontWeight: 'bold' },
+  modalConfirmBtn: { backgroundColor: '#f59e0b', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  modalConfirmBtnText: { color: '#0f172a', fontWeight: '900' },
+
   checkoutActionRow: { flexDirection: 'row', gap: 10, marginTop: 16, marginBottom: 10 },
   doneBtn: { flex: 1.2, backgroundColor: '#10b981', paddingVertical: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   doneBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },

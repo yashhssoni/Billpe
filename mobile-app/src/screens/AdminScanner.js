@@ -45,6 +45,7 @@ export default function AdminScanner({ navigation }) {
   const initialFormState = {
     barcodeId: '',
     name: '',
+    stock: '1',
     color: '',
     category: '', 
     description: '',
@@ -115,6 +116,7 @@ export default function AdminScanner({ navigation }) {
   const hasUnsavedChanges = () => {
     return (
       p.name.trim() !== '' ||
+      p.stock.trim() !== '' ||
       p.lowestRate.trim() !== '' ||
       p.highestRate.trim() !== '' ||
       p.category.trim() !== '' ||
@@ -135,7 +137,7 @@ export default function AdminScanner({ navigation }) {
         const found = res.products.find(item => item.barcode === data);
         
         if (found) {
-          if (found.sold === true) {
+          if (found.sold === true || found.stock <= 0) {
             setModalState({
               visible: true,
               type: 'sold',
@@ -176,6 +178,7 @@ export default function AdminScanner({ navigation }) {
     setModalState(prev => ({ ...prev, restocking: true }));
     try {
       await axiosInstance.put(`/products/${found._id}`, { 
+        stock: 1,
         sold: false, 
         soldPrice: null,
         soldCustomerName: '',
@@ -206,6 +209,7 @@ export default function AdminScanner({ navigation }) {
     setP({
       barcodeId: barcode,
       name: found.productName || '',
+      stock: String(found.stock ?? 1),
       color: found.color || '',
       category: found.category || '',
       description: found.description || '',
@@ -265,6 +269,7 @@ export default function AdminScanner({ navigation }) {
 
     const lowestVal = Number(p.lowestRate);
     const highestVal = Number(p.highestRate);
+    const stockVal = p.stock && !isNaN(Number(p.stock)) ? Math.max(1, parseInt(p.stock, 10)) : 1;
 
     if (lowestVal > highestVal) {
       Alert.alert(t('error'), t('pricingInvalidError'));
@@ -285,6 +290,7 @@ export default function AdminScanner({ navigation }) {
       formData.append('price', lowestVal);
       formData.append('lowestRate', lowestVal);
       formData.append('highestRate', highestVal);
+      formData.append('stock', stockVal);
       formData.append('category', finalCategory);
       formData.append('color', p.color.trim());
       formData.append('description', p.description.trim());
@@ -413,18 +419,25 @@ export default function AdminScanner({ navigation }) {
                   </View>
                 </>
               ) : (
-                <View style={styles.pricingPillRow}>
-                  <View style={styles.ratePill}>
-                    <Text style={styles.ratePillLabel}>{t('lowestRateReqLabel').replace('*', '').trim()}</Text>
-                    <Text style={styles.ratePillValue}>₹{item.lowestRate || item.price || 0}</Text>
+                <>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>{t('currentStockModalLabel')}</Text>
+                    <Text style={styles.infoValueHighlight}>{item.stock ?? 1} Units</Text>
                   </View>
-                  <View style={styles.ratePill}>
-                    <Text style={styles.ratePillLabel}>{t('highestRateReqLabel').replace('*', '').trim()}</Text>
-                    <Text style={[styles.ratePillValue, { color: '#38bdf8' }]}>
-                      ₹{item.highestRate || item.price || 0}
-                    </Text>
+
+                  <View style={styles.pricingPillRow}>
+                    <View style={styles.ratePill}>
+                      <Text style={styles.ratePillLabel}>{t('lowestRateReqLabel').replace('*', '').trim()}</Text>
+                      <Text style={styles.ratePillValue}>₹{item.lowestRate || item.price || 0}</Text>
+                    </View>
+                    <View style={styles.ratePill}>
+                      <Text style={styles.ratePillLabel}>{t('highestRateReqLabel').replace('*', '').trim()}</Text>
+                      <Text style={[styles.ratePillValue, { color: '#38bdf8' }]}>
+                        ₹{item.highestRate || item.price || 0}
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                </>
               )}
             </View>
 
@@ -516,6 +529,22 @@ export default function AdminScanner({ navigation }) {
                 onFocus={() => setFocusedField('name')}
                 onBlur={() => setFocusedField(null)}
                 onChangeText={(tVal) => setP({ ...p, name: tVal })} 
+              />
+
+              {/* Product Quantity / Stock Field */}
+              <View style={styles.labelRow}>
+                <Text style={styles.label}>Quantity / Stock Units *</Text>
+                {!p.stock.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+              </View>
+              <TextInput 
+                style={getRequiredInputStyle('stock', p.stock)} 
+                placeholder="e.g. 1 (Unique item) or 50, 100 (Bulk copies)" 
+                placeholderTextColor="#64748b" 
+                value={p.stock} 
+                keyboardType="numeric"
+                onFocus={() => setFocusedField('stock')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(tVal) => setP({ ...p, stock: tVal })} 
               />
 
               <View style={styles.rateRow}>
@@ -959,7 +988,8 @@ const styles = StyleSheet.create({
 
   pricingPillRow: {
     flexDirection: 'row',
-    gap: 8
+    gap: 8,
+    marginTop: 4
   },
   ratePill: {
     flex: 1,

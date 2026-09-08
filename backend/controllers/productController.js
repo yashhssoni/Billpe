@@ -22,6 +22,7 @@ exports.addProduct = async (req, res, next) => {
     const parsedLowestRate = lowestRate !== undefined && lowestRate !== '' ? Number(lowestRate) : (price !== undefined ? Number(price) : 0);
     const parsedHighestRate = highestRate !== undefined && highestRate !== '' ? Number(highestRate) : parsedLowestRate;
     const parsedPrice = price !== undefined && price !== '' ? Number(price) : parsedLowestRate;
+    const parsedStock = stock !== undefined && stock !== '' ? Math.max(0, Number(stock)) : 1;
 
     let product = await Product.findOne({ storeId, barcode });
 
@@ -41,19 +42,21 @@ exports.addProduct = async (req, res, next) => {
         product.imageUri = imageUrl;
       }
       
-      product.stock = stock !== undefined ? Number(stock) : 1;
-      product.sold = false;
-      product.soldPrice = null;
-      product.soldCustomerName = '';
-      product.soldCustomerPhone = '';
-      product.soldAt = null;
+      product.stock = parsedStock;
+      product.sold = parsedStock <= 0;
+      if (parsedStock > 0) {
+        product.soldPrice = null;
+        product.soldCustomerName = '';
+        product.soldCustomerPhone = '';
+        product.soldCustomerAddress = '';
+        product.soldAt = null;
+      }
 
       await product.save();
-      await SoldItem.findOneAndDelete({ productId: product._id, storeId });
 
-      return res.serverResponse ? null : res.status(200).json({
+      return res.status(200).json({
         success: true,
-        message: "Product reactivated and updated in stock.",
+        message: "Product updated in inventory successfully.",
         product
       });
     }
@@ -63,7 +66,7 @@ exports.addProduct = async (req, res, next) => {
       productName: productName || 'Unnamed Product',
       barcode,
       price: parsedPrice,
-      stock: stock !== undefined ? Number(stock) : 1,
+      stock: parsedStock,
       category: category || 'General',
       lowestRate: parsedLowestRate,
       highestRate: parsedHighestRate,
@@ -73,7 +76,7 @@ exports.addProduct = async (req, res, next) => {
       weightGrams: weightGrams !== undefined ? Number(weightGrams) : 0,
       totalWeightKg: totalWeightKg !== undefined ? Number(totalWeightKg) : 0,
       imageUri: imageUrl, 
-      sold: false
+      sold: parsedStock <= 0
     });
 
     res.status(201).json({
@@ -92,7 +95,7 @@ exports.getProducts = async (req, res, next) => {
     let filter = { storeId: req.user.storeId };
     
     if (includeSold !== 'true') {
-      filter.sold = { $ne: true };
+      filter.sold = false;
       filter.stock = { $gt: 0 };
     }
 
@@ -107,15 +110,17 @@ exports.updateProduct = async (req, res, next) => {
   try {
     const storeId = req.user.storeId;
     const productId = req.params.id;
-    const updateData = req.body;
+    const updateData = { ...req.body };
 
     if (req.files && req.files.imageFile) {
       const uploadDetails = await uploadImageToCloudinary(req.files.imageFile, 'billpe_products');
       updateData.imageUri = uploadDetails.secure_url;
     }
 
-    if (updateData.sold === false || (updateData.stock !== undefined && updateData.stock > 0)) {
-      await SoldItem.findOneAndDelete({ productId, storeId });
+    if (updateData.stock !== undefined) {
+      const numStock = Number(updateData.stock);
+      updateData.stock = numStock;
+      updateData.sold = numStock <= 0;
     }
 
     const updated = await Product.findOneAndUpdate(
