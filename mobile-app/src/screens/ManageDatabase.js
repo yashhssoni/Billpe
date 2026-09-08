@@ -1,5 +1,10 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, StyleSheet, Modal, ScrollView, TextInput, Button, Image } from 'react-native';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
+import { 
+  View, Text, TouchableOpacity, FlatList, Alert, ActivityIndicator, 
+  StyleSheet, Modal, ScrollView, TextInput, Button, Image, BackHandler, 
+  KeyboardAvoidingView, Platform 
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
@@ -29,6 +34,31 @@ export default function ManageDatabase({ navigation }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editCategoryDropdownVisible, setEditCategoryDropdownVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // Hardware Back Button Handler for Android
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (editCategoryDropdownVisible) {
+          setEditCategoryDropdownVisible(false);
+          return true;
+        }
+        if (modalVisible) {
+          setModalVisible(false);
+          return true;
+        }
+        if (filterDropdownVisible) {
+          setFilterDropdownVisible(false);
+          return true;
+        }
+        navigation.goBack();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [editCategoryDropdownVisible, modalVisible, filterDropdownVisible, navigation])
+  );
 
   const fetchProducts = async () => {
     try {
@@ -64,8 +94,9 @@ export default function ManageDatabase({ navigation }) {
   const handleOpenEdit = (item) => {
     setEditingProduct({
       id: item._id,
+      barcode: item.barcode || '',
       productName: item.productName || '',
-      stock: String(item.stock ?? 1),
+      stock: String(item.stock !== undefined && item.stock !== null ? item.stock : 1),
       category: item.category || '',
       kg: item.weightKg !== undefined && item.weightKg !== null ? String(item.weightKg) : '',
       grams: item.weightGrams !== undefined && item.weightGrams !== null ? String(item.weightGrams) : '',
@@ -99,8 +130,16 @@ export default function ManageDatabase({ navigation }) {
   };
 
   const handleUpdateProduct = async () => {
-    if (!editingProduct.productName || !editingProduct.lowestRate) {
-      Alert.alert(t('error'), 'Product Name and Lowest Rate are required.');
+    if (!editingProduct.productName.trim() || !String(editingProduct.lowestRate).trim() || !String(editingProduct.highestRate).trim()) {
+      Alert.alert(t('error'), 'Please fill Product Name, Lowest Rate, and Highest Rate.');
+      return;
+    }
+
+    const lowestVal = Number(editingProduct.lowestRate);
+    const highestVal = Number(editingProduct.highestRate);
+
+    if (lowestVal > highestVal) {
+      Alert.alert(t('error'), t('pricingInvalidError'));
       return;
     }
 
@@ -115,9 +154,9 @@ export default function ManageDatabase({ navigation }) {
         productName: editingProduct.productName.trim(),
         stock: stockVal,
         category: editingProduct.category.trim() || 'General',
-        price: Number(editingProduct.lowestRate),
-        lowestRate: Number(editingProduct.lowestRate),
-        highestRate: Number(editingProduct.highestRate || editingProduct.lowestRate),
+        price: lowestVal,
+        lowestRate: lowestVal,
+        highestRate: highestVal,
         color: editingProduct.color ? editingProduct.color.trim() : '',
         description: editingProduct.description ? editingProduct.description.trim() : '',
         weightKg: weightKgVal,
@@ -187,46 +226,59 @@ export default function ManageDatabase({ navigation }) {
           data={filteredProducts}
           keyExtractor={(item) => item._id}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <View style={styles.itemCard}>
-              {item.imageUri ? (
-                <Image source={{ uri: item.imageUri }} style={styles.thumb} />
-              ) : (
-                <View style={[styles.thumb, styles.noThumb]}><Text style={{fontSize: 9, color: '#94a3b8'}}>{t('noPhoto')}</Text></View>
-              )}
+          renderItem={({ item }) => {
+            const currentStock = Number(item.stock !== undefined && item.stock !== null ? item.stock : (item.sold ? 0 : 1));
 
-              <View style={{ flex: 1, paddingHorizontal: 10 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.itemName} numberOfLines={1}>{item.productName}</Text>
-                  <View style={[styles.stockTag, item.stock <= 0 && styles.outOfStockTag]}>
-                    <Text style={[styles.stockTagText, item.stock <= 0 && styles.outOfStockText]}>
-                      {item.stock > 0 ? `${item.stock} in stock` : 'Sold Out'}
-                    </Text>
+            return (
+              <View style={styles.itemCard}>
+                {item.imageUri ? (
+                  <Image source={{ uri: item.imageUri }} style={styles.thumb} />
+                ) : (
+                  <View style={[styles.thumb, styles.noThumb]}><Text style={{fontSize: 9, color: '#94a3b8'}}>{t('noPhoto')}</Text></View>
+                )}
+
+                <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.itemName} numberOfLines={1}>{item.productName}</Text>
+                    
+                    <View style={[
+                      styles.stockTag, 
+                      currentStock <= 0 ? styles.outOfStockTag : (currentStock === 1 ? styles.uniqueTag : styles.bulkTag)
+                    ]}>
+                      <Text style={[
+                        styles.stockTagText, 
+                        currentStock <= 0 ? styles.outOfStockText : (currentStock === 1 ? styles.uniqueTagText : styles.bulkTagText)
+                      ]}>
+                        {currentStock <= 0 
+                          ? 'Sold Out' 
+                          : (currentStock === 1 ? 'Unique (1 pc)' : `${currentStock} pcs in stock`)}
+                      </Text>
+                    </View>
                   </View>
+
+                  <Text style={styles.itemDetails}>₹{item.lowestRate || item.price} {item.highestRate ? `- ₹${item.highestRate}` : ''}</Text>
+                  <Text style={styles.itemCategory}>Cat: {item.category || 'General'}</Text>
+                  
+                  {(item.weightKg > 0 || item.weightGrams > 0) && (
+                    <Text style={styles.itemExtraInfo}>{t('weightLabel')} {item.weightKg ? `${item.weightKg}kg ` : ''}{item.weightGrams ? `${item.weightGrams}g` : ''}</Text>
+                  )}
+                  {item.color ? <Text style={styles.itemExtraInfo}>{t('colorInfoLabel')} {item.color}</Text> : null}
+                  {item.description ? <Text style={styles.itemExtraInfo} numberOfLines={1}>{t('infoLabel')} {item.description}</Text> : null}
+                  
+                  <Text style={styles.itemBarcode}>{t('barcodeLabel')} {item.barcode}</Text>
                 </View>
 
-                <Text style={styles.itemDetails}>₹{item.lowestRate || item.price} {item.highestRate ? `- ₹${item.highestRate}` : ''}</Text>
-                <Text style={styles.itemCategory}>Cat: {item.category || 'General'}</Text>
-                
-                {(item.weightKg > 0 || item.weightGrams > 0) && (
-                  <Text style={styles.itemExtraInfo}>{t('weightLabel')} {item.weightKg ? `${item.weightKg}kg ` : ''}{item.weightGrams ? `${item.weightGrams}g` : ''}</Text>
-                )}
-                {item.color ? <Text style={styles.itemExtraInfo}>{t('colorInfoLabel')} {item.color}</Text> : null}
-                {item.description ? <Text style={styles.itemExtraInfo} numberOfLines={1}>{t('infoLabel')} {item.description}</Text> : null}
-                
-                <Text style={styles.itemBarcode}>{t('barcodeLabel')} {item.barcode}</Text>
+                <View style={styles.actionBtns}>
+                  <TouchableOpacity onPress={() => handleOpenEdit(item)} style={styles.editBtn}>
+                    <Text style={styles.editText}>{t('edit')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDelete(item._id)} style={styles.deleteBtn}>
+                    <Text style={styles.deleteText}>{t('del')}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-
-              <View style={styles.actionBtns}>
-                <TouchableOpacity onPress={() => handleOpenEdit(item)} style={styles.editBtn}>
-                  <Text style={styles.editText}>{t('edit')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item._id)} style={styles.deleteBtn}>
-                  <Text style={styles.deleteText}>{t('del')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+            );
+          }}
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noProductsFound')}</Text>}
         />
       )}
@@ -276,80 +328,212 @@ export default function ManageDatabase({ navigation }) {
         </View>
       </Modal>
 
-      {/* Edit Product Modal */}
+      {/* Uniform Edit Product Modal (Matches AdminScanner Structure) */}
       {editingProduct && (
-        <Modal visible={modalVisible} animationType="slide" transparent={true}>
-          <View style={styles.modalOverlay}>
-            <ScrollView contentContainerStyle={styles.modalContent}>
-              <Text style={styles.modalTitle}>{t('editProductDetailsTitle')}</Text>
+        <Modal 
+          visible={modalVisible} 
+          animationType="slide" 
+          transparent={false}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={{ flex: 1, backgroundColor: '#0f172a' }}
+          >
+            <ScrollView 
+              contentContainerStyle={styles.editModalContainer} 
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.editScreenTitle}>{t('editProductDetailsTitle')}</Text>
 
-              <Text style={styles.label}>{t('productNameReqLabel')}</Text>
-              <TextInput style={styles.input} value={editingProduct.productName} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, productName: tVal })} placeholderTextColor="#64748b" />
+              {/* Mandatory Details Section */}
+              <View style={styles.sectionCard}>
+                <Text style={styles.sectionHeading}>{t('mandatoryDetailsHeading')}</Text>
 
-              {/* Editable Stock / Quantity */}
-              <Text style={styles.label}>Stock / Quantity Units *</Text>
-              <TextInput 
-                style={styles.input} 
-                keyboardType="numeric" 
-                value={editingProduct.stock} 
-                onChangeText={(tVal) => setEditingProduct({ ...editingProduct, stock: tVal })} 
-                placeholderTextColor="#64748b" 
-              />
+                <Text style={styles.formLabel}>{t('barcodeIdLabel')}</Text>
+                <TextInput 
+                  style={[styles.inputField, styles.readOnlyInput]} 
+                  value={editingProduct.barcode} 
+                  editable={false} 
+                />
 
-              <Text style={styles.label}>{t('categoryTypeLabel')}</Text>
-              <TouchableOpacity 
-                style={styles.dropdownTriggerInner}
-                onPress={() => setEditCategoryDropdownVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={editingProduct.category ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
-                  {editingProduct.category ? editingProduct.category : t('selectCategoryPlaceholder')}
-                </Text>
-                <Text style={styles.dropdownArrow}>▼</Text>
-              </TouchableOpacity>
+                <View style={styles.labelRow}>
+                  <Text style={styles.formLabel}>{t('productNameReqLabel')}</Text>
+                  {!editingProduct.productName.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+                </View>
+                <TextInput 
+                  style={styles.inputField} 
+                  placeholder={t('productNamePlaceholder')}
+                  placeholderTextColor="#64748b" 
+                  value={editingProduct.productName} 
+                  onChangeText={(tVal) => setEditingProduct({ ...editingProduct, productName: tVal })} 
+                />
 
-              <TextInput style={styles.input} placeholder="Or type custom category..." value={editingProduct.category} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, category: tVal })} placeholderTextColor="#64748b" />
+                <View style={styles.labelRow}>
+                  <Text style={styles.formLabel}>Quantity / Stock Units *</Text>
+                  {!String(editingProduct.stock).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+                </View>
+                <TextInput 
+                  style={styles.inputField} 
+                  placeholder="e.g. 1 or 50" 
+                  placeholderTextColor="#64748b" 
+                  keyboardType="numeric" 
+                  value={editingProduct.stock} 
+                  onChangeText={(tVal) => setEditingProduct({ ...editingProduct, stock: tVal })} 
+                />
 
-              <Text style={styles.label}>{t('weightKgGramsLabel')}</Text>
-              <View style={styles.weightRow}>
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="KG" keyboardType="numeric" value={editingProduct.kg} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, kg: tVal })} placeholderTextColor="#64748b" />
-                <TextInput style={[styles.input, { flex: 1 }]} placeholder="Grams" keyboardType="numeric" value={editingProduct.grams} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, grams: tVal })} placeholderTextColor="#64748b" />
+                <View style={styles.rateRow}>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.labelRow}>
+                      <Text style={styles.formLabel}>{t('lowestRateReqLabel')}</Text>
+                      {!String(editingProduct.lowestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+                    </View>
+                    <TextInput 
+                      style={styles.inputField} 
+                      placeholder={t('lowestRatePlaceholder')} 
+                      placeholderTextColor="#64748b" 
+                      keyboardType="numeric" 
+                      value={editingProduct.lowestRate} 
+                      onChangeText={(tVal) => setEditingProduct({ ...editingProduct, lowestRate: tVal })} 
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.labelRow}>
+                      <Text style={styles.formLabel}>{t('highestRateReqLabel')}</Text>
+                      {!String(editingProduct.highestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+                    </View>
+                    <TextInput 
+                      style={styles.inputField} 
+                      placeholder={t('highestRatePlaceholder')} 
+                      placeholderTextColor="#64748b" 
+                      keyboardType="numeric" 
+                      value={editingProduct.highestRate} 
+                      onChangeText={(tVal) => setEditingProduct({ ...editingProduct, highestRate: tVal })} 
+                    />
+                  </View>
+                </View>
               </View>
 
-              <Text style={styles.label}>{t('colorLabel')}</Text>
-              <TextInput style={styles.input} value={editingProduct.color} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, color: tVal })} placeholderTextColor="#64748b" />
+              {/* Additional Details Section */}
+              <View style={[styles.sectionCard, { marginTop: 16 }]}>
+                <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
 
-              <Text style={styles.label}>{t('descriptionLabel')}</Text>
-              <TextInput style={styles.input} value={editingProduct.description} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, description: tVal })} placeholderTextColor="#64748b" />
-
-              <Text style={styles.label}>{t('lowestRateSymbolLabel')}</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.lowestRate} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, lowestRate: tVal })} placeholderTextColor="#64748b" />
-
-              <Text style={styles.label}>{t('highestRateSymbolLabel')}</Text>
-              <TextInput style={styles.input} keyboardType="numeric" value={editingProduct.highestRate} onChangeText={(tVal) => setEditingProduct({ ...editingProduct, highestRate: tVal })} placeholderTextColor="#64748b" />
-
-              <Text style={styles.label}>{t('productPhotoLabel')}</Text>
-              {editingProduct.imageUri ? (
-                <View style={{ marginBottom: 12 }}>
-                  <Image source={{ uri: editingProduct.imageUri }} style={styles.preview} />
-                  <Button title={t('removePhotoBtn')} onPress={() => setEditingProduct({ ...editingProduct, imageUri: '' })} color="#B71C1C" />
+                <View style={styles.labelRow}>
+                  <Text style={styles.formLabel}>{t('productCategoryLabel')}</Text>
+                  {editingProduct.category ? (
+                    <TouchableOpacity onPress={() => setEditingProduct({ ...editingProduct, category: '' })}>
+                      <Text style={styles.clearChipText}>{t('clearCategory')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
-              ) : (
-                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
-                  <View style={{ flex: 1 }}><Button title="Click Photo" onPress={takePhoto} color="#2E7D32" /></View>
-                  <View style={{ flex: 1 }}><Button title="Gallery" onPress={pickImage} color="#1E88E5" /></View>
-                </View>
-              )}
 
-              <TouchableOpacity onPress={handleUpdateProduct} disabled={updating} style={styles.updateBtn}>
-                {updating ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>}
+                <TouchableOpacity 
+                  style={styles.dropdownTrigger}
+                  onPress={() => setEditCategoryDropdownVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={editingProduct.category ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
+                    {editingProduct.category ? editingProduct.category : t('selectCategoryPlaceholder')}
+                  </Text>
+                  <Text style={styles.dropdownArrow}>▼</Text>
+                </TouchableOpacity>
+
+                <TextInput 
+                  style={styles.inputOptional} 
+                  placeholder={t('customCategoryPlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  value={editingProduct.category} 
+                  onChangeText={(tVal) => setEditingProduct({ ...editingProduct, category: tVal })} 
+                />
+
+                <Text style={styles.formLabel}>{t('productWeightLabel')}</Text>
+                <View style={styles.weightRow}>
+                  <View style={{ flex: 1 }}>
+                    <TextInput 
+                      style={styles.inputOptional} 
+                      placeholder={t('weightKgPlaceholder')} 
+                      placeholderTextColor="#64748b" 
+                      keyboardType="numeric" 
+                      value={editingProduct.kg} 
+                      onChangeText={(tVal) => setEditingProduct({ ...editingProduct, kg: tVal })} 
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <TextInput 
+                      style={styles.inputOptional} 
+                      placeholder={t('weightGramsPlaceholder')} 
+                      placeholderTextColor="#64748b" 
+                      keyboardType="numeric" 
+                      value={editingProduct.grams} 
+                      onChangeText={(tVal) => setEditingProduct({ ...editingProduct, grams: tVal })} 
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.formLabel}>{t('colorLabel')}</Text>
+                <TextInput 
+                  style={styles.inputOptional} 
+                  placeholder={t('colorPlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  value={editingProduct.color} 
+                  onChangeText={(tVal) => setEditingProduct({ ...editingProduct, color: tVal })} 
+                />
+
+                <Text style={styles.formLabel}>{t('descriptionLabel')}</Text>
+                <TextInput 
+                  style={styles.inputOptional} 
+                  placeholder={t('descriptionPlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  value={editingProduct.description} 
+                  onChangeText={(tVal) => setEditingProduct({ ...editingProduct, description: tVal })} 
+                />
+
+                <Text style={styles.formLabel}>{t('productPhotoLabel')}</Text>
+                {editingProduct.imageUri ? (
+                  <View style={{ marginBottom: 12 }}>
+                    <Image source={{ uri: editingProduct.imageUri }} style={styles.preview} />
+                    <View style={{ marginTop: 8 }}>
+                      <Button title={t('removePhotoBtn')} onPress={() => setEditingProduct({ ...editingProduct, imageUri: '' })} color="#B71C1C" />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.photoButtonsRow}>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <Button title={t('clickPhotoBtn')} onPress={takePhoto} color="#2E7D32" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 6 }}>
+                      <Button title={t('openGalleryBtn')} onPress={pickImage} color="#1E88E5" />
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity 
+                onPress={handleUpdateProduct} 
+                disabled={updating} 
+                style={styles.saveBtn} 
+                activeOpacity={0.8}
+              >
+                {updating ? (
+                  <ActivityIndicator color="#0f172a" />
+                ) : (
+                  <Text style={styles.saveBtnText}>{t('updateProductBtn')}</Text>
+                )}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelModalBtn}>
-                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t('cancel')}</Text>
-              </TouchableOpacity>
+              <View style={{ marginTop: 12 }}>
+                <Button 
+                  title={t('cancel')} 
+                  onPress={() => setModalVisible(false)} 
+                  color="#ef4444" 
+                />
+              </View>
+
+              <View style={{ height: 45 }} />
             </ScrollView>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
 
@@ -426,10 +610,14 @@ const styles = StyleSheet.create({
   thumb: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#334155' },
   noThumb: { justifyContent: 'center', alignItems: 'center' },
   itemName: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 2, flex: 1 },
-  stockTag: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, marginLeft: 6 },
-  stockTagText: { color: '#10b981', fontSize: 10, fontWeight: 'bold' },
-  outOfStockTag: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444' },
-  outOfStockText: { color: '#ef4444' },
+  
+  stockTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, marginLeft: 6 },
+  uniqueTag: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8' },
+  uniqueTagText: { color: '#38bdf8', fontSize: 10, fontWeight: 'bold' },
+  bulkTag: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: '#10b981' },
+  bulkTagText: { color: '#10b981', fontSize: 10, fontWeight: 'bold' },
+  outOfStockTag: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 1, borderColor: '#ef4444' },
+  outOfStockText: { color: '#ef4444', fontSize: 10, fontWeight: 'bold' },
 
   itemDetails: { color: '#10b981', fontWeight: '600', fontSize: 13, marginBottom: 1 },
   itemCategory: { color: '#cbd5e1', fontSize: 12, marginBottom: 1 },
@@ -442,28 +630,70 @@ const styles = StyleSheet.create({
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20, paddingTop: 40 },
-  modalContent: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16 },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  label: { color: '#cbd5e1', fontWeight: '600', fontSize: 13, marginBottom: 5 },
-  input: { backgroundColor: '#0f172a', color: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 12, fontSize: 14 },
-  weightRow: { flexDirection: 'row', gap: 10 },
-  preview: { width: '100%', height: 160, borderRadius: 8, marginBottom: 8, resizeMode: 'cover' },
-  updateBtn: { backgroundColor: '#10b981', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-  updateBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
-  cancelModalBtn: { padding: 10, alignItems: 'center', marginTop: 5 },
+  // Edit Modal Uniform Styling (Matching AdminScanner)
+  editModalContainer: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
+  editScreenTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
+  sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
+  sectionHeading: { fontSize: 13, fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+  sectionHeadingOptional: { fontSize: 13, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
 
-  dropdownTriggerInner: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  formLabel: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1', fontSize: 13 },
+  requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
+  clearChipText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
+
+  inputField: { 
+    borderWidth: 1.5, 
+    padding: 12, 
+    marginBottom: 14, 
+    borderRadius: 12, 
+    backgroundColor: '#0f172a', 
     borderColor: '#334155',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    color: '#fff', 
+    fontSize: 14 
+  },
+  readOnlyInput: { backgroundColor: '#334155', color: '#94a3b8', borderColor: '#475569' },
+  inputOptional: { 
+    borderWidth: 1, 
+    padding: 12, 
+    marginBottom: 14, 
+    borderRadius: 12, 
+    borderColor: '#334155', 
+    backgroundColor: '#0f172a', 
+    color: '#fff', 
+    fontSize: 14 
+  },
+
+  rateRow: { flexDirection: 'row', gap: 10 },
+  weightRow: { flexDirection: 'row', gap: 10 },
+  photoButtonsRow: { flexDirection: 'row', marginBottom: 12 },
+  preview: { width: '100%', height: 180, borderRadius: 10, resizeMode: 'cover' },
+
+  saveBtn: { 
+    backgroundColor: '#10b981', 
+    paddingVertical: 16, 
+    borderRadius: 14, 
+    alignItems: 'center', 
+    marginTop: 18, 
+    shadowColor: '#10b981', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 6, 
+    elevation: 4 
+  },
+  saveBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  dropdownTrigger: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: 10
   },
   dropdownPlaceholderText: { color: '#64748b', fontSize: 14 },
   dropdownSelectedText: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
