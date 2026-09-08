@@ -1,11 +1,14 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
-  Alert, KeyboardAvoidingView, Platform, StyleSheet 
+  Alert, KeyboardAvoidingView, Platform, StyleSheet, BackHandler 
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function VerifyOtpScreen({ route, navigation }) {
   const { t } = useContext(LanguageContext);
@@ -13,6 +16,17 @@ export default function VerifyOtpScreen({ route, navigation }) {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.goBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [navigation])
+  );
 
   const handleVerify = async () => {
     if (!otp.trim() || otp.trim().length !== 6) {
@@ -65,40 +79,43 @@ export default function VerifyOtpScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>{t('emailVerificationTitle')}</Text>
-        <Text style={styles.subtitle}>{t('enterOtpSubtitle')}</Text>
-        <Text style={styles.emailHighlight}>{email}</Text>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
+      <ScreenWrapper scrollable={true}>
+        <BackButton onPress={() => navigation.goBack()} title={t('back')} />
 
-        <TextInput
-          style={styles.otpInput}
-          placeholder="000000"
-          placeholderTextColor="#64748b"
-          keyboardType="number-pad"
-          maxLength={6}
-          value={otp}
-          onChangeText={setOtp}
-        />
+        <View style={styles.card}>
+          <Text style={styles.title}>{t('emailVerificationTitle')}</Text>
+          <Text style={styles.subtitle}>{t('enterOtpSubtitle')}</Text>
+          <Text style={styles.emailHighlight}>{email}</Text>
 
-        <TouchableOpacity onPress={handleVerify} disabled={loading} style={styles.btn} activeOpacity={0.8}>
-          {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndProceedBtn')}</Text>}
-        </TouchableOpacity>
+          <TextInput
+            style={styles.otpInput}
+            placeholder="000000"
+            placeholderTextColor="#64748b"
+            keyboardType="number-pad"
+            maxLength={6}
+            value={otp}
+            onChangeText={setOtp}
+          />
 
-        <TouchableOpacity onPress={handleResend} disabled={resending} style={styles.resendBtn}>
-          {resending ? (
-            <ActivityIndicator color="#38bdf8" />
-          ) : (
-            <Text style={styles.resendText}>{t('didntReceiveOtp')} <Text style={{ color: '#38bdf8', fontWeight: 'bold' }}>{t('resendOtp')}</Text></Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={handleVerify} disabled={loading} style={styles.btn} activeOpacity={0.8}>
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndProceedBtn')}</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleResend} disabled={resending} style={styles.resendBtn}>
+            {resending ? (
+              <ActivityIndicator color="#38bdf8" />
+            ) : (
+              <Text style={styles.resendText}>{t('didntReceiveOtp')} <Text style={{ color: '#38bdf8', fontWeight: 'bold' }}>{t('resendOtp')}</Text></Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScreenWrapper>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', justifyContent: 'center', padding: 24 },
   card: { backgroundColor: '#1e293b', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
   subtitle: { fontSize: 13, color: '#94a3b8', textAlign: 'center' },

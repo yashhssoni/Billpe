@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList, StyleSheet, RefreshControl, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList, StyleSheet, RefreshControl, Modal, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function AddEmployeeScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -18,6 +20,22 @@ export default function AddEmployeeScreen({ navigation }) {
   const [editingEmp, setEditingEmp] = useState(null);
   const [updating, setUpdating] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchEmployees();
+      const onBackPress = () => {
+        if (editModalVisible) {
+          setEditModalVisible(false);
+          return true;
+        }
+        navigation.goBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [editModalVisible, navigation])
+  );
+
   const fetchEmployees = async () => {
     try {
       const { data } = await axiosInstance.get('/auth/employees');
@@ -30,12 +48,6 @@ export default function AddEmployeeScreen({ navigation }) {
       setRefreshing(false);
     }
   };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchEmployees();
-    }, [])
-  );
 
   const handleAddEmployee = async () => {
     if (!name || !email || !password || !phone) {
@@ -128,10 +140,8 @@ export default function AddEmployeeScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>{t('backToDashboard')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={false}>
+      <BackButton onPress={() => navigation.goBack()} title={t('backToDashboard')} />
 
       <Text style={styles.title}>{t('storeStaffTitle')}</Text>
       <Text style={styles.subtitle}>{t('manageStaffSubtitle')}</Text>
@@ -180,6 +190,7 @@ export default function AddEmployeeScreen({ navigation }) {
       <FlatList
         data={employees}
         keyExtractor={(item) => item._id}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEmployees(); }} tintColor="#10b981" />
         }
@@ -205,7 +216,7 @@ export default function AddEmployeeScreen({ navigation }) {
       />
 
       {editingEmp && (
-        <Modal visible={editModalVisible} transparent animationType="fade">
+        <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Edit Employee Details</Text>
@@ -259,13 +270,11 @@ export default function AddEmployeeScreen({ navigation }) {
           </View>
         </Modal>
       )}
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 24, paddingTop: 40 },
-  backText: { color: '#10b981', fontWeight: '600' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16 },
   card: { backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 20 },

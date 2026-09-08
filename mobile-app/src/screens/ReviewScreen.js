@@ -1,12 +1,26 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function ReviewScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.goBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [navigation])
+  );
 
   useEffect(() => {
     fetchReviews();
@@ -27,10 +41,8 @@ export default function ReviewScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} title={t('back')} />
 
       <Text style={styles.title}>{t('reviewWallTitle')}</Text>
       <Text style={styles.subtitle}>{t('reviewWallSubtitle')}</Text>
@@ -57,13 +69,11 @@ export default function ReviewScreen({ navigation }) {
         ))
       )}
       <View style={{ height: 40 }} />
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
   title: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   subtitle: { color: '#94a3b8', fontSize: 13, marginBottom: 20, marginTop: 4 },
   reviewCard: { backgroundColor: '#1e293b', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 12 },

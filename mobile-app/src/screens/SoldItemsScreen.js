@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { 
   View, Text, TouchableOpacity, SectionList, Alert, ActivityIndicator, 
-  StyleSheet, Modal, TextInput 
+  StyleSheet, Modal, BackHandler 
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import CustomDatePickerModal from '../components/CustomDatePickerModal';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function SoldItemsScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -13,16 +17,46 @@ export default function SoldItemsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [expandedSplitIds, setExpandedSplitIds] = useState(new Set());
 
-  // Multi-Select States (File Manager Style)
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [archiving, setArchiving] = useState(false);
 
-  // Date Range Modal States
+  const getTodayFormatted = () => {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  };
+
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(getTodayFormatted());
+  const [endDate, setEndDate] = useState(getTodayFormatted());
+  const [activePicker, setActivePicker] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (activePicker) {
+          setActivePicker(null);
+          return true;
+        }
+        if (rangeModalVisible) {
+          setRangeModalVisible(false);
+          return true;
+        }
+        if (isSelectMode) {
+          exitSelectMode();
+          return true;
+        }
+        navigation.goBack();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [activePicker, rangeModalVisible, isSelectMode, navigation])
+  );
 
   const fetchSalesHistory = async () => {
     try {
@@ -73,7 +107,6 @@ export default function SoldItemsScreen({ navigation }) {
     setSelectedIds(new Set());
   };
 
-  // Soft Delete (UI se hide, DB audit mein safe)
   const executeSoftDelete = async (idsArray) => {
     if (!idsArray || idsArray.length === 0) return;
 
@@ -129,27 +162,25 @@ export default function SoldItemsScreen({ navigation }) {
   };
 
   const validateDates = () => {
-    if (!startDate.trim() || !endDate.trim()) {
-      Alert.alert(t('error'), 'Please enter both Start Date and End Date.');
+    if (!startDate || !endDate) {
+      Alert.alert(t('error'), 'Please select both Start Date and End Date.');
       return false;
     }
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(startDate.trim()) || !dateRegex.test(endDate.trim())) {
-      Alert.alert(t('error'), 'Please use YYYY-MM-DD format (e.g. 2026-08-01).');
+    if (new Date(startDate) > new Date(endDate)) {
+      Alert.alert(t('error'), 'Start Date cannot be greater than End Date.');
       return false;
     }
     return true;
   };
 
-  // Action 1: File Download/Print (Zero Risk)
   const handleDownloadBackup = async () => {
     if (!validateDates()) return;
 
     setActionLoading(true);
     try {
       const { data: res } = await axiosInstance.post('/sales/history/export-range', {
-        startDate: startDate.trim(),
-        endDate: endDate.trim()
+        startDate,
+        endDate
       });
       setActionLoading(false);
 
@@ -158,47 +189,151 @@ export default function SoldItemsScreen({ navigation }) {
         return;
       }
 
-      const rows = res.sales.map((item, idx) => `
-        <tr>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${item.invoiceNo}</td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${item.productName}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${item.quantity}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">₹${item.price}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right;"><strong>₹${item.totalAmount}</strong></td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${item.customerName || 'N/A'}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${item.paymentMode}</td>
-        </tr>
-      `).join('');
+      let totalGrossSales = 0;
+      let totalReturnedAmount = 0;
+      let totalCashCollected = 0;
+      let totalOnlineCollected = 0;
 
-      const grandTotal = res.sales.reduce((acc, curr) => acc + Number(curr.totalAmount || curr.price || 0), 0);
+      const rows = res.sales.map((item, idx) => {
+        const soldQty = Number(item.quantity || 1);
+        const returnedQty = Number(item.returnedQuantity || 0);
+        const unitPrice = Number(item.price || 0);
+        const grossItemTotal = Number(item.totalAmount || (unitPrice * soldQty));
+        const returnedValue = returnedQty * unitPrice;
+
+        totalGrossSales += grossItemTotal;
+        totalReturnedAmount += returnedValue;
+
+        let payModeDisplay = item.paymentMode || 'Cash';
+        if (item.paymentMode === 'Split') {
+          const cAmt = Number(item.cashAmount || 0);
+          const oAmt = Number(item.onlineAmount || 0);
+          totalCashCollected += cAmt;
+          totalOnlineCollected += oAmt;
+          payModeDisplay = `Split (Cash: ₹${cAmt} | Online: ₹${oAmt})`;
+        } else if (item.paymentMode === 'Online') {
+          totalOnlineCollected += grossItemTotal;
+        } else {
+          totalCashCollected += grossItemTotal;
+        }
+
+        const customerInfo = (item.customerName && item.customerName !== 'N/A')
+          ? `${item.customerName}${item.customerPhone && item.customerPhone !== 'N/A' ? `<br/><span style="color:#64748b; font-size:10px;">📞 ${item.customerPhone}</span>` : ''}`
+          : '<span style="color:#94a3b8;">Walk-in</span>';
+
+        const saleDateStr = new Date(item.createdAt).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+        const saleTimeStr = new Date(item.createdAt).toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        return `
+          <tr>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; text-align: center;">${idx + 1}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; font-size: 10px;">${saleDateStr}<br/><span style="color:#64748b;">${saleTimeStr}</span></td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; font-weight: bold; font-size: 11px;">${item.invoiceNo || 'N/A'}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; font-weight: 500;">${item.productName}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; text-align: right;">₹${unitPrice.toFixed(2)}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; text-align: center; font-weight: bold;">${soldQty}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold;">₹${grossItemTotal.toFixed(2)}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; text-align: center; color: ${returnedQty > 0 ? '#dc2626' : '#94a3b8'};">
+              ${returnedQty > 0 ? `<strong>${returnedQty}</strong><br/><span style="font-size:10px;">(-₹${returnedValue.toFixed(2)})</span>` : '-'}
+            </td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1;">${customerInfo}</td>
+            <td style="padding: 6px 4px; border: 1px solid #cbd5e1; font-size: 10px;">${payModeDisplay}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const netSales = totalGrossSales - totalReturnedAmount;
+      const storeName = res.storeInfo?.storeName || 'RETAIL POS STORE';
+      const storeAddress = res.storeInfo?.address || '';
+      const storePhone = res.storeInfo?.phone || res.storeInfo?.ownerPhone || '';
+      const generatedAt = new Date().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 
       const html = `
         <html>
           <head>
             <style>
-              body { font-family: Arial, sans-serif; padding: 15px; color: #222; }
-              h2 { margin-bottom: 4px; text-align: center; }
-              p { margin: 2px 0; font-size: 13px; text-align: center; }
-              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-              th { background-color: #f1f5f9; padding: 8px; border: 1px solid #cbd5e1; text-align: left; }
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 16px; color: #0f172a; margin: 0; }
+              .header-box { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+              .store-title { font-size: 22px; font-weight: bold; text-transform: uppercase; margin: 0 0 2px 0; color: #0f172a; }
+              .store-meta { font-size: 11px; color: #475569; margin: 2px 0; }
+              .report-title-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px; }
+              .report-badge { font-size: 13px; font-weight: bold; color: #0369a1; background: #e0f2fe; padding: 4px 8px; border-radius: 4px; }
+              .period-box { font-size: 11px; color: #334155; margin-top: 4px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; }
+              th { background-color: #f1f5f9; padding: 8px 4px; border: 1px solid #94a3b8; text-align: left; font-size: 10px; text-transform: uppercase; color: #1e293b; }
+              .summary-wrapper { margin-top: 16px; display: flex; justify-content: flex-end; }
+              .summary-box { width: 300px; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #f8fafc; }
+              .summary-line { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+              .summary-total { border-top: 2px solid #0f172a; padding-top: 6px; font-size: 14px; font-weight: bold; color: #0f172a; }
+              .mode-split { font-size: 10px; color: #64748b; margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 6px; }
             </style>
           </head>
           <body>
-            <h2>BILLPE STORE SALES REPORT</h2>
-            <p><strong>Period:</strong> ${startDate.trim()} to ${endDate.trim()}</p>
-            <p><strong>Export Date:</strong> ${new Date().toLocaleString('en-IN')}</p>
+            <div class="header-box">
+              <h1 class="store-title">${storeName}</h1>
+              ${storeAddress ? `<p class="store-meta">📍 ${storeAddress}</p>` : ''}
+              ${storePhone ? `<p class="store-meta">📞 Tel: ${storePhone}</p>` : ''}
+              
+              <div class="report-title-row">
+                <span class="report-badge">SALES & INVENTORY AUDIT REPORT</span>
+                <span class="store-meta"><strong>Exported:</strong> ${generatedAt}</span>
+              </div>
+              <div class="period-box">
+                <strong>Period:</strong> ${startDate} to ${endDate} &nbsp;|&nbsp; <strong>Total Records:</strong> ${res.sales.length}
+              </div>
+            </div>
+
             <table>
               <thead>
                 <tr>
-                  <th>#</th><th>Date</th><th>Invoice</th><th>Product</th><th>Qty</th><th>Rate</th><th>Total</th><th>Customer</th><th>Mode</th>
+                  <th style="text-align: center; width: 25px;">#</th>
+                  <th>Date & Time</th>
+                  <th>Bill No</th>
+                  <th>Item Name</th>
+                  <th style="text-align: right;">Rate</th>
+                  <th style="text-align: center;">Sold</th>
+                  <th style="text-align: right;">Total (₹)</th>
+                  <th style="text-align: center;">Returned</th>
+                  <th>Customer</th>
+                  <th>Payment Mode</th>
                 </tr>
               </thead>
-              <tbody>${rows}</tbody>
+              <tbody>
+                ${rows}
+              </tbody>
             </table>
-            <div style="margin-top: 15px; text-align: right; font-size: 14px;">
-              <strong>Total Sales: ₹${grandTotal.toFixed(2)}</strong>
+
+            <div class="summary-wrapper">
+              <div class="summary-box">
+                <div class="summary-line">
+                  <span>Gross Sales Amount:</span>
+                  <strong>₹${totalGrossSales.toFixed(2)}</strong>
+                </div>
+                <div class="summary-line" style="color: #dc2626;">
+                  <span>Return / Refund Deductions:</span>
+                  <strong>- ₹${totalReturnedAmount.toFixed(2)}</strong>
+                </div>
+                <div class="summary-line summary-total">
+                  <span>Net Revenue Realized:</span>
+                  <span>₹${netSales.toFixed(2)}</span>
+                </div>
+                <div class="mode-split">
+                  Realized Cash: <strong>₹${totalCashCollected.toFixed(2)}</strong> | Online / UPI: <strong>₹${totalOnlineCollected.toFixed(2)}</strong>
+                </div>
+              </div>
             </div>
           </body>
         </html>
@@ -211,13 +346,12 @@ export default function SoldItemsScreen({ navigation }) {
     }
   };
 
-  // Action 2: Permanent Delete
   const handlePermanentDelete = () => {
     if (!validateDates()) return;
 
     Alert.alert(
       'Permanent Delete?',
-      `Are you sure you want to permanently delete records from ${startDate.trim()} to ${endDate.trim()}? This cannot be undone.`,
+      `Are you sure you want to permanently delete records from ${startDate} to ${endDate}? This cannot be undone.`,
       [
         { text: t('cancel'), style: 'cancel' },
         {
@@ -227,16 +361,14 @@ export default function SoldItemsScreen({ navigation }) {
             setActionLoading(true);
             try {
               const { data } = await axiosInstance.post('/sales/history/permanent-delete-range', {
-                startDate: startDate.trim(),
-                endDate: endDate.trim()
+                startDate,
+                endDate
               });
               setActionLoading(false);
 
               if (data.success) {
                 Alert.alert(t('success'), data.message || 'Records permanently deleted.');
                 setRangeModalVisible(false);
-                setStartDate('');
-                setEndDate('');
                 fetchSalesHistory();
               }
             } catch (err) {
@@ -274,16 +406,11 @@ export default function SoldItemsScreen({ navigation }) {
   }, [sales]);
 
   return (
-    <View style={styles.container}>
-      {/* 1. Back Navigation */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>{t('backToDashboard')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={false}>
+      <BackButton onPress={() => navigation.goBack()} title={t('backToDashboard')} />
 
-      {/* 2. Full Width Title (Koi text squeeze nahi hoga) */}
       <Text style={styles.title}>{t('soldItemsTitle')}</Text>
 
-      {/* 3. Sub-bar: Left me Total Records Count | Right me Action Buttons */}
       <View style={styles.controlsBarRow}>
         <Text style={styles.subtitle}>
           {t('totalSalesRecords')} {sales.length}
@@ -315,7 +442,6 @@ export default function SoldItemsScreen({ navigation }) {
         </View>
       </View>
 
-      {/* 4. Multi-Select Action Bar (Jab Select Mode ON ho) */}
       {isSelectMode && (
         <View style={styles.multiSelectBar}>
           <TouchableOpacity onPress={handleSelectAll} style={styles.multiSelectActionBtn}>
@@ -338,7 +464,6 @@ export default function SoldItemsScreen({ navigation }) {
         </View>
       )}
 
-      {/* 5. Grouped Sales List */}
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
       ) : (
@@ -372,7 +497,6 @@ export default function SoldItemsScreen({ navigation }) {
                 ]}
               >
                 <View style={{ flex: 1 }}>
-                  {/* Header Row: Invoice + Payment Badge */}
                   <View style={styles.cardHeaderRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
                       {isSelectMode && (
@@ -417,7 +541,6 @@ export default function SoldItemsScreen({ navigation }) {
                     )}
                   </View>
 
-                  {/* Product & Total Amount */}
                   <View style={styles.productRow}>
                     <Text style={styles.itemName}>{item.productName}</Text>
                     <Text style={styles.itemTotal}>₹{(item.totalAmount || (item.price * (item.quantity || 1))).toFixed(2)}</Text>
@@ -430,7 +553,6 @@ export default function SoldItemsScreen({ navigation }) {
                     ) : null}
                   </Text>
 
-                  {/* Customer Details */}
                   <View style={styles.customerBox}>
                     <Text style={styles.itemMeta}>
                       {t('customerHistoryLabel')} <Text style={styles.metaHighlight}>{item.customerName || 'Walk-in Customer'}</Text>
@@ -441,7 +563,6 @@ export default function SoldItemsScreen({ navigation }) {
                     ) : null}
                   </View>
 
-                  {/* Footer */}
                   <View style={styles.footerRow}>
                     <Text style={styles.staffMeta}>
                       {t('billedByLabel')} {item.soldByName || item.soldBy?.name || 'Staff'}
@@ -458,7 +579,6 @@ export default function SoldItemsScreen({ navigation }) {
         />
       )}
 
-      {/* Date Range Modal */}
       <Modal
         visible={rangeModalVisible}
         transparent={true}
@@ -475,27 +595,29 @@ export default function SoldItemsScreen({ navigation }) {
             </View>
 
             <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD):</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. 2026-08-01"
-              placeholderTextColor="#64748b"
-              value={startDate}
-              onChangeText={setStartDate}
-            />
+            <TouchableOpacity 
+              style={styles.formDateBox} 
+              onPress={() => setActivePicker('start')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.formDateText}>{startDate}</Text>
+              <Text style={styles.formDateIcon}>📅</Text>
+            </TouchableOpacity>
 
             <Text style={styles.inputLabel}>End Date (YYYY-MM-DD):</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. 2026-08-31"
-              placeholderTextColor="#64748b"
-              value={endDate}
-              onChangeText={setEndDate}
-            />
+            <TouchableOpacity 
+              style={styles.formDateBox} 
+              onPress={() => setActivePicker('end')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.formDateText}>{endDate}</Text>
+              <Text style={styles.formDateIcon}>📅</Text>
+            </TouchableOpacity>
 
             {actionLoading ? (
               <ActivityIndicator color="#38bdf8" style={{ marginVertical: 20 }} />
             ) : (
-              <View style={{ gap: 10, marginTop: 10 }}>
+              <View style={{ gap: 10, marginTop: 12 }}>
                 <TouchableOpacity 
                   style={styles.downloadBtn}
                   onPress={handleDownloadBackup}
@@ -523,18 +645,23 @@ export default function SoldItemsScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+
+      <CustomDatePickerModal
+        visible={!!activePicker}
+        title={activePicker === 'start' ? "Select Start Date" : "Select End Date"}
+        selectedDate={activePicker === 'start' ? startDate : endDate}
+        onClose={() => setActivePicker(null)}
+        onSelectDate={(pickedDate) => {
+          if (activePicker === 'start') setStartDate(pickedDate);
+          else setEndDate(pickedDate);
+        }}
+      />
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  backText: { color: '#10b981', fontWeight: '600' },
-  
-  // Title takes full width without shrinking
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
-
-  // Dedicated flex row for Subtitle and Buttons
   controlsBarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -543,7 +670,6 @@ const styles = StyleSheet.create({
   },
   subtitle: { fontSize: 13, color: '#94a3b8', fontWeight: '500' },
   controlsActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-
   selectModeBtn: { 
     backgroundColor: '#1e293b', 
     borderWidth: 1.5, 
@@ -555,7 +681,6 @@ const styles = StyleSheet.create({
   selectModeBtnActive: { backgroundColor: '#38bdf8' },
   selectModeBtnText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
   selectModeBtnTextActive: { color: '#0f172a' },
-
   clearRangeTrigger: { 
     backgroundColor: 'rgba(239, 68, 68, 0.15)', 
     borderWidth: 1.5, 
@@ -565,7 +690,6 @@ const styles = StyleSheet.create({
     borderRadius: 8 
   },
   clearRangeTriggerText: { color: '#ef4444', fontSize: 12, fontWeight: 'bold' },
-
   multiSelectBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -581,7 +705,6 @@ const styles = StyleSheet.create({
   multiSelectActionText: { color: '#38bdf8', fontWeight: 'bold', fontSize: 12 },
   multiDeleteBtn: { backgroundColor: '#ef4444', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 },
   multiDeleteText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-
   sectionHeader: {
     backgroundColor: '#0f172a',
     paddingVertical: 10,
@@ -597,44 +720,34 @@ const styles = StyleSheet.create({
   sectionHeaderDate: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
   sectionHeaderCount: { color: '#64748b', fontSize: 12, fontWeight: '600' },
   sectionHeaderTotal: { color: '#10b981', fontSize: 14, fontWeight: 'bold' },
-
   itemCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
   itemCardSelected: { borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.12)' },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: '#94a3b8', justifyContent: 'center', alignItems: 'center' },
   checkboxActive: { backgroundColor: '#38bdf8', borderColor: '#38bdf8' },
   checkmark: { color: '#0f172a', fontWeight: 'bold', fontSize: 13 },
-
   invoiceBadge: { backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
   invoiceText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
-
   paymentBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   cashBadge: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderWidth: 1, borderColor: '#10b981' },
   onlineBadge: { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 1, borderColor: '#3b82f6' },
   splitBadge: { backgroundColor: 'rgba(245, 158, 11, 0.2)', borderWidth: 1, borderColor: '#f59e0b' },
   paymentBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#fff' },
   splitBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#f59e0b' },
-
   singleDeleteBtn: { padding: 4 },
   singleDeleteText: { fontSize: 15 },
-
   productRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   itemName: { color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 8 },
   itemTotal: { color: '#10b981', fontWeight: 'bold', fontSize: 16 },
   itemSubDetail: { color: '#94a3b8', fontSize: 12, marginBottom: 8 },
-
   customerBox: { backgroundColor: '#0f172a', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 6 },
   itemMeta: { color: '#cbd5e1', fontSize: 12 },
   metaHighlight: { color: '#fff', fontWeight: 'bold' },
   addressMeta: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
-
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   staffMeta: { color: '#64748b', fontSize: 11 },
   itemDate: { color: '#64748b', fontSize: 11 },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
-
-  // Modal Styling
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.85)',
@@ -659,19 +772,21 @@ const styles = StyleSheet.create({
   },
   modalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   modalCloseText: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
-
-  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 4 },
-  modalInput: {
+  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 6 },
+  formDateBox: {
     backgroundColor: '#0f172a',
-    color: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#334155',
-    marginBottom: 12,
-    fontSize: 14
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
   },
+  formDateText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  formDateIcon: { fontSize: 16 },
   downloadBtn: {
     backgroundColor: '#3b82f6',
     paddingVertical: 13,

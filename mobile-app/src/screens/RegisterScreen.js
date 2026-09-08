@@ -1,11 +1,14 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, ScrollView, StyleSheet
+  KeyboardAvoidingView, Platform, StyleSheet, BackHandler
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 GoogleSignin.configure({
   webClientId: '1088550340494-3jopngg56fcc6e8b6r2mmm1ov88832a5.apps.googleusercontent.com',
@@ -20,6 +23,17 @@ export default function RegisterScreen({ navigation }) {
   });
   const [loading, setLoading] = useState(false);
   const [fetchingGoogleUser, setFetchingGoogleUser] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.goBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [navigation])
+  );
 
   const handleGoogleSignIn = async () => {
     setFetchingGoogleUser(true);
@@ -89,8 +103,10 @@ export default function RegisterScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
+      <ScreenWrapper scrollable={true}>
+        <BackButton onPress={() => navigation.goBack()} title={t('backToLogin')} />
+
         <View style={styles.card}>
           <Text style={styles.title}>{t('createAccount')}</Text>
           <Text style={styles.subtitle}>{t('registerSubtitle')}</Text>
@@ -208,14 +224,12 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.linkText}>{t('alreadyHaveAccount')} <Text style={styles.linkHighlight}>{t('loginHighlight')}</Text></Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </ScreenWrapper>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
-  scroll: { padding: 24, justifyContent: 'center', flexGrow: 1 },
   card: { backgroundColor: '#1e293b', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#334155' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
   subtitle: { fontSize: 14, color: '#94a3b8', marginBottom: 20 },

@@ -1,8 +1,9 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, Button, TextInput, Alert, 
-  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image 
+  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, BackHandler 
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
@@ -10,6 +11,8 @@ import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useSales } from '../hooks/useSales';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -25,16 +28,13 @@ export default function EmployeeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [employeeName, setEmployeeName] = useState(user?.name || '');
 
-  // Payment Mode (Cash, Online, Split)
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [splitCash, setSplitCash] = useState('');
   const [splitOnline, setSplitOnline] = useState('');
 
-  // Exactly 2 Live Counters
   const [todayCashTotal, setTodayCashTotal] = useState(0);
   const [todayOnlineTotal, setTodayOnlineTotal] = useState(0);
 
-  // Edit Modal States
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
@@ -42,21 +42,45 @@ export default function EmployeeScreen({ navigation }) {
   const [editPriceMode, setEditPriceMode] = useState('manual');
   const [showEditLowestRate, setShowEditLowestRate] = useState(false);
 
-  // Image Preview Modal
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState(null);
 
-  // Customer Details
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
 
-  // Timer refs for 1-second secret reveal
   const [showLowestRate, setShowLowestRate] = useState(false);
   const [showGrandBaseRate, setShowGrandBaseRate] = useState(false);
   const revealTimerRef = useRef(null);
   const editRevealTimerRef = useRef(null);
   const grandBaseTimerRef = useRef(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (imageModalVisible) {
+          setImageModalVisible(false);
+          return true;
+        }
+        if (editModalVisible) {
+          setEditModalVisible(false);
+          return true;
+        }
+        if (scanner) {
+          setScanner(false);
+          return true;
+        }
+        if (currentScanned) {
+          setCurrentScanned(null);
+          return true;
+        }
+        return false;
+      };
+
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [imageModalVisible, editModalVisible, scanner, currentScanned])
+  );
 
   useEffect(() => {
     if (user?.name) {
@@ -73,7 +97,6 @@ export default function EmployeeScreen({ navigation }) {
     };
   }, []);
 
-  // Aaj ke sales records ka cash & online collection
   const fetchTodayLiveSales = async () => {
     try {
       const { data } = await axiosInstance.get('/sales/history');
@@ -117,9 +140,7 @@ export default function EmployeeScreen({ navigation }) {
           <Text style={styles.btnText}>{t('grantPermissionBtn')}</Text>
         </TouchableOpacity>
         <View style={{ marginTop: 15 }} />
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.btn, { backgroundColor: '#ef4444' }]}>
-          <Text style={styles.btnText}>{t('back')}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} title={t('back')} />
       </View>
     );
   }
@@ -485,16 +506,15 @@ export default function EmployeeScreen({ navigation }) {
           onBarcodeScanned={handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
-        <TouchableOpacity style={styles.backButton} onPress={() => setScanner(false)}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
-        </TouchableOpacity>
+        <View style={styles.cameraBackOverlay}>
+          <BackButton onPress={() => setScanner(false)} title={t('back')} />
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Top Header */}
+    <ScreenWrapper scrollable={false}>
       <View style={styles.topBar}>
         <Text style={styles.header}>Employee Portal</Text>
         <View style={styles.headerActions}>
@@ -505,7 +525,6 @@ export default function EmployeeScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Today's Live Sales Dashboard: Exactly 2 Counters */}
       <View style={styles.todayStatsCard}>
         <View style={styles.todayStatCol}>
           <Text style={styles.todayStatLabel}>💵 TODAY CASH</Text>
@@ -520,6 +539,7 @@ export default function EmployeeScreen({ navigation }) {
 
       {currentScanned ? (
         <ScrollView contentContainerStyle={styles.billingContainer} showsVerticalScrollIndicator={false}>
+          <BackButton onPress={() => { setCurrentScanned(null); setShowLowestRate(false); }} title={t('back')} />
           <View style={styles.productHeaderRow}>
             {currentScanned?.imageUri ? (
               <TouchableOpacity onPress={() => { setSelectedImageUri(currentScanned.imageUri); setImageModalVisible(true); }}>
@@ -537,7 +557,6 @@ export default function EmployeeScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Pricing Row */}
           <View style={styles.priceOptionRow}>
             <TouchableOpacity 
               style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} 
@@ -642,7 +661,6 @@ export default function EmployeeScreen({ navigation }) {
             <Text style={styles.returnNavBtnText}>🔄 Return / Exchange Stock</Text>
           </TouchableOpacity>
 
-          {/* Customer & Staff Info */}
           <View style={styles.cardBox}>
             <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
             <TextInput 
@@ -661,7 +679,6 @@ export default function EmployeeScreen({ navigation }) {
             <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
           </View>
 
-          {/* Cart Header + Grand Base Protection Guard */}
           <View style={styles.cartHeaderRow}>
             <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
 
@@ -709,7 +726,6 @@ export default function EmployeeScreen({ navigation }) {
             )}
           </View>
 
-          {/* PAYMENT MODE - DIRECTLY BELOW CART */}
           {cart.length > 0 && (
             <View style={[styles.cardBox, { marginTop: 14 }]}>
               <Text style={styles.fieldHeading}>SELECT PAYMENT MODE</Text>
@@ -743,7 +759,6 @@ export default function EmployeeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              {/* Split Inputs */}
               {paymentMode === 'Split' && (
                 <View style={styles.splitBox}>
                   <Text style={styles.splitNote}>Total Bill: ₹{grandTotalAmount.toFixed(2)}</Text>
@@ -782,7 +797,6 @@ export default function EmployeeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Checkout Actions */}
           {cart.length > 0 && (
             <View style={styles.checkoutActionRow}>
               <TouchableOpacity 
@@ -807,8 +821,7 @@ export default function EmployeeScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Image Preview Modal */}
-      <Modal visible={imageModalVisible} transparent={true} animationType="fade">
+      <Modal visible={imageModalVisible} transparent={true} animationType="fade" onRequestClose={() => setImageModalVisible(false)}>
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
             <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>✕ {t('cancel')}</Text>
@@ -819,9 +832,8 @@ export default function EmployeeScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Edit Item Modal */}
       {editingCartItem && (
-        <Modal visible={editModalVisible} animationType="slide" transparent={true}>
+        <Modal visible={editModalVisible} animationType="slide" transparent={true} onRequestClose={() => setEditModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>{t('editProductDetailsTitle')}</Text>
@@ -908,12 +920,11 @@ export default function EmployeeScreen({ navigation }) {
           </View>
         </Modal>
       )}
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 40, backgroundColor: '#0f172a' },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', padding: 20 },
@@ -924,7 +935,6 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#0f172a', color: '#fff', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginVertical: 4, fontSize: 14 },
   cardBox: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155' },
   fieldHeading: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 6 },
-  
   todayStatsCard: {
     flexDirection: 'row',
     backgroundColor: '#1e293b',
@@ -942,19 +952,16 @@ const styles = StyleSheet.create({
   todayStatValCash: { color: '#10b981', fontSize: 18, fontWeight: 'bold' },
   todayStatValOnline: { color: '#38bdf8', fontSize: 18, fontWeight: 'bold' },
   todayStatDivider: { width: 1.5, height: 32, backgroundColor: '#334155' },
-
   paymentToggleRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   payModeBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center' },
   payModeBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   payModeText: { fontSize: 12, fontWeight: 'bold', color: '#94a3b8' },
   payModeTextActive: { color: '#0f172a' },
-
   splitBox: { marginTop: 12, backgroundColor: '#0f172a', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155' },
   splitNote: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
   splitInputsRow: { flexDirection: 'row', gap: 10 },
   splitLabel: { color: '#cbd5e1', fontSize: 11, fontWeight: 'bold', marginBottom: 2 },
   splitInput: { backgroundColor: '#1e293b', color: '#fff', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', fontSize: 14 },
-
   billingContainer: { backgroundColor: '#1e293b', padding: 15, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
   productHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   thumbnailImg: { width: 50, height: 50, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a' },
@@ -963,19 +970,15 @@ const styles = StyleSheet.create({
   subText: { color: '#cbd5e1', fontSize: 12 },
   stockBadge: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   stockBadgeText: { color: '#10b981', fontWeight: 'bold', fontSize: 11 },
-
   imageModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   closeImageModal: { position: 'absolute', top: 40, right: 20, padding: 10, backgroundColor: '#334155', borderRadius: 8 },
   fullScreenImage: { width: '100%', height: '80%', resizeMode: 'contain' },
-
   scanBtn: { backgroundColor: '#10b981', padding: 15, borderRadius: 12, alignItems: 'center', marginBottom: 10 },
   scanBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
   returnNavBtn: { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 1.5, borderColor: '#f59e0b', padding: 13, borderRadius: 12, alignItems: 'center', marginBottom: 14 },
   returnNavBtnText: { color: '#f59e0b', fontWeight: 'bold', fontSize: 15 },
-
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
-  
   priceOptionRow: { flexDirection: 'row', marginVertical: 10, gap: 8 },
   priceOptionBtn: { flex: 1, minHeight: 52, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
   priceOptionBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
@@ -983,37 +986,30 @@ const styles = StyleSheet.create({
   priceOptionValue: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginTop: 2 },
   priceOptionLabelActive: { color: '#0f172a' },
   hintText: { fontSize: 10, color: '#64748b', fontWeight: '600', letterSpacing: 0.2, marginTop: 3 },
-  
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
   qtyBtn: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#334155', justifyContent: 'center', alignItems: 'center' },
   qtyBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   qtyInput: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
-
-  backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
-
+  cameraBackOverlay: { position: 'absolute', top: 50, left: 20 },
   cartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
   grandBaseHoldBtn: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   grandBaseHoldText: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold' },
-
   list: { backgroundColor: '#1e293b', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#334155' },
   cartItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#334155' },
   editBtn: { backgroundColor: '#3b82f6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, marginRight: 8 },
   editText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   removeBtn: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(239, 68, 68, 0.2)', alignItems: 'center', justifyContent: 'center' },
   removeBtnText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 },
-
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', marginBottom: 8, textAlign: 'center' },
   updateBtn: { backgroundColor: '#10b981', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 12 },
   updateBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
-
   checkoutActionRow: { flexDirection: 'row', gap: 10, marginTop: 16, marginBottom: 10 },
   doneBtn: { flex: 1.2, backgroundColor: '#10b981', paddingVertical: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   doneBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },
   printBtn: { flex: 1, backgroundColor: '#f59e0b', paddingVertical: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   printBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },
-
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 }
 });

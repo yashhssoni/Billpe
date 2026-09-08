@@ -1,10 +1,13 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useCallback } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
-  Alert, KeyboardAvoidingView, Platform, StyleSheet, ScrollView 
+  Alert, KeyboardAvoidingView, Platform, StyleSheet, BackHandler 
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
+import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function ResetPasswordScreen({ route, navigation }) {
   const { t } = useContext(LanguageContext);
@@ -13,6 +16,17 @@ export default function ResetPasswordScreen({ route, navigation }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        navigation.goBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [navigation])
+  );
 
   const handleResetPassword = async () => {
     if (!otp.trim() || !newPassword.trim() || !confirmPassword.trim()) {
@@ -51,8 +65,10 @@ export default function ResetPasswordScreen({ route, navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
+      <ScreenWrapper scrollable={true}>
+        <BackButton onPress={() => navigation.goBack()} title={t('back')} />
+
         <View style={styles.card}>
           <Text style={styles.title}>{t('setNewPasswordTitle')}</Text>
           <Text style={styles.subtitle}>{t('setNewPasswordSubtitle')} <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{email}</Text></Text>
@@ -92,13 +108,12 @@ export default function ResetPasswordScreen({ route, navigation }) {
             {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('updatePasswordAndLoginBtn')}</Text>}
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </ScreenWrapper>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 24 },
   card: { backgroundColor: '#1e293b', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#334155' },
   title: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16 },

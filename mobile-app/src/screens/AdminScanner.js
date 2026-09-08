@@ -1,28 +1,22 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
-  Platform, Image, Button, Modal, FlatList 
+  Platform, Image, Button, Modal, FlatList, BackHandler 
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
 
 const DEFAULT_POPULAR_CATEGORIES = [
-  'General',
-  'Grocery / Kirana',
-  'Apparel / Clothes',
-  'Steel / Bartan',
-  'Footwear / Shoes',
-  'Electronics & Mobiles',
-  'Stationery & Books',
-  'Cosmetics & Beauty',
-  'Snacks & Beverages',
-  'Hardware & Electrical',
-  'Medical & Pharma',
-  'Toys & Gifts'
+  'General', 'Grocery / Kirana', 'Apparel / Clothes', 'Steel / Bartan',
+  'Footwear / Shoes', 'Electronics & Mobiles', 'Stationery & Books',
+  'Cosmetics & Beauty', 'Snacks & Beverages', 'Hardware & Electrical',
+  'Medical & Pharma', 'Toys & Gifts'
 ];
 
 export default function AdminScanner({ navigation }) {
@@ -58,6 +52,77 @@ export default function AdminScanner({ navigation }) {
 
   const [p, setP] = useState(initialFormState);
 
+  const hasUnsavedChanges = () => {
+    return (
+      p.name.trim() !== '' ||
+      p.stock.trim() !== '' ||
+      p.lowestRate.trim() !== '' ||
+      p.highestRate.trim() !== '' ||
+      p.category.trim() !== '' ||
+      p.color.trim() !== '' ||
+      p.kg.trim() !== '' ||
+      p.grams.trim() !== '' ||
+      p.description.trim() !== '' ||
+      p.imageUri !== ''
+    );
+  };
+
+  const handleBackNavigation = () => {
+    if (categoryDropdownVisible) {
+      setCategoryDropdownVisible(false);
+      return;
+    }
+    if (modalState.visible) {
+      setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
+      setScanner(true);
+      return;
+    }
+    if (!scanner) {
+      if (hasUnsavedChanges()) {
+        Alert.alert(t('discardChangesTitle'), t('discardChangesMsg'), [
+          { text: t('stay'), style: 'cancel' },
+          { text: t('discardAndGoBack'), style: 'destructive', onPress: () => { setP(initialFormState); setScanner(true); } }
+        ]);
+        return;
+      }
+      setScanner(true);
+      return;
+    }
+    navigation.goBack();
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (categoryDropdownVisible) {
+          setCategoryDropdownVisible(false);
+          return true;
+        }
+        if (modalState.visible) {
+          setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
+          setScanner(true);
+          return true;
+        }
+        if (!scanner) {
+          if (hasUnsavedChanges()) {
+            Alert.alert(t('discardChangesTitle'), t('discardChangesMsg'), [
+              { text: t('stay'), style: 'cancel' },
+              { text: t('discardAndGoBack'), style: 'destructive', onPress: () => { setP(initialFormState); setScanner(true); } }
+            ]);
+            return true;
+          }
+          setScanner(true);
+          return true;
+        }
+        navigation.goBack();
+        return true;
+      };
+
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [categoryDropdownVisible, modalState.visible, scanner, p, navigation])
+  );
+
   useEffect(() => {
     fetchExistingCategories();
   }, []);
@@ -85,10 +150,7 @@ export default function AdminScanner({ navigation }) {
       const manipResult = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: 800 } }],
-        { 
-          compress: 0.7, 
-          format: ImageManipulator.SaveFormat.JPEG 
-        }
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
       return manipResult.uri;
     } catch (error) {
@@ -106,27 +168,10 @@ export default function AdminScanner({ navigation }) {
           <Text style={styles.btnText}>{t('grantPermissionBtn')}</Text>
         </TouchableOpacity>
         <View style={{ marginTop: 15 }} />
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.btn, { backgroundColor: '#ef4444' }]}>
-          <Text style={styles.btnText}>{t('back')}</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} title={t('back')} />
       </View>
     );
   }
-
-  const hasUnsavedChanges = () => {
-    return (
-      p.name.trim() !== '' ||
-      p.stock.trim() !== '' ||
-      p.lowestRate.trim() !== '' ||
-      p.highestRate.trim() !== '' ||
-      p.category.trim() !== '' ||
-      p.color.trim() !== '' ||
-      p.kg.trim() !== '' ||
-      p.grams.trim() !== '' ||
-      p.description.trim() !== '' ||
-      p.imageUri !== ''
-    );
-  };
 
   const handleBarCodeScanned = async ({ data }) => {
     if (modalState.visible) return;
@@ -313,9 +358,7 @@ export default function AdminScanner({ navigation }) {
       }
 
       const { data } = await axiosInstance.post('/products', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       setLoading(false);
 
@@ -371,10 +414,13 @@ export default function AdminScanner({ navigation }) {
         animationType="fade" 
         visible={modalState.visible}
         statusBarTranslucent={true}
+        onRequestClose={() => {
+          setModalState({ visible: false, type: null, item: null, scannedBarcode: '', restocking: false });
+          setScanner(true);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, isSold ? styles.modalCardAmber : styles.modalCardEmerald]}>
-            
             <View style={styles.modalHeaderRow}>
               <View style={[styles.modalTag, isSold ? styles.tagAmber : styles.tagEmerald]}>
                 <Text style={[styles.modalTagText, isSold ? styles.tagTextAmber : styles.tagTextEmerald]}>
@@ -482,7 +528,6 @@ export default function AdminScanner({ navigation }) {
                 </TouchableOpacity>
               )}
             </View>
-
           </View>
         </View>
       </Modal>
@@ -498,13 +543,15 @@ export default function AdminScanner({ navigation }) {
             onBarcodeScanned={handleBarCodeScanned}
             barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
           />
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
-          </TouchableOpacity>
+          <View style={styles.cameraBackOverlay}>
+            <BackButton onPress={() => navigation.goBack()} title={t('back')} />
+          </View>
         </View>
       ) : (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <BackButton onPress={handleBackNavigation} title={t('back')} />
+
             <Text style={styles.title}>{t('productEntryFormTitle')}</Text>
 
             <View style={styles.sectionCard}>
@@ -531,7 +578,6 @@ export default function AdminScanner({ navigation }) {
                 onChangeText={(tVal) => setP({ ...p, name: tVal })} 
               />
 
-              {/* Product Quantity / Stock Field */}
               <View style={styles.labelRow}>
                 <Text style={styles.label}>Quantity / Stock Units *</Text>
                 {!p.stock.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
@@ -684,16 +730,7 @@ export default function AdminScanner({ navigation }) {
             <View style={{ marginTop: 12 }}>
               <Button 
                 title={t('back')} 
-                onPress={() => {
-                  if (hasUnsavedChanges()) {
-                    Alert.alert(t('discardChangesTitle'), t('discardChangesMsg'), [
-                      { text: t('stay'), style: 'cancel' },
-                      { text: t('discardAndGoBack'), style: 'destructive', onPress: () => navigation.goBack() }
-                    ]);
-                  } else {
-                    navigation.goBack();
-                  }
-                }} 
+                onPress={handleBackNavigation} 
                 color="#ef4444" 
               />
             </View>
@@ -751,19 +788,17 @@ export default function AdminScanner({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
+  container: { padding: 18, paddingTop: 40, backgroundColor: '#0f172a', flexGrow: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#0f172a' },
   title: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
-
+  cameraBackOverlay: { position: 'absolute', top: 50, left: 20 },
   sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
   sectionHeading: { fontSize: 13, fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
   sectionHeadingOptional: { fontSize: 13, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
-
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   label: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1', fontSize: 13 },
   requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
   clearChipText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
-
   dropdownTrigger: {
     backgroundColor: '#0f172a',
     borderWidth: 1.5,
@@ -779,7 +814,6 @@ const styles = StyleSheet.create({
   dropdownPlaceholderText: { color: '#64748b', fontSize: 14 },
   dropdownSelectedText: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
   dropdownArrow: { color: '#38bdf8', fontSize: 12 },
-
   dropdownModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.75)',
@@ -812,7 +846,6 @@ const styles = StyleSheet.create({
   },
   dropdownModalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   dropdownModalClose: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
-
   dropdownItem: {
     paddingVertical: 12,
     paddingHorizontal: 12,
@@ -826,7 +859,6 @@ const styles = StyleSheet.create({
   dropdownItemText: { color: '#cbd5e1', fontSize: 14, fontWeight: '500' },
   dropdownItemTextActive: { color: '#38bdf8', fontWeight: 'bold' },
   checkmark: { color: '#38bdf8', fontSize: 16, fontWeight: 'bold' },
-
   input: { 
     borderWidth: 1.5, 
     padding: 12, 
@@ -837,40 +869,10 @@ const styles = StyleSheet.create({
     fontSize: 14 
   },
   readOnlyInput: { backgroundColor: '#334155', color: '#94a3b8', borderColor: '#475569' },
-
-  inputRedIdle: { 
-    borderColor: 'rgba(239, 68, 68, 0.7)', 
-    shadowColor: '#ef4444', 
-    shadowOffset: { width: 0, height: 0 }, 
-    shadowOpacity: 0.35, 
-    shadowRadius: 4, 
-    elevation: 2 
-  },
-  inputRedActive: { 
-    borderColor: '#ef4444', 
-    borderWidth: 2, 
-    shadowColor: '#ef4444', 
-    shadowOffset: { width: 0, height: 0 }, 
-    shadowOpacity: 0.6, 
-    shadowRadius: 8, 
-    elevation: 4 
-  },
-
-  inputGreenActive: { 
-    borderColor: '#10b981', 
-    borderWidth: 2, 
-    shadowColor: '#10b981', 
-    shadowOffset: { width: 0, height: 0 }, 
-    shadowOpacity: 0.6, 
-    shadowRadius: 8, 
-    elevation: 4 
-  },
-
-  inputFilledClean: { 
-    borderColor: '#334155', 
-    borderWidth: 1.5 
-  },
-
+  inputRedIdle: { borderColor: 'rgba(239, 68, 68, 0.7)' },
+  inputRedActive: { borderColor: '#ef4444', borderWidth: 2 },
+  inputGreenActive: { borderColor: '#10b981', borderWidth: 2 },
+  inputFilledClean: { borderColor: '#334155', borderWidth: 1.5 },
   inputOptional: { 
     borderWidth: 1, 
     padding: 12, 
@@ -881,16 +883,12 @@ const styles = StyleSheet.create({
     color: '#fff', 
     fontSize: 14 
   },
-
   rateRow: { flexDirection: 'row', gap: 10 },
   weightRow: { flexDirection: 'row', gap: 10 },
   photoButtonsRow: { flexDirection: 'row', marginBottom: 12 },
-  backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
   preview: { width: '100%', height: 180, borderRadius: 10, resizeMode: 'cover' },
-
-  saveBtn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 18, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
+  saveBtn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 18 },
   saveBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.92)',
@@ -905,33 +903,22 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 20,
     borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
     elevation: 12
   },
   modalCardEmerald: { borderColor: '#10b981' },
   modalCardAmber: { borderColor: '#f59e0b' },
-
   modalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14
   },
-  modalTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1
-  },
+  modalTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
   tagEmerald: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgba(16, 185, 129, 0.4)' },
   tagTextEmerald: { color: '#10b981', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 },
   tagAmber: { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderColor: 'rgba(245, 158, 11, 0.4)' },
   tagTextAmber: { color: '#f59e0b', fontWeight: '900', fontSize: 11, letterSpacing: 0.5 },
   modalBarcode: { color: '#94a3b8', fontSize: 13, fontWeight: '700' },
-
   modalHeroRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -942,12 +929,7 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
     marginBottom: 12
   },
-  modalThumbnail: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
-    backgroundColor: '#1e293b'
-  },
+  modalThumbnail: { width: 50, height: 50, borderRadius: 10, backgroundColor: '#1e293b' },
   modalThumbnailPlaceholder: {
     width: 50,
     height: 50,
@@ -956,18 +938,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  modalProductName: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#fff',
-    marginBottom: 2
-  },
-  modalProductCategory: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '600'
-  },
-
+  modalProductName: { fontSize: 16, fontWeight: '900', color: '#fff', marginBottom: 2 },
+  modalProductCategory: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },
   modalInfoBox: {
     backgroundColor: '#0f172a',
     borderRadius: 14,
@@ -976,21 +948,11 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
     marginBottom: 12
   },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4
-  },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   infoLabel: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
   infoValue: { color: '#cbd5e1', fontSize: 13, fontWeight: '700' },
   infoValueHighlight: { color: '#10b981', fontSize: 14, fontWeight: '900' },
-
-  pricingPillRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4
-  },
+  pricingPillRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   ratePill: {
     flex: 1,
     backgroundColor: '#1e293b',
@@ -1001,7 +963,6 @@ const styles = StyleSheet.create({
   },
   ratePillLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '700' },
   ratePillValue: { color: '#fff', fontSize: 14, fontWeight: '900', marginTop: 2 },
-
   modalPrompt: {
     color: '#cbd5e1',
     fontSize: 13,
@@ -1011,11 +972,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     lineHeight: 18
   },
-
-  modalActionsRow: {
-    flexDirection: 'row',
-    gap: 10
-  },
+  modalActionsRow: { flexDirection: 'row', gap: 10 },
   modalCancelBtn: {
     flex: 1,
     backgroundColor: '#334155',
@@ -1024,11 +981,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  modalCancelBtnText: {
-    color: '#cbd5e1',
-    fontWeight: '800',
-    fontSize: 13
-  },
+  modalCancelBtnText: { color: '#cbd5e1', fontWeight: '800', fontSize: 13 },
   modalPrimaryBtn: {
     flex: 1.3,
     backgroundColor: '#f59e0b',
@@ -1037,12 +990,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  modalPrimaryBtnText: {
-    color: '#0f172a',
-    fontWeight: '900',
-    fontSize: 13
-  },
-
+  modalPrimaryBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 13 },
   androidNavSpace: { height: 45 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
