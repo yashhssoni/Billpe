@@ -73,7 +73,7 @@ export default function SoldItemsScreen({ navigation }) {
     setSelectedIds(new Set());
   };
 
-  // Soft Delete (UI se hide, DB mein safe)
+  // Soft Delete (UI se hide, DB audit mein safe)
   const executeSoftDelete = async (idsArray) => {
     if (!idsArray || idsArray.length === 0) return;
 
@@ -141,7 +141,7 @@ export default function SoldItemsScreen({ navigation }) {
     return true;
   };
 
-  // Action 1: Sirf File Download/Print (Zero Risk - Kuch Delete Nahi Hoga)
+  // Action 1: File Download/Print (Zero Risk)
   const handleDownloadBackup = async () => {
     if (!validateDates()) return;
 
@@ -211,7 +211,7 @@ export default function SoldItemsScreen({ navigation }) {
     }
   };
 
-  // Action 2: Permanent Delete (Confirmation ke baad seedha clear)
+  // Action 2: Permanent Delete
   const handlePermanentDelete = () => {
     if (!validateDates()) return;
 
@@ -275,43 +275,47 @@ export default function SoldItemsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Top Header Row */}
-      <View style={styles.topRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{t('backToDashboard')}</Text>
-        </TouchableOpacity>
+      {/* 1. Back Navigation */}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
+        <Text style={styles.backText}>{t('backToDashboard')}</Text>
+      </TouchableOpacity>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {/* File Manager Style Select Toggle */}
+      {/* 2. Full Width Title (Koi text squeeze nahi hoga) */}
+      <Text style={styles.title}>{t('soldItemsTitle')}</Text>
+
+      {/* 3. Sub-bar: Left me Total Records Count | Right me Action Buttons */}
+      <View style={styles.controlsBarRow}>
+        <Text style={styles.subtitle}>
+          {t('totalSalesRecords')} {sales.length}
+        </Text>
+
+        <View style={styles.controlsActions}>
           <TouchableOpacity 
             style={[styles.selectModeBtn, isSelectMode && styles.selectModeBtnActive]}
             onPress={() => {
               if (isSelectMode) exitSelectMode();
               else setIsSelectMode(true);
             }}
+            activeOpacity={0.7}
           >
             <Text style={[styles.selectModeBtnText, isSelectMode && styles.selectModeBtnTextActive]}>
-              {isSelectMode ? 'Cancel' : 'Select'}
+              {isSelectMode ? 'Cancel' : 'Select Entry'}
             </Text>
           </TouchableOpacity>
 
-          {/* Date Range Clear Modal Trigger */}
           {!isSelectMode && (
             <TouchableOpacity 
               style={styles.clearRangeTrigger}
               onPress={() => setRangeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.clearRangeTriggerText}>🧹 Date Range</Text>
+              <Text style={styles.clearRangeTriggerText}>Delete by Date</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      <Text style={styles.title}>{t('soldItemsTitle')}</Text>
-      <Text style={styles.subtitle}>{t('totalSalesRecords')} {sales.length}</Text>
-
-      {/* Multi-Select Action Bar (Visible in Select Mode) */}
+      {/* 4. Multi-Select Action Bar (Jab Select Mode ON ho) */}
       {isSelectMode && (
         <View style={styles.multiSelectBar}>
           <TouchableOpacity onPress={handleSelectAll} style={styles.multiSelectActionBtn}>
@@ -334,6 +338,7 @@ export default function SoldItemsScreen({ navigation }) {
         </View>
       )}
 
+      {/* 5. Grouped Sales List */}
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
       ) : (
@@ -367,7 +372,7 @@ export default function SoldItemsScreen({ navigation }) {
                 ]}
               >
                 <View style={{ flex: 1 }}>
-                  {/* Header Row */}
+                  {/* Header Row: Invoice + Payment Badge */}
                   <View style={styles.cardHeaderRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
                       {isSelectMode && (
@@ -401,7 +406,6 @@ export default function SoldItemsScreen({ navigation }) {
                       )}
                     </View>
 
-                    {/* Single Delete Button */}
                     {!isSelectMode && (
                       <TouchableOpacity 
                         style={styles.singleDeleteBtn}
@@ -426,7 +430,7 @@ export default function SoldItemsScreen({ navigation }) {
                     ) : null}
                   </Text>
 
-                  {/* Customer Details Box */}
+                  {/* Customer Details */}
                   <View style={styles.customerBox}>
                     <Text style={styles.itemMeta}>
                       {t('customerHistoryLabel')} <Text style={styles.metaHighlight}>{item.customerName || 'Walk-in Customer'}</Text>
@@ -437,7 +441,7 @@ export default function SoldItemsScreen({ navigation }) {
                     ) : null}
                   </View>
 
-                  {/* Footer Staff & Time */}
+                  {/* Footer */}
                   <View style={styles.footerRow}>
                     <Text style={styles.staffMeta}>
                       {t('billedByLabel')} {item.soldByName || item.soldBy?.name || 'Staff'}
@@ -454,7 +458,7 @@ export default function SoldItemsScreen({ navigation }) {
         />
       )}
 
-      {/* Clean Date Range Modal */}
+      {/* Date Range Modal */}
       <Modal
         visible={rangeModalVisible}
         transparent={true}
@@ -492,7 +496,6 @@ export default function SoldItemsScreen({ navigation }) {
               <ActivityIndicator color="#38bdf8" style={{ marginVertical: 20 }} />
             ) : (
               <View style={{ gap: 10, marginTop: 10 }}>
-                {/* Download / Print Backup Sheet Button */}
                 <TouchableOpacity 
                   style={styles.downloadBtn}
                   onPress={handleDownloadBackup}
@@ -501,7 +504,6 @@ export default function SoldItemsScreen({ navigation }) {
                   <Text style={styles.downloadBtnText}>📥 Download / Print Backup</Text>
                 </TouchableOpacity>
 
-                {/* Permanent Delete Button */}
                 <TouchableOpacity 
                   style={styles.permanentBtn}
                   onPress={handlePermanentDelete}
@@ -510,7 +512,6 @@ export default function SoldItemsScreen({ navigation }) {
                   <Text style={styles.permanentBtnText}>🗑️ Permanent Delete</Text>
                 </TouchableOpacity>
 
-                {/* Cancel Button */}
                 <TouchableOpacity 
                   style={styles.cancelBtn}
                   onPress={() => setRangeModalVisible(false)}
@@ -528,17 +529,41 @@ export default function SoldItemsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   backText: { color: '#10b981', fontWeight: '600' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
-  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 12 },
+  
+  // Title takes full width without shrinking
+  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
 
-  selectModeBtn: { backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8 },
+  // Dedicated flex row for Subtitle and Buttons
+  controlsBarRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  subtitle: { fontSize: 13, color: '#94a3b8', fontWeight: '500' },
+  controlsActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  selectModeBtn: { 
+    backgroundColor: '#1e293b', 
+    borderWidth: 1.5, 
+    borderColor: '#38bdf8', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 8 
+  },
   selectModeBtnActive: { backgroundColor: '#38bdf8' },
   selectModeBtnText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
   selectModeBtnTextActive: { color: '#0f172a' },
 
-  clearRangeTrigger: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 1, borderColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  clearRangeTrigger: { 
+    backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+    borderWidth: 1.5, 
+    borderColor: '#ef4444', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 8 
+  },
   clearRangeTriggerText: { color: '#ef4444', fontSize: 12, fontWeight: 'bold' },
 
   multiSelectBar: {
@@ -560,7 +585,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     backgroundColor: '#0f172a',
     paddingVertical: 10,
-    marginTop: 10,
+    marginTop: 6,
     marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -609,6 +634,7 @@ const styles = StyleSheet.create({
   itemDate: { color: '#64748b', fontSize: 11 },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
 
+  // Modal Styling
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.85)',
