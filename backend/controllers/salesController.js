@@ -4,7 +4,11 @@ const Store = require('../models/Store');
 
 exports.checkout = async (req, res, next) => {
   try {
-    const { cartItems, totalAmount, paymentMode, customerName, customerPhone, customerAddress, employeeName, invoiceNo } = req.body;
+    const { 
+      cartItems, totalAmount, paymentMode, customerName, 
+      customerPhone, customerAddress, employeeName, invoiceNo,
+      cashAmount, onlineAmount
+    } = req.body;
     const storeId = req.user.storeId;
 
     if (!cartItems || cartItems.length === 0) {
@@ -20,6 +24,9 @@ exports.checkout = async (req, res, next) => {
     const finalCustomerAddress = customerAddress && customerAddress.trim() ? customerAddress.trim() : 'N/A';
     const finalEmployeeName = employeeName && employeeName.trim() ? employeeName.trim() : (req.user.name || 'Employee');
     const finalPaymentMode = paymentMode || 'Cash';
+
+    const parsedCash = Number(cashAmount) || 0;
+    const parsedOnline = Number(onlineAmount) || 0;
 
     for (let item of cartItems) {
       const product = await Product.findOne({ _id: item.productId, storeId });
@@ -60,7 +67,9 @@ exports.checkout = async (req, res, next) => {
         customerAddress: finalCustomerAddress,
         soldBy: req.user.id,
         soldByName: finalEmployeeName,
-        paymentMode: finalPaymentMode
+        paymentMode: finalPaymentMode,
+        cashAmount: parsedCash,
+        onlineAmount: parsedOnline
       });
     }
 
@@ -76,6 +85,8 @@ exports.checkout = async (req, res, next) => {
         items: cartItems, 
         totalAmount, 
         paymentMode: finalPaymentMode, 
+        cashAmount: parsedCash,
+        onlineAmount: parsedOnline,
         customerName: finalCustomerName,
         customerPhone: finalCustomerPhone,
         customerAddress: finalCustomerAddress,

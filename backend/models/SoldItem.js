@@ -66,6 +66,14 @@ const soldItemSchema = new mongoose.Schema({
   paymentMode: { 
     type: String, 
     default: 'Cash' 
+  },
+  cashAmount: {
+    type: Number,
+    default: 0
+  },
+  onlineAmount: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 

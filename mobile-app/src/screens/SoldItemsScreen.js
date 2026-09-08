@@ -7,6 +7,7 @@ export default function SoldItemsScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [expandedSplitIds, setExpandedSplitIds] = useState(new Set());
 
   const fetchSalesHistory = async () => {
     try {
@@ -25,6 +26,18 @@ export default function SoldItemsScreen({ navigation }) {
   useEffect(() => {
     fetchSalesHistory();
   }, []);
+
+  const toggleSplitExpand = (id) => {
+    setExpandedSplitIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const groupedSales = useMemo(() => {
     const groups = {};
@@ -74,57 +87,77 @@ export default function SoldItemsScreen({ navigation }) {
               <Text style={styles.sectionHeaderTotal}>₹{totalAmount.toFixed(2)}</Text>
             </View>
           )}
-          renderItem={({ item }) => (
-            <View style={styles.itemCard}>
-              <View style={{ flex: 1 }}>
-                {/* Header Row: Invoice + Pay Mode */}
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.invoiceBadge}>
-                    <Text style={styles.invoiceText}>#{item.invoiceNo || 'N/A'}</Text>
+          renderItem={({ item }) => {
+            const isSplit = item.paymentMode === 'Split';
+            const isExpanded = expandedSplitIds.has(item._id);
+
+            return (
+              <View style={styles.itemCard}>
+                <View style={{ flex: 1 }}>
+                  {/* Header Row: Invoice + Payment Badge */}
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.invoiceBadge}>
+                      <Text style={styles.invoiceText}>#{item.invoiceNo || 'N/A'}</Text>
+                    </View>
+
+                    {isSplit ? (
+                      <TouchableOpacity 
+                        style={[styles.paymentBadge, styles.splitBadge]} 
+                        onPress={() => toggleSplitExpand(item._id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.splitBadgeText}>
+                          {isExpanded 
+                            ? `💵 ₹${item.cashAmount || 0}  |  📲 ₹${item.onlineAmount || 0}`
+                            : '⚖️ SPLIT (Tap)'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={[styles.paymentBadge, item.paymentMode === 'Online' ? styles.onlineBadge : styles.cashBadge]}>
+                        <Text style={styles.paymentBadgeText}>
+                          {item.paymentMode === 'Online' ? t('paymentOnline') : t('paymentCash')}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={[styles.paymentBadge, item.paymentMode === 'Online' ? styles.onlineBadge : styles.cashBadge]}>
-                    <Text style={styles.paymentBadgeText}>
-                      {item.paymentMode === 'Online' ? t('paymentOnline') : t('paymentCash')}
+
+                  {/* Product & Total Amount */}
+                  <View style={styles.productRow}>
+                    <Text style={styles.itemName}>{item.productName}</Text>
+                    <Text style={styles.itemTotal}>₹{(item.totalAmount || (item.price * (item.quantity || 1))).toFixed(2)}</Text>
+                  </View>
+
+                  <Text style={styles.itemSubDetail}>
+                    Rate: ₹{item.price} × {item.quantity || 1} pcs
+                    {item.returnedQuantity > 0 ? (
+                      <Text style={{ color: '#f59e0b', fontWeight: 'bold' }}> ({item.returnedQuantity} Returned)</Text>
+                    ) : null}
+                  </Text>
+
+                  {/* Customer Details Box */}
+                  <View style={styles.customerBox}>
+                    <Text style={styles.itemMeta}>
+                      {t('customerHistoryLabel')} <Text style={styles.metaHighlight}>{item.customerName || 'Walk-in Customer'}</Text>
+                      {item.customerPhone && item.customerPhone !== 'N/A' ? ` • 📞 ${item.customerPhone}` : ''}
+                    </Text>
+                    {item.customerAddress && item.customerAddress !== 'N/A' ? (
+                      <Text style={styles.addressMeta}>📍 {item.customerAddress}</Text>
+                    ) : null}
+                  </View>
+
+                  {/* Footer Staff & Time */}
+                  <View style={styles.footerRow}>
+                    <Text style={styles.staffMeta}>
+                      {t('billedByLabel')} {item.soldByName || item.soldBy?.name || 'Staff'}
+                    </Text>
+                    <Text style={styles.itemDate}>
+                      🕒 {new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
                 </View>
-
-                {/* Product & Qty */}
-                <View style={styles.productRow}>
-                  <Text style={styles.itemName}>{item.productName}</Text>
-                  <Text style={styles.itemTotal}>₹{(item.totalAmount || (item.price * (item.quantity || 1))).toFixed(2)}</Text>
-                </View>
-
-                <Text style={styles.itemSubDetail}>
-                  Rate: ₹{item.price} × {item.quantity || 1} pcs
-                  {item.returnedQuantity > 0 ? (
-                    <Text style={{ color: '#f59e0b', fontWeight: 'bold' }}> ({item.returnedQuantity} Returned)</Text>
-                  ) : null}
-                </Text>
-
-                {/* Customer Details Box */}
-                <View style={styles.customerBox}>
-                  <Text style={styles.itemMeta}>
-                    {t('customerHistoryLabel')} <Text style={styles.metaHighlight}>{item.customerName || 'Walk-in Customer'}</Text>
-                    {item.customerPhone && item.customerPhone !== 'N/A' ? ` • 📞 ${item.customerPhone}` : ''}
-                  </Text>
-                  {item.customerAddress && item.customerAddress !== 'N/A' ? (
-                    <Text style={styles.addressMeta}>📍 {item.customerAddress}</Text>
-                  ) : null}
-                </View>
-
-                {/* Footer Staff & Time */}
-                <View style={styles.footerRow}>
-                  <Text style={styles.staffMeta}>
-                    {t('billedByLabel')} {item.soldByName || item.soldBy?.name || 'Staff'}
-                  </Text>
-                  <Text style={styles.itemDate}>
-                    🕒 {new Date(item.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                </View>
               </View>
-            </View>
-          )}
+            );
+          }}
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noSalesHistory')}</Text>}
         />
       )}
@@ -159,10 +192,12 @@ const styles = StyleSheet.create({
   invoiceBadge: { backgroundColor: '#0f172a', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#334155' },
   invoiceText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
 
-  paymentBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  paymentBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   cashBadge: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderWidth: 1, borderColor: '#10b981' },
   onlineBadge: { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 1, borderColor: '#3b82f6' },
+  splitBadge: { backgroundColor: 'rgba(245, 158, 11, 0.2)', borderWidth: 1, borderColor: '#f59e0b' },
   paymentBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#fff' },
+  splitBadgeText: { fontSize: 11, fontWeight: 'bold', color: '#f59e0b' },
 
   productRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   itemName: { color: '#fff', fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 8 },

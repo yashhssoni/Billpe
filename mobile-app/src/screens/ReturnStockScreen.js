@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { 
-  View, Text, StyleSheet, TextInput, Alert, 
-  TouchableOpacity, ActivityIndicator, ScrollView, Image 
+  View, Text, StyleSheet, Alert, TouchableOpacity, 
+  ActivityIndicator, ScrollView, Image 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axiosInstance from '../api/axiosInstance';
@@ -35,7 +35,6 @@ export default function ReturnStockScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // 1. Fetch Product details
       const { data: prodRes } = await axiosInstance.get('/products?includeSold=true');
       const foundProduct = (prodRes.products || []).find(p => p.barcode === data);
 
@@ -47,7 +46,6 @@ export default function ReturnStockScreen({ navigation }) {
         return;
       }
 
-      // 2. Fetch latest sold record for this barcode to verify invoice & customer
       const { data: saleRes } = await axiosInstance.get('/sales/history');
       const pastSales = (saleRes.sales || []).filter(s => s.barcode === data || (s.productId && s.productId._id === foundProduct._id));
 
@@ -62,7 +60,6 @@ export default function ReturnStockScreen({ navigation }) {
         return;
       }
 
-      // Latest sale record pick karein
       const latestSale = pastSales[0];
       const maxAllowed = Math.max(0, latestSale.quantity - (latestSale.returnedQuantity || 0));
 
@@ -126,9 +123,6 @@ export default function ReturnStockScreen({ navigation }) {
           onBarcodeScanned={handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
-        <View style={styles.scannerOverlay}>
-          <Text style={styles.scannerTitle}>🔄 Point Camera to Return Item Barcode</Text>
-        </View>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
         </TouchableOpacity>
@@ -149,7 +143,6 @@ export default function ReturnStockScreen({ navigation }) {
         <ActivityIndicator size="large" color="#f59e0b" style={{ marginTop: 50 }} />
       ) : returnItemData ? (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Main Card */}
           <View style={styles.returnCard}>
             <View style={styles.cardHeader}>
               <View style={styles.invoicePill}>
@@ -160,7 +153,6 @@ export default function ReturnStockScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Product Meta */}
             <View style={styles.productRow}>
               {returnItemData.product.imageUri ? (
                 <Image source={{ uri: returnItemData.product.imageUri }} style={styles.thumbnail} />
@@ -174,7 +166,6 @@ export default function ReturnStockScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Customer & Staff Verification Card */}
             <View style={styles.detailsBox}>
               <Text style={styles.boxHeading}>SALE VERIFICATION</Text>
               <View style={styles.infoRow}>
@@ -201,7 +192,6 @@ export default function ReturnStockScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Inventory Status Badges */}
             <View style={styles.statsRow}>
               <View style={styles.statPill}>
                 <Text style={styles.statLabel}>Bought</Text>
@@ -217,7 +207,6 @@ export default function ReturnStockScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Quantity Selector */}
             <Text style={styles.selectorLabel}>Select Return Quantity:</Text>
             <View style={styles.qtyControlRow}>
               <TouchableOpacity 
@@ -239,13 +228,11 @@ export default function ReturnStockScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* Live Refund Summary */}
             <View style={styles.refundSummaryBox}>
               <Text style={styles.refundLabel}>Total Refund to Customer:</Text>
               <Text style={styles.refundAmount}>₹{(returnQty * returnItemData.sale.price).toFixed(2)}</Text>
             </View>
 
-            {/* Actions */}
             <TouchableOpacity 
               style={styles.confirmBtn}
               onPress={handleConfirmReturn}
@@ -283,8 +270,6 @@ const styles = StyleSheet.create({
   btnText: { color: '#0f172a', fontWeight: 'bold' },
 
   backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
-  scannerOverlay: { position: 'absolute', top: 50, width: '100%', alignItems: 'center' },
-  scannerTitle: { color: '#f59e0b', backgroundColor: 'rgba(15, 23, 42, 0.85)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, fontWeight: 'bold', fontSize: 13 },
 
   scrollContent: { paddingBottom: 30 },
   returnCard: { backgroundColor: '#1e293b', borderRadius: 20, padding: 18, borderWidth: 1.5, borderColor: '#f59e0b' },

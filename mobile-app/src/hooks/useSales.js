@@ -4,7 +4,18 @@ import axiosInstance from '../api/axiosInstance';
 export const useSales = () => {
   const [loading, setLoading] = useState(false);
 
-  const processCheckout = async (cartItems, totalAmount, paymentMode, customerName, customerPhone, employeeName, customerAddress, invoiceNo) => {
+  const processCheckout = async (
+    cartItems, 
+    totalAmount, 
+    paymentMode, 
+    customerName, 
+    customerPhone, 
+    employeeName, 
+    customerAddress, 
+    invoiceNo,
+    cashAmount = 0,
+    onlineAmount = 0
+  ) => {
     try {
       setLoading(true);
       const { data } = await axiosInstance.post('/sales/checkout', {
@@ -15,7 +26,9 @@ export const useSales = () => {
         customerPhone,
         customerAddress,
         employeeName,
-        invoiceNo
+        invoiceNo,
+        cashAmount,
+        onlineAmount
       });
       return { success: true, ...data };
     } catch (error) {
