@@ -116,7 +116,7 @@ export default function SoldItemsScreen({ navigation }) {
   const handleSingleDelete = (id, productName) => {
     Alert.alert(
       t('Remove from History?'),
-      `Remove "${productName}" from sales history?`,
+      t('Remove') + ` "${productName}" ` + t('from sales history?'),
       [
         { text: t('cancel'), style: 'cancel' },
         { 
@@ -136,18 +136,17 @@ export default function SoldItemsScreen({ navigation }) {
 
     Alert.alert(
       t('Remove Selected?'),
-      `Remove ${selectedIds.size} selected item(s) from history?`,
+      t('Remove') + ` ${selectedIds.size} ` + t('selected item(s) from history?'),
       [
         { text: t('cancel'), style: 'cancel' },
         { 
-          text: `Delete (${selectedIds.size})`, 
+          text: `${t('delete')} (${selectedIds.size})`, 
           style: 'destructive',
           onPress: () => executeSoftDelete(Array.from(selectedIds))
         }
       ]
     );
   };
-
   const validateDates = () => {
     if (!startDate.trim() || !endDate.trim()) {
       Alert.alert(t('error'), t('Please enter both Start Date and End Date.'));
@@ -177,47 +176,91 @@ export default function SoldItemsScreen({ navigation }) {
         return;
       }
 
-      const rows = res.sales.map((item, idx) => `
-        <tr>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${item.invoiceNo}</td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${item.productName}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${item.quantity}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">₹${item.price}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: right;"><strong>₹${item.totalAmount}</strong></td>
-          <td style="padding: 6px; border: 1px solid #ddd;">${item.customerName || 'N/A'}</td>
-          <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${item.paymentMode}</td>
-        </tr>
-      `).join('');
-
+      const totalQty = res.sales.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
+      const totalReturnedQty = res.sales.reduce((acc, curr) => acc + Number(curr.returnedQuantity || 0), 0);
       const grandTotal = res.sales.reduce((acc, curr) => acc + Number(curr.totalAmount || curr.price || 0), 0);
+
+      const rows = res.sales.map((item, idx) => {
+        const qty = Number(item.quantity || 1);
+        const rate = Number(item.price || 0);
+        const total = Number(item.totalAmount || (rate * qty));
+        const retQty = Number(item.returnedQuantity || 0);
+        const retPrice = retQty * rate;
+
+        return `
+          <tr>
+            <td style="text-align: center;">${idx + 1}</td>
+            <td>${new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
+            <td>${item.invoiceNo || 'N/A'}</td>
+            <td><strong>${item.productName}</strong></td>
+            <td style="text-align: center;">${qty}</td>
+            <td style="text-align: right;">₹${rate.toFixed(2)}</td>
+            <td style="text-align: right;"><strong>₹${total.toFixed(2)}</strong></td>
+            <td style="text-align: center; color: ${retQty > 0 ? '#d97706' : '#666'};">${retQty > 0 ? retQty : '-'}</td>
+            <td style="text-align: right; color: ${retPrice > 0 ? '#d97706' : '#666'};">${retPrice > 0 ? '₹' + retPrice.toFixed(2) : '-'}</td>
+            <td>${item.paymentMode || 'Cash'}</td>
+            <td>${item.soldByName || 'Staff'}</td>
+          </tr>
+        `;
+      }).join('');
 
       const html = `
         <html>
           <head>
             <style>
               body { font-family: Arial, sans-serif; padding: 15px; color: #222; }
-              h2 { margin-bottom: 4px; text-align: center; }
-              p { margin: 2px 0; font-size: 13px; text-align: center; }
-              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-              th { background-color: #f1f5f9; padding: 8px; border: 1px solid #cbd5e1; text-align: left; }
+              .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 10px; }
+              h2 { margin: 0 0 4px 0; font-size: 18px; text-transform: uppercase; }
+              p { margin: 2px 0; font-size: 12px; color: #555; }
+              .meta-box { font-size: 12px; margin-bottom: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+              table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+              th { background-color: #f1f5f9; padding: 6px; border: 1px solid #cbd5e1; text-align: left; }
+              td { padding: 6px; border: 1px solid #cbd5e1; }
+              .summary-box { margin-top: 15px; background: #f1f5f9; padding: 10px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; }
+              .summary-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
             </style>
           </head>
           <body>
-            <h2>BILLPE STORE SALES REPORT</h2>
-            <p><strong>Period:</strong> ${startDate.trim()} to ${endDate.trim()}</p>
-            <p><strong>Export Date:</strong> ${new Date().toLocaleString('en-IN')}</p>
+            <div class="header">
+              <h2>${res.storeInfo?.storeName || 'RETAIL STORE'}</h2>
+              <p>${res.storeInfo?.address || ''}</p>
+              <p><strong>Contact:</strong> ${res.storeInfo?.phone || res.storeInfo?.ownerPhone || 'N/A'}</p>
+            </div>
+
+            <div class="meta-box">
+              <div><strong>${t('ReportPeriod:') || 'Report Period:'}</strong> ${startDate.trim()} to ${endDate.trim()}</div>
+              <div><strong>${t('ExportedOn:') || 'Exported On:'}</strong> ${new Date().toLocaleString('en-IN')}</div>
+            </div>
+
+            <h3 style="text-align: center; font-size: 13px; margin: 8px 0; text-transform: uppercase;">${t('Detailed Sales & Return Report')}</h3>
+
             <table>
               <thead>
                 <tr>
-                  <th>#</th><th>Date</th><th>Invoice</th><th>Product</th><th>Qty</th><th>Rate</th><th>Total</th><th>Customer</th><th>Mode</th>
+                  <th>${t('th_sr')}</th>
+                  <th>${t('th_date')}</th>
+                  <th>${t('th_invoice')}</th>
+                  <th>${t('th_product')}</th>
+                  <th>${t('th_qty')}</th>
+                  <th>${t('th_rate')}</th>
+                  <th>${t('th_total')}</th>
+                  <th>${t('th_ret_qty')}</th>
+                  <th>${t('th_ret_amt')}</th>
+                  <th>${t('th_mode')}</th>
+                  <th>${t('th_staff')}</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
-            <div style="margin-top: 15px; text-align: right; font-size: 14px;">
-              <strong>Total Sales: ₹${grandTotal.toFixed(2)}</strong>
+
+            <div class="summary-box">
+              <div class="summary-row"><span>${t('Total Records / Bills:')}</span> <strong>${res.sales.length}</strong></div>
+              <div class="summary-row"><span>${t('Total Items Sold (Qty):')}</span> <strong>${totalQty} pcs</strong></div>
+              <div class="summary-row"><span>${t('Total Items Returned:')}</span> <strong style="color: #d97706;">${totalReturnedQty} pcs</strong></div>
+              <div class="summary-row" style="font-size: 14px; border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 6px;">
+                <span><strong>${t('Net Grand Total:')}</strong></span> 
+                <strong style="color: #059669;">₹${grandTotal.toFixed(2)}</strong>
+              </div>
             </div>
           </body>
         </html>
