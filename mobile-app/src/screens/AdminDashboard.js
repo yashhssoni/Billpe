@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, TouchableOpacity, StyleSheet, 
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, 
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, 
   Platform 
 } from 'react-native';
@@ -8,7 +8,6 @@ import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import axiosInstance from '../api/axiosInstance';
-import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function AdminDashboard({ navigation }) {
   const { storeInfo, logout } = useContext(AuthContext);
@@ -80,7 +79,14 @@ export default function AdminDashboard({ navigation }) {
       style={{ flex: 1, backgroundColor: '#0f172a' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScreenWrapper scrollable={true}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.container} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header with Switcher + Logout */}
         <View style={styles.header}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
@@ -98,6 +104,7 @@ export default function AdminDashboard({ navigation }) {
           </View>
         </View>
 
+        {/* Menu Grid */}
         <View style={styles.grid}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
@@ -119,6 +126,7 @@ export default function AdminDashboard({ navigation }) {
           ))}
         </View>
 
+        {/* Inline Feedback Section */}
         {!hasReviewed && (
           <View style={styles.reviewSection}>
             <View style={styles.reviewHeaderRow}>
@@ -167,25 +175,29 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           </View>
         )}
-      </ScreenWrapper>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  container: { flex: 1, backgroundColor: '#0f172a', paddingHorizontal: 20 },
+  scrollContent: { paddingBottom: 80 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
   storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
   storeId: { fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: '500' },
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
   logoutText: { color: '#ef4444', fontWeight: '600', fontSize: 12 },
+  
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: { width: '48%', backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 14 },
   fullWidthCard: { width: '100%', flexDirection: 'row', alignItems: 'center', borderColor: '#38bdf8', backgroundColor: '#1e293b' },
   iconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', justifyContent: 'center', alignItems: 'center' },
   cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginTop: 8 },
   cardSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+
   reviewSection: { 
     backgroundColor: '#1e293b', 
     borderRadius: 20, 

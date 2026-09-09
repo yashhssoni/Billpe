@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
-  View, Text, StyleSheet, TouchableOpacity, 
-  ActivityIndicator, Alert, TextInput, BackHandler 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  ActivityIndicator, Alert, TextInput 
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
-import BackButton from '../components/BackButton';
-import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function ProfileScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -23,17 +20,6 @@ export default function ProfileScreen({ navigation }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [updatingPassword, setUpdatingPassword] = useState(false);
-
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        navigation.goBack();
-        return true;
-      };
-      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => sub.remove();
-    }, [navigation])
-  );
 
   useEffect(() => {
     fetchProfile();
@@ -126,8 +112,10 @@ export default function ProfileScreen({ navigation }) {
   }
 
   return (
-    <ScreenWrapper scrollable={true}>
-      <BackButton onPress={() => navigation.goBack()} title={t('back')} />
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
+      </TouchableOpacity>
 
       <Text style={styles.mainTitle}>{t('storeOwnerProfileTitle')}</Text>
       <View style={styles.card}>
@@ -251,12 +239,14 @@ export default function ProfileScreen({ navigation }) {
       </View>
 
       <View style={{ height: 40 }} />
-    </ScreenWrapper>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
   mainTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 16 },
   card: { backgroundColor: '#1e293b', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#334155' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

@@ -1,230 +1,296 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
-  View, Text, TouchableOpacity, StyleSheet, 
-  TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, 
-  Platform 
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
+  Alert, KeyboardAvoidingView, Platform, StyleSheet, ScrollView, Modal, FlatList 
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import axiosInstance from '../api/axiosInstance';
-import ScreenWrapper from '../components/ScreenWrapper';
 
-export default function AdminDashboard({ navigation }) {
-  const { storeInfo, logout } = useContext(AuthContext);
+const SAVED_ACCOUNTS_KEY = 'billpe_saved_accounts_list';
+
+export default function LoginScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
-
-  const [hasReviewed, setHasReviewed] = useState(true); 
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const scrollViewRef = useRef(null);
-
-  const menuItems = [
-    { title: t('scanAddStockCard'), icon: '📷', screen: 'AdminScanner' },
-    { title: t('barcodeGenCard'), icon: '🏷️', screen: 'BarcodeGenerator' },
-    { title: t('manageDbCard'), icon: '📊', screen: 'ManageDatabase' },
-    { title: t('soldHistoryCard'), icon: '💰', screen: 'SoldItemsScreen' },
-    { title: t('addEmployeeCard'), icon: '👥', screen: 'AddEmployeeScreen' },
-    { title: t('subscriptionCard'), icon: '💳', screen: 'SubscriptionScreen' },
-    { title: t('settingsSupportCard'), icon: '⚙️', screen: 'SettingsHubScreen', isFullWidth: true },
-  ];
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [savedAccounts, setSavedAccounts] = useState([]);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const { login } = useContext(AuthContext);
 
   useEffect(() => {
-    checkReviewStatus();
+    loadSavedAccounts();
   }, []);
 
-  const checkReviewStatus = async () => {
+  const loadSavedAccounts = async () => {
     try {
-      const { data } = await axiosInstance.get('/settings/profile');
-      if (data.success && data.data) {
-        setHasReviewed(data.data.hasReviewed);
+      const data = await AsyncStorage.getItem(SAVED_ACCOUNTS_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSavedAccounts(parsed);
+          // Default latest account load ho jayega
+          setIdentifier(parsed[0].email);
+          setPassword(parsed[0].pass);
+        }
       }
-    } catch (err) {
-      console.log('Error checking review status:', err);
+    } catch (e) {
+      console.log('Error reading saved accounts:', e);
     }
   };
 
-  const handleSubmitReview = async () => {
-    if (!comment.trim()) {
-      Alert.alert(t('error'), t('feedbackEmptyError'));
+  const handleSelectAccount = (acc) => {
+    setIdentifier(acc.email);
+    setPassword(acc.pass);
+    setDropdownVisible(false);
+  };
+
+  const handleDeleteSavedAccount = async (emailToDelete) => {
+    const updated = savedAccounts.filter(acc => acc.email !== emailToDelete);
+    setSavedAccounts(updated);
+    await AsyncStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(updated));
+    if (identifier === emailToDelete) {
+      setIdentifier('');
+      setPassword('');
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!identifier.trim() || !password) {
+      Alert.alert(t('error'), t('enterLoginCredentialsError'));
       return;
     }
+    setLoading(true);
+    const result = await login(identifier.trim(), password);
+    setLoading(false);
 
-    try {
-      setSubmittingReview(true);
-      const { data } = await axiosInstance.post('/settings/reviews', {
-        rating,
-        comment: comment.trim()
-      });
-
-      setSubmittingReview(false);
-      if (data.success) {
-        Alert.alert('🎉 ' + t('success'), t('feedbackSubmittedSuccess'));
-        setHasReviewed(true);
+    if (result.success) {
+      try {
+        const newEntry = { email: identifier.trim(), pass: password };
+        // Purane duplicate ko hatakar latest ko top par add karenge
+        const filtered = savedAccounts.filter(acc => acc.email.toLowerCase() !== newEntry.email.toLowerCase());
+        const updatedList = [newEntry, ...filtered].slice(0, 8); // Max 8 accounts cache
+        setSavedAccounts(updatedList);
+        await AsyncStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(updatedList));
+      } catch (e) {
+        console.log('Error caching account:', e);
       }
-    } catch (err) {
-      setSubmittingReview(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to submit review.');
+    } else {
+      Alert.alert(t('loginFailed'), result.message || 'Invalid credentials.');
     }
-  };
-
-  const handleInputFocus = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 200);
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1, backgroundColor: '#0f172a' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScreenWrapper scrollable={true}>
-        <View style={styles.header}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
-            <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
-              {storeInfo?.storeName || 'My Store'}
-            </Text>
-            {storeInfo?._id && <Text style={styles.storeId}>{t('storeIdPrefix')} {storeInfo._id}</Text>}
-          </View>
-
-          <View style={styles.headerActions}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
+          <View style={{ alignItems: 'flex-end', marginBottom: 10 }}>
             <LanguageSwitcher />
-            <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-              <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
-            </TouchableOpacity>
           </View>
-        </View>
 
-        <View style={styles.grid}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => navigation.navigate(item.screen)}
-              style={[styles.card, item.isFullWidth && styles.fullWidthCard]}
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('welcome')}</Text>
+            <Text style={styles.subtitle}>{t('subtitle')}</Text>
+          </View>
+
+          {/* Compact Dropdown Bar */}
+          {savedAccounts.length > 0 && (
+            <TouchableOpacity 
+              style={styles.compactAccountBar} 
+              onPress={() => setDropdownVisible(true)}
               activeOpacity={0.7}
             >
-              <View style={styles.iconBox}>
-                <Text style={{ fontSize: 24 }}>{item.icon}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <Text style={{ fontSize: 13 }}>⚡</Text>
+                <Text style={styles.compactBarLabel}>Saved Accounts</Text>
+                <View style={styles.accountCountBadge}>
+                  <Text style={styles.accountCountText}>{savedAccounts.length}</Text>
+                </View>
               </View>
-              <View style={item.isFullWidth ? { marginLeft: 14, flex: 1 } : null}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {item.isFullWidth && (
-                  <Text style={styles.cardSubtitle}>{t('settingsSubText')}</Text>
-                )}
-              </View>
+              <Text style={styles.compactBarArrow}>▼</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          )}
 
-        {!hasReviewed && (
-          <View style={styles.reviewSection}>
-            <View style={styles.reviewHeaderRow}>
-              <Text style={styles.reviewBadge}>{t('feedbackBadge')}</Text>
-              <Text style={styles.reviewSubtitle}>{t('feedbackSub')}</Text>
-            </View>
-            
-            <Text style={styles.reviewHeading}>{t('feedbackHeading')}</Text>
+          <Text style={styles.inputLabel}>{t('emailOrPhone')}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={t('emailOrPhonePlaceholder')}
+            placeholderTextColor="#64748b"
+            value={identifier}
+            onChangeText={setIdentifier}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-            <View style={styles.starRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity 
-                  key={star} 
-                  onPress={() => setRating(star)}
-                  activeOpacity={0.6}
-                >
-                  <Text style={[styles.starIcon, star <= rating ? styles.starFilled : styles.starEmpty]}>
-                    ★
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TextInput
-              style={styles.reviewInput}
-              placeholder={t('feedbackPlaceholder')}
-              placeholderTextColor="#64748b"
-              value={comment}
-              onChangeText={setComment}
-              maxLength={200}
-              onFocus={handleInputFocus}
-              returnKeyType="done"
-            />
-
-            <TouchableOpacity 
-              style={styles.submitReviewBtn} 
-              onPress={handleSubmitReview}
-              disabled={submittingReview}
-              activeOpacity={0.8}
-            >
-              {submittingReview ? (
-                <ActivityIndicator color="#0f172a" size="small" />
-              ) : (
-                <Text style={styles.submitReviewBtnText}>{t('submitFeedbackBtn')}</Text>
-              )}
+          <View style={styles.labelRow}>
+            <Text style={styles.inputLabel}>{t('password')}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
           </View>
-        )}
-      </ScreenWrapper>
+
+          <TextInput
+            style={styles.input}
+            placeholder={t('passwordPlaceholder')}
+            placeholderTextColor="#64748b"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TouchableOpacity onPress={handleLogin} disabled={loading} style={styles.btn} activeOpacity={0.8}>
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('signIn')}</Text>}
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>{t('noAccount')} </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerText}>{t('register')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Saved Accounts Modal Dropdown */}
+      <Modal
+        visible={dropdownVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDropdownVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setDropdownVisible(false)}
+        >
+          <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>⚡ Select Saved Account</Text>
+              <TouchableOpacity onPress={() => setDropdownVisible(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={savedAccounts}
+              keyExtractor={(item) => item.email}
+              showsVerticalScrollIndicator={false}
+              style={{ maxHeight: 260 }}
+              renderItem={({ item }) => {
+                const isCurrent = identifier.toLowerCase() === item.email.toLowerCase();
+                return (
+                  <View style={[styles.accountRow, isCurrent && styles.accountRowActive]}>
+                    <TouchableOpacity 
+                      style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}
+                      onPress={() => handleSelectAccount(item)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.accountEmail, isCurrent && styles.accountEmailActive]} numberOfLines={1}>
+                        {item.email}
+                      </Text>
+                      <Text style={styles.accountPassHint}>••••••••</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.deleteAccountBtn}
+                      onPress={() => handleDeleteSavedAccount(item.email)}
+                    >
+                      <Text style={styles.deleteAccountText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
-  storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
-  storeId: { fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: '500' },
-  logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
-  logoutText: { color: '#ef4444', fontWeight: '600', fontSize: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { width: '48%', backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 14 },
-  fullWidthCard: { width: '100%', flexDirection: 'row', alignItems: 'center', borderColor: '#38bdf8', backgroundColor: '#1e293b' },
-  iconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', justifyContent: 'center', alignItems: 'center' },
-  cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginTop: 8 },
-  cardSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
-  reviewSection: { 
-    backgroundColor: '#1e293b', 
-    borderRadius: 20, 
-    padding: 18, 
-    borderWidth: 1.5, 
-    borderColor: 'rgba(245, 158, 11, 0.4)', 
-    marginTop: 8,
-    marginBottom: 20,
-    shadowColor: '#f59e0b',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3
+  container: { flex: 1, backgroundColor: '#0f172a', padding: 24 },
+  card: { backgroundColor: '#1e293b', padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#334155' },
+  header: { alignItems: 'center', marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#94a3b8' },
+
+  compactAccountBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 14
   },
-  reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  reviewBadge: { color: '#f59e0b', fontWeight: '900', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  reviewSubtitle: { color: '#64748b', fontSize: 11 },
-  reviewHeading: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginVertical: 4 },
-  starRow: { flexDirection: 'row', justifyContent: 'flex-start', marginVertical: 8 },
-  starIcon: { fontSize: 32, marginRight: 6 },
-  starFilled: { color: '#fbbf24' },
-  starEmpty: { color: '#475569' },
-  reviewInput: { 
-    backgroundColor: '#0f172a', 
-    color: '#fff', 
-    borderRadius: 12, 
-    borderWidth: 1, 
-    borderColor: '#334155', 
-    paddingHorizontal: 14, 
-    paddingVertical: 12, 
-    fontSize: 14, 
-    marginVertical: 8 
+  compactBarLabel: { color: '#38bdf8', fontSize: 12, fontWeight: '700' },
+  accountCountBadge: { backgroundColor: 'rgba(56, 189, 248, 0.2)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 },
+  accountCountText: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold' },
+  compactBarArrow: { color: '#38bdf8', fontSize: 10 },
+
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 6, textTransform: 'uppercase' },
+  forgotText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
+  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 14, fontSize: 15 },
+  btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
+  footerText: { color: '#94a3b8', fontSize: 14 },
+  registerText: { color: '#10b981', fontWeight: 'bold', fontSize: 14 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
   },
-  submitReviewBtn: { 
-    backgroundColor: '#f59e0b', 
-    paddingVertical: 12, 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    marginTop: 4 
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#1e293b',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10
   },
-  submitReviewBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155'
+  },
+  modalTitle: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+  modalCloseText: { color: '#94a3b8', fontSize: 16, fontWeight: 'bold', padding: 4 },
+
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#334155'
+  },
+  accountRowActive: { borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+  accountEmail: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
+  accountEmailActive: { color: '#10b981', fontWeight: 'bold' },
+  accountPassHint: { color: '#64748b', fontSize: 11, marginTop: 1 },
+  deleteAccountBtn: { paddingHorizontal: 12, paddingVertical: 10 },
+  deleteAccountText: { color: '#ef4444', fontSize: 13, fontWeight: 'bold' }
 });

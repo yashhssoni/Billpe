@@ -1,15 +1,12 @@
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, Text, StyleSheet, Alert, TouchableOpacity, 
-  ActivityIndicator, ScrollView, Image, BackHandler 
+  ActivityIndicator, ScrollView, Image 
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
 import { useSales } from '../hooks/useSales';
-import BackButton from '../components/BackButton';
-import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function ReturnStockScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -20,23 +17,6 @@ export default function ReturnStockScreen({ navigation }) {
   const [returnItemData, setReturnItemData] = useState(null);
   const [returnQty, setReturnQty] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        if (!scanner && returnItemData) {
-          setReturnItemData(null);
-          setScanner(true);
-          return true;
-        }
-        navigation.goBack();
-        return true;
-      };
-
-      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => sub.remove();
-    }, [scanner, returnItemData, navigation])
-  );
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -143,27 +123,21 @@ export default function ReturnStockScreen({ navigation }) {
           onBarcodeScanned={handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
-        <View style={styles.cameraBackOverlay}>
-          <BackButton onPress={() => navigation.goBack()} title={t('back')} />
-        </View>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <ScreenWrapper scrollable={false}>
-      <BackButton 
-        onPress={() => {
-          if (returnItemData) {
-            setReturnItemData(null);
-            setScanner(true);
-          } else {
-            navigation.goBack();
-          }
-        }} 
-        title={t('back')} 
-      />
-      <Text style={styles.header}>Return & Restock Portal</Text>
+    <View style={styles.container}>
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>{t('back')}</Text>
+        </TouchableOpacity>
+        <Text style={styles.header}>Return & Restock Portal</Text>
+      </View>
 
       {loading ? (
         <ActivityIndicator size="large" color="#f59e0b" style={{ marginTop: 50 }} />
@@ -281,17 +255,22 @@ export default function ReturnStockScreen({ navigation }) {
           </View>
         </ScrollView>
       ) : null}
-    </ScreenWrapper>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 14 },
-  cameraBackOverlay: { position: 'absolute', top: 50, left: 20 },
+  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
+  topBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
+  header: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  backText: { color: '#10b981', fontWeight: 'bold', fontSize: 15 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', padding: 20 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
   btnText: { color: '#0f172a', fontWeight: 'bold' },
+
+  backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
+
   scrollContent: { paddingBottom: 30 },
   returnCard: { backgroundColor: '#1e293b', borderRadius: 20, padding: 18, borderWidth: 1.5, borderColor: '#f59e0b' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
@@ -301,31 +280,37 @@ const styles = StyleSheet.create({
   payCash: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderWidth: 1, borderColor: '#10b981' },
   payOnline: { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderWidth: 1, borderColor: '#3b82f6' },
   payBadgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+
   productRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 12 },
   thumbnail: { width: 56, height: 56, borderRadius: 10, backgroundColor: '#1e293b' },
   noImg: { justifyContent: 'center', alignItems: 'center' },
   productTitle: { fontSize: 16, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
   categoryText: { color: '#94a3b8', fontSize: 12 },
   barcodeText: { color: '#64748b', fontSize: 11, marginTop: 2 },
+
   detailsBox: { backgroundColor: '#0f172a', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 12 },
   boxHeading: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold', letterSpacing: 0.5, marginBottom: 8 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
   infoLabel: { color: '#94a3b8', fontSize: 13 },
   infoVal: { color: '#cbd5e1', fontSize: 13, fontWeight: '600' },
   infoValueHighlight: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   statPill: { flex: 1, backgroundColor: '#0f172a', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
   statLabel: { color: '#64748b', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
   statVal: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginTop: 2 },
+
   selectorLabel: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 13, marginBottom: 8, textAlign: 'center' },
   qtyControlRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 14, marginBottom: 14 },
   qtyBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#334155', justifyContent: 'center', alignItems: 'center' },
   qtyBtnText: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   qtyDisplay: { width: 80, height: 50, backgroundColor: '#0f172a', borderRadius: 12, borderWidth: 1.5, borderColor: '#f59e0b', justifyContent: 'center', alignItems: 'center' },
   qtyDisplayText: { color: '#f59e0b', fontSize: 22, fontWeight: 'bold' },
+
   refundSummaryBox: { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderWidth: 1, borderColor: '#f59e0b', padding: 12, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   refundLabel: { color: '#cbd5e1', fontSize: 13, fontWeight: 'bold' },
   refundAmount: { color: '#f59e0b', fontSize: 20, fontWeight: '900' },
+
   confirmBtn: { backgroundColor: '#f59e0b', paddingVertical: 15, borderRadius: 12, alignItems: 'center', elevation: 4 },
   confirmBtnText: { color: '#0f172a', fontSize: 15, fontWeight: '900', textTransform: 'uppercase' },
   scanAnotherBtn: { paddingVertical: 12, alignItems: 'center', marginTop: 8 },

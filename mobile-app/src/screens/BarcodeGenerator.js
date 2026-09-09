@@ -1,33 +1,19 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
-import BackButton from '../components/BackButton';
-import ScreenWrapper from '../components/ScreenWrapper';
 
 export default function BarcodeGenerator({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
   const [fetchingQuota, setFetchingQuota] = useState(true);
-  const [mode, setMode] = useState('unique');
+  const [mode, setMode] = useState('unique'); // 'unique' or 'copies'
   const [countInput, setCountInput] = useState('44');
   const [copiesInput, setCopiesInput] = useState('24');
   const [customBarcode, setCustomBarcode] = useState('');
   const [subActive, setSubActive] = useState(false);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchStatus();
-      const onBackPress = () => {
-        navigation.goBack();
-        return true;
-      };
-      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => sub.remove();
-    }, [navigation])
-  );
 
   const fetchStatus = async () => {
     try {
@@ -42,6 +28,12 @@ export default function BarcodeGenerator({ navigation }) {
       setFetchingQuota(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchStatus();
+    }, [])
+  );
 
   const CODE128_PATTERNS = [
     [2,1,2,2,2,2],[2,2,2,1,2,2],[2,2,2,2,2,1],[1,2,1,2,2,3],[1,2,1,3,2,2],
@@ -179,9 +171,13 @@ export default function BarcodeGenerator({ navigation }) {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
-      <ScreenWrapper scrollable={true}>
-        <BackButton onPress={() => navigation.goBack()} title={t('backToDashboard')} />
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>{t('backToDashboard')}</Text>
+        </TouchableOpacity>
+      </View>
 
+      <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.centerWrapper}>
           <Text style={styles.title}>{t('generateBarcodeTitle')}</Text>
           <Text style={styles.subtitle}>{t('generateBarcodeSubtitle')}</Text>
@@ -199,6 +195,7 @@ export default function BarcodeGenerator({ navigation }) {
             )}
           </View>
 
+          {/* Mode Switcher */}
           <View style={styles.modeToggleRow}>
             <TouchableOpacity 
               style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
@@ -258,23 +255,28 @@ export default function BarcodeGenerator({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
-      </ScreenWrapper>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  centerWrapper: { width: '100%', alignItems: 'center' },
+  topBar: { paddingHorizontal: 24, paddingTop: 40, backgroundColor: '#0f172a' },
+  container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  centerWrapper: { width: '100%', maxWidth: 400, alignItems: 'center' },
+  backText: { color: '#10b981', fontWeight: '600' },
   title: { fontSize: 26, fontWeight: 'bold', color: '#fff', marginBottom: 6, textAlign: 'center' },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16, textAlign: 'center', paddingHorizontal: 10 },
   quotaCard: { width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)', padding: 16, borderRadius: 16, alignItems: 'center', marginBottom: 16 },
   quotaTitle: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600', marginBottom: 4 },
   quotaCount: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
+  
   modeToggleRow: { flexDirection: 'row', width: '100%', gap: 8, marginBottom: 14 },
   modeBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', backgroundColor: '#1e293b', alignItems: 'center' },
   modeBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
   modeBtnText: { color: '#94a3b8', fontSize: 13, fontWeight: 'bold' },
   modeBtnTextActive: { color: '#0f172a' },
+
   card: { width: '100%', backgroundColor: '#1e293b', padding: 20, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
   label: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 13, marginBottom: 8 },
   input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 15, marginBottom: 14 },

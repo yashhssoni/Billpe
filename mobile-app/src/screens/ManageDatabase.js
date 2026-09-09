@@ -8,14 +8,20 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
-import BackButton from '../components/BackButton';
-import ScreenWrapper from '../components/ScreenWrapper';
 
 const POPULAR_CATEGORIES = [
-  'General', 'Grocery / Kirana', 'Apparel / Clothes', 'Steel / Bartan',
-  'Footwear / Shoes', 'Electronics & Mobiles', 'Stationery & Books',
-  'Cosmetics & Beauty', 'Snacks & Beverages', 'Hardware & Electrical',
-  'Medical & Pharma', 'Toys & Gifts'
+  'General',
+  'Grocery / Kirana',
+  'Apparel / Clothes',
+  'Steel / Bartan',
+  'Footwear / Shoes',
+  'Electronics & Mobiles',
+  'Stationery & Books',
+  'Cosmetics & Beauty',
+  'Snacks & Beverages',
+  'Hardware & Electrical',
+  'Medical & Pharma',
+  'Toys & Gifts'
 ];
 
 export default function ManageDatabase({ navigation }) {
@@ -29,6 +35,7 @@ export default function ManageDatabase({ navigation }) {
   const [editCategoryDropdownVisible, setEditCategoryDropdownVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
 
+  // Hardware Back Button Handler for Android
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -193,9 +200,10 @@ export default function ManageDatabase({ navigation }) {
   };
 
   return (
-    <ScreenWrapper scrollable={false}>
-      <BackButton onPress={() => navigation.goBack()} title={t('backToDashboard')} />
-
+    <View style={styles.container}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
+        <Text style={styles.backText}>{t('backToDashboard')}</Text>
+      </TouchableOpacity>
       <Text style={styles.title}>{t('manageDbTitle')}</Text>
       <Text style={styles.subtitle}>{t('totalItemsCount')} {products.length}</Text>
 
@@ -275,6 +283,7 @@ export default function ManageDatabase({ navigation }) {
         />
       )}
 
+      {/* Filter Category Modal */}
       <Modal
         visible={filterDropdownVisible}
         transparent={true}
@@ -319,6 +328,7 @@ export default function ManageDatabase({ navigation }) {
         </View>
       </Modal>
 
+      {/* Uniform Edit Product Modal (Matches AdminScanner Structure) */}
       {editingProduct && (
         <Modal 
           visible={modalVisible} 
@@ -335,10 +345,9 @@ export default function ManageDatabase({ navigation }) {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <BackButton onPress={() => setModalVisible(false)} title={t('back')} />
-
               <Text style={styles.editScreenTitle}>{t('editProductDetailsTitle')}</Text>
 
+              {/* Mandatory Details Section */}
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionHeading}>{t('mandatoryDetailsHeading')}</Text>
 
@@ -407,6 +416,7 @@ export default function ManageDatabase({ navigation }) {
                 </View>
               </View>
 
+              {/* Additional Details Section */}
               <View style={[styles.sectionCard, { marginTop: 16 }]}>
                 <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
 
@@ -527,6 +537,7 @@ export default function ManageDatabase({ navigation }) {
         </Modal>
       )}
 
+      {/* Edit Category Selection Dropdown Modal */}
       <Modal
         visible={editCategoryDropdownVisible}
         transparent={true}
@@ -569,13 +580,16 @@ export default function ManageDatabase({ navigation }) {
           </View>
         </View>
       </Modal>
-    </ScreenWrapper>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
+  backText: { color: '#10b981', fontWeight: '600' },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 12 },
+
   filterDropdownTrigger: {
     backgroundColor: '#1e293b',
     borderWidth: 1.5,
@@ -591,10 +605,12 @@ const styles = StyleSheet.create({
   filterDropdownLabel: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
   filterDropdownValue: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
   filterDropdownArrow: { color: '#38bdf8', fontSize: 12 },
+
   itemCard: { backgroundColor: '#1e293b', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 12, flexDirection: 'row', alignItems: 'center' },
   thumb: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#334155' },
   noThumb: { justifyContent: 'center', alignItems: 'center' },
   itemName: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 2, flex: 1 },
+  
   stockTag: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, marginLeft: 6 },
   uniqueTag: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8' },
   uniqueTagText: { color: '#38bdf8', fontSize: 10, fontWeight: 'bold' },
@@ -602,6 +618,7 @@ const styles = StyleSheet.create({
   bulkTagText: { color: '#10b981', fontSize: 10, fontWeight: 'bold' },
   outOfStockTag: { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 1, borderColor: '#ef4444' },
   outOfStockText: { color: '#ef4444', fontSize: 10, fontWeight: 'bold' },
+
   itemDetails: { color: '#10b981', fontWeight: '600', fontSize: 13, marginBottom: 1 },
   itemCategory: { color: '#cbd5e1', fontSize: 12, marginBottom: 1 },
   itemExtraInfo: { color: '#94a3b8', fontSize: 11, marginBottom: 1 },
@@ -612,15 +629,19 @@ const styles = StyleSheet.create({
   deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
-  editModalContainer: { padding: 18, paddingTop: 40, backgroundColor: '#0f172a', flexGrow: 1 },
+
+  // Edit Modal Uniform Styling (Matching AdminScanner)
+  editModalContainer: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
   editScreenTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
   sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
   sectionHeading: { fontSize: 13, fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
   sectionHeadingOptional: { fontSize: 13, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   formLabel: { fontWeight: 'bold', marginBottom: 5, color: '#cbd5e1', fontSize: 13 },
   requiredTag: { fontSize: 10, fontWeight: '900', color: '#ef4444', textTransform: 'uppercase' },
   clearChipText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
+
   inputField: { 
     borderWidth: 1.5, 
     padding: 12, 
@@ -642,19 +663,26 @@ const styles = StyleSheet.create({
     color: '#fff', 
     fontSize: 14 
   },
+
   rateRow: { flexDirection: 'row', gap: 10 },
   weightRow: { flexDirection: 'row', gap: 10 },
   photoButtonsRow: { flexDirection: 'row', marginBottom: 12 },
   preview: { width: '100%', height: 180, borderRadius: 10, resizeMode: 'cover' },
+
   saveBtn: { 
     backgroundColor: '#10b981', 
     paddingVertical: 16, 
     borderRadius: 14, 
     alignItems: 'center', 
     marginTop: 18, 
+    shadowColor: '#10b981', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 6, 
     elevation: 4 
   },
   saveBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 15, textTransform: 'uppercase', letterSpacing: 0.5 },
+
   dropdownTrigger: {
     backgroundColor: '#0f172a',
     borderWidth: 1.5,
@@ -670,6 +698,7 @@ const styles = StyleSheet.create({
   dropdownPlaceholderText: { color: '#64748b', fontSize: 14 },
   dropdownSelectedText: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
   dropdownArrow: { color: '#38bdf8', fontSize: 12 },
+
   modalOverlayDark: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.75)',
@@ -685,6 +714,10 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1.5,
     borderColor: '#38bdf8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     elevation: 10
   },
   dropdownModalHeader: {
@@ -698,6 +731,7 @@ const styles = StyleSheet.create({
   },
   dropdownModalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   dropdownModalClose: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
+
   dropdownItem: {
     paddingVertical: 12,
     paddingHorizontal: 12,
