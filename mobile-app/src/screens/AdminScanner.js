@@ -544,7 +544,7 @@ export default function AdminScanner({ navigation }) {
             />
 
             <View style={styles.labelRow}>
-              <Text style={styles.label}>Quantity / Stock Units *</Text>
+              <Text style={styles.label}>{t('Quantity / Stock Units *')}</Text>
               {!p.stock.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
             </View>
             <TextInput 
