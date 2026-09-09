@@ -4,6 +4,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 export default function BarcodeGenerator({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -170,101 +172,92 @@ export default function BarcodeGenerator({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: '#0f172a' }}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{t('backToDashboard')}</Text>
-        </TouchableOpacity>
-      </View>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.centerWrapper}>
-          <Text style={styles.title}>{t('generateBarcodeTitle')}</Text>
-          <Text style={styles.subtitle}>{t('generateBarcodeSubtitle')}</Text>
+      <View style={styles.centerWrapper}>
+        <Text style={styles.title}>{t('generateBarcodeTitle')}</Text>
+        <Text style={styles.subtitle}>{t('generateBarcodeSubtitle')}</Text>
 
-          <View style={styles.quotaCard}>
-            {fetchingQuota ? (
-              <ActivityIndicator color="#10b981" size="small" />
-            ) : (
-              <>
-                <Text style={styles.quotaTitle}>{t('subscriptionStatus')}</Text>
-                <Text style={[styles.quotaCount, { color: subActive ? '#10b981' : '#ef4444' }]}>
-                  {subActive ? t('subActiveUnlimited') : t('subExpiredLocked')}
-                </Text>
-              </>
-            )}
-          </View>
-
-          {/* Mode Switcher */}
-          <View style={styles.modeToggleRow}>
-            <TouchableOpacity 
-              style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
-              onPress={() => setMode('unique')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>Unique Barcodes</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.modeBtn, mode === 'copies' && styles.modeBtnActive]} 
-              onPress={() => setMode('copies')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeBtnText, mode === 'copies' && styles.modeBtnTextActive]}>Same Barcode Copies</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.card}>
-            {mode === 'unique' ? (
-              <>
-                <Text style={styles.label}>{t('numberOfBarcodesLabel')}</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={countInput}
-                  onChangeText={setCountInput}
-                  placeholder={t('enterQuantityPlaceholder')}
-                  placeholderTextColor="#64748b"
-                />
-              </>
-            ) : (
-              <>
-                <Text style={styles.label}>Barcode ID (Leave blank to generate fresh):</Text>
-                <TextInput
-                  style={styles.input}
-                  value={customBarcode}
-                  onChangeText={setCustomBarcode}
-                  placeholder="e.g. 89012345 (Optional)"
-                  placeholderTextColor="#64748b"
-                />
-
-                <Text style={styles.label}>Number of Sticker Copies (Max 500):</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={copiesInput}
-                  onChangeText={setCopiesInput}
-                  placeholder="e.g. 50"
-                  placeholderTextColor="#64748b"
-                />
-              </>
-            )}
-
-            <TouchableOpacity onPress={handleGeneratePrint} disabled={loading || !subActive} style={[styles.btn, !subActive && { backgroundColor: '#475569' }]}>
-              {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('printBarcodeStickersBtn')}</Text>}
-            </TouchableOpacity>
-          </View>
+        <View style={styles.quotaCard}>
+          {fetchingQuota ? (
+            <ActivityIndicator color="#10b981" size="small" />
+          ) : (
+            <>
+              <Text style={styles.quotaTitle}>{t('subscriptionStatus')}</Text>
+              <Text style={[styles.quotaCount, { color: subActive ? '#10b981' : '#ef4444' }]}>
+                {subActive ? t('subActiveUnlimited') : t('subExpiredLocked')}
+              </Text>
+            </>
+          )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        {/* Mode Switcher */}
+        <View style={styles.modeToggleRow}>
+          <TouchableOpacity 
+            style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
+            onPress={() => setMode('unique')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>Unique Barcodes</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.modeBtn, mode === 'copies' && styles.modeBtnActive]} 
+            onPress={() => setMode('copies')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, mode === 'copies' && styles.modeBtnTextActive]}>Same Barcode Copies</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          {mode === 'unique' ? (
+            <>
+              <Text style={styles.label}>{t('numberOfBarcodesLabel')}</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={countInput}
+                onChangeText={setCountInput}
+                placeholder={t('enterQuantityPlaceholder')}
+                placeholderTextColor="#64748b"
+              />
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>Barcode ID (Leave blank to generate fresh):</Text>
+              <TextInput
+                style={styles.input}
+                value={customBarcode}
+                onChangeText={setCustomBarcode}
+                placeholder="e.g. 89012345 (Optional)"
+                placeholderTextColor="#64748b"
+              />
+
+              <Text style={styles.label}>Number of Sticker Copies (Max 500):</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                value={copiesInput}
+                onChangeText={setCopiesInput}
+                placeholder="e.g. 50"
+                placeholderTextColor="#64748b"
+              />
+            </>
+          )}
+
+          <TouchableOpacity onPress={handleGeneratePrint} disabled={loading || !subActive} style={[styles.btn, !subActive && { backgroundColor: '#475569' }]}>
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('printBarcodeStickersBtn')}</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  topBar: { paddingHorizontal: 24, paddingTop: 40, backgroundColor: '#0f172a' },
-  container: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  centerWrapper: { width: '100%', maxWidth: 400, alignItems: 'center' },
-  backText: { color: '#10b981', fontWeight: '600' },
+  centerWrapper: { width: '100%', alignItems: 'center' },
   title: { fontSize: 26, fontWeight: 'bold', color: '#fff', marginBottom: 6, textAlign: 'center' },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16, textAlign: 'center', paddingHorizontal: 10 },
   quotaCard: { width: '100%', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.3)', padding: 16, borderRadius: 16, alignItems: 'center', marginBottom: 16 },

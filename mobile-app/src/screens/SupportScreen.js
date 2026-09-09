@@ -1,6 +1,8 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 export default function SupportScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -28,10 +30,8 @@ export default function SupportScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
 
       <Text style={styles.title}>{t('supportTitle')}</Text>
       <Text style={styles.subtitle}>{t('supportSubtitle')}</Text>
@@ -65,13 +65,11 @@ export default function SupportScreen({ navigation }) {
           <Text style={styles.cardDesc}>{SUPPORT_EMAIL}</Text>
         </View>
       </TouchableOpacity>
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
   title: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   subtitle: { color: '#94a3b8', fontSize: 13, marginBottom: 20, marginTop: 4, lineHeight: 18 },
   actionCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', padding: 18, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 14 },

@@ -1,12 +1,14 @@
 import React, { useState, useContext } from 'react';
 import { 
   View, Text, StyleSheet, Alert, TouchableOpacity, 
-  ActivityIndicator, ScrollView, Image 
+  ActivityIndicator, ScrollView, Image, SafeAreaView, Platform
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
 import { useSales } from '../hooks/useSales';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 export default function ReturnStockScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -41,7 +43,8 @@ export default function ReturnStockScreen({ navigation }) {
       if (!foundProduct) {
         setLoading(false);
         Alert.alert(t('error'), 'Product not found in store database.', [
-          { text: 'Scan Again', onPress: () => setScanner(true) }
+          { text: 'Scan Again', onPress: () => setScanner(true) },
+          { text: 'Back to Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
         ]);
         return;
       }
@@ -55,7 +58,10 @@ export default function ReturnStockScreen({ navigation }) {
         Alert.alert(
           'No Sales Record', 
           `Product "${foundProduct.productName}" exists, but has zero sales history in this store.`,
-          [{ text: 'Scan Again', onPress: () => setScanner(true) }]
+          [
+            { text: 'Scan Again', onPress: () => setScanner(true) },
+            { text: 'Back to Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
+          ]
         );
         return;
       }
@@ -67,7 +73,10 @@ export default function ReturnStockScreen({ navigation }) {
         Alert.alert(
           'Already Returned', 
           `All units of Invoice #${latestSale.invoiceNo} have already been returned!`,
-          [{ text: 'Scan Again', onPress: () => setScanner(true) }]
+          [
+            { text: 'Scan Again', onPress: () => setScanner(true) },
+            { text: 'Back to Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
+          ]
         );
         return;
       }
@@ -81,7 +90,9 @@ export default function ReturnStockScreen({ navigation }) {
       setReturnQty(1);
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), 'Failed to fetch sales history for verification.');
+      Alert.alert(t('error'), 'Failed to fetch sales history for verification.', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     }
   };
 
@@ -115,6 +126,7 @@ export default function ReturnStockScreen({ navigation }) {
     }
   };
 
+  // Jab scanner active ho toh absolute camera render hoga, par padding/wrapper uniform rakhenge
   if (scanner) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -123,155 +135,161 @@ export default function ReturnStockScreen({ navigation }) {
           onBarcodeScanned={handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
-        </TouchableOpacity>
+        {/* Uniform Back Button container placed just like ScreenWrapper */}
+        <SafeAreaView style={styles.uniformCameraOverlay}>
+          <View style={{ paddingTop: Platform.OS === 'android' ? 24 : 0 }}>
+            <BackButton 
+              onPress={() => navigation.goBack()} 
+              style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)' }} // Thoda dark background clarity ke liye
+            />
+          </View>
+        </SafeAreaView>
       </View>
     );
   }
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{t('back')}</Text>
-        </TouchableOpacity>
-        <Text style={styles.header}>Return & Restock Portal</Text>
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#f59e0b" />
+        <Text style={[styles.infoText, { marginTop: 12 }]}>Verifying sale history...</Text>
       </View>
+    );
+  }
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#f59e0b" style={{ marginTop: 50 }} />
-      ) : returnItemData ? (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.returnCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.invoicePill}>
-                <Text style={styles.invoicePillText}>#{returnItemData.sale.invoiceNo}</Text>
-              </View>
-              <View style={[styles.payBadge, returnItemData.sale.paymentMode === 'Online' ? styles.payOnline : styles.payCash]}>
-                <Text style={styles.payBadgeText}>{returnItemData.sale.paymentMode || 'CASH'}</Text>
-              </View>
-            </View>
+  if (!returnItemData) {
+    navigation.goBack();
+    return null;
+  }
 
-            <View style={styles.productRow}>
-              {returnItemData.product.imageUri ? (
-                <Image source={{ uri: returnItemData.product.imageUri }} style={styles.thumbnail} />
-              ) : (
-                <View style={[styles.thumbnail, styles.noImg]}><Text style={{fontSize: 22}}>📦</Text></View>
-              )}
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.productTitle}>{returnItemData.product.productName}</Text>
-                <Text style={styles.categoryText}>Category: {returnItemData.product.category || 'General'}</Text>
-                <Text style={styles.barcodeText}>Barcode: #{returnItemData.barcode}</Text>
-              </View>
-            </View>
+  return (
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
+      <Text style={styles.header}>Return & Restock Portal</Text>
 
-            <View style={styles.detailsBox}>
-              <Text style={styles.boxHeading}>SALE VERIFICATION</Text>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Customer:</Text>
-                <Text style={styles.infoValueHighlight}>{returnItemData.sale.customerName || 'Walk-in Customer'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Mobile:</Text>
-                <Text style={styles.infoVal}>{returnItemData.sale.customerPhone || 'N/A'}</Text>
-              </View>
-              {returnItemData.sale.customerAddress && returnItemData.sale.customerAddress !== 'N/A' ? (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Address:</Text>
-                  <Text style={styles.infoVal} numberOfLines={1}>{returnItemData.sale.customerAddress}</Text>
-                </View>
-              ) : null}
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Billed By:</Text>
-                <Text style={styles.infoVal}>{returnItemData.sale.soldByName || 'Staff'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Sale Date:</Text>
-                <Text style={styles.infoVal}>{new Date(returnItemData.sale.createdAt).toLocaleDateString('en-IN')}</Text>
-              </View>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statPill}>
-                <Text style={styles.statLabel}>Bought</Text>
-                <Text style={styles.statVal}>{returnItemData.sale.quantity} pcs</Text>
-              </View>
-              <View style={styles.statPill}>
-                <Text style={styles.statLabel}>Already Returned</Text>
-                <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0} pcs</Text>
-              </View>
-              <View style={[styles.statPill, { borderColor: '#10b981' }]}>
-                <Text style={styles.statLabel}>Max Returnable</Text>
-                <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed} pcs</Text>
-              </View>
-            </View>
-
-            <Text style={styles.selectorLabel}>Select Return Quantity:</Text>
-            <View style={styles.qtyControlRow}>
-              <TouchableOpacity 
-                style={styles.qtyBtn}
-                onPress={() => setReturnQty(prev => Math.max(1, prev - 1))}
-              >
-                <Text style={styles.qtyBtnText}>−</Text>
-              </TouchableOpacity>
-
-              <View style={styles.qtyDisplay}>
-                <Text style={styles.qtyDisplayText}>{returnQty}</Text>
-              </View>
-
-              <TouchableOpacity 
-                style={styles.qtyBtn}
-                onPress={() => setReturnQty(prev => Math.min(returnItemData.maxAllowed, prev + 1))}
-              >
-                <Text style={styles.qtyBtnText}>+</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.refundSummaryBox}>
-              <Text style={styles.refundLabel}>Total Refund to Customer:</Text>
-              <Text style={styles.refundAmount}>₹{(returnQty * returnItemData.sale.price).toFixed(2)}</Text>
-            </View>
-
-            <TouchableOpacity 
-              style={styles.confirmBtn}
-              onPress={handleConfirmReturn}
-              disabled={submitting}
-              activeOpacity={0.8}
-            >
-              {submitting ? (
-                <ActivityIndicator color="#0f172a" size="small" />
-              ) : (
-                <Text style={styles.confirmBtnText}>✓ Confirm Return & Restock</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.scanAnotherBtn}
-              onPress={() => { setReturnItemData(null); setScanner(true); }}
-            >
-              <Text style={styles.scanAnotherText}>Scan Another Item</Text>
-            </TouchableOpacity>
+      <View style={styles.returnCard}>
+        <View style={styles.cardHeader}>
+          <View style={styles.invoicePill}>
+            <Text style={styles.invoicePillText}>#{returnItemData.sale.invoiceNo}</Text>
           </View>
-        </ScrollView>
-      ) : null}
-    </View>
+          <View style={[styles.payBadge, returnItemData.sale.paymentMode === 'Online' ? styles.payOnline : styles.payCash]}>
+            <Text style={styles.payBadgeText}>{returnItemData.sale.paymentMode || 'CASH'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.productRow}>
+          {returnItemData.product.imageUri ? (
+            <Image source={{ uri: returnItemData.product.imageUri }} style={styles.thumbnail} />
+          ) : (
+            <View style={[styles.thumbnail, styles.noImg]}><Text style={{fontSize: 22}}>📦</Text></View>
+          )}
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.productTitle}>{returnItemData.product.productName}</Text>
+            <Text style={styles.categoryText}>Category: {returnItemData.product.category || 'General'}</Text>
+            <Text style={styles.barcodeText}>Barcode: #{returnItemData.barcode}</Text>
+          </View>
+        </View>
+
+        <View style={styles.detailsBox}>
+          <Text style={styles.boxHeading}>SALE VERIFICATION</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Customer:</Text>
+            <Text style={styles.infoValueHighlight}>{returnItemData.sale.customerName || 'Walk-in Customer'}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Mobile:</Text>
+            <Text style={styles.infoVal}>{returnItemData.sale.customerPhone || 'N/A'}</Text>
+          </View>
+          {returnItemData.sale.customerAddress && returnItemData.sale.customerAddress !== 'N/A' ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Address:</Text>
+              <Text style={styles.infoVal} numberOfLines={1}>{returnItemData.sale.customerAddress}</Text>
+            </View>
+          ) : null}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Billed By:</Text>
+            <Text style={styles.infoVal}>{returnItemData.sale.soldByName || 'Staff'}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Sale Date:</Text>
+            <Text style={styles.infoVal}>{new Date(returnItemData.sale.createdAt).toLocaleDateString('en-IN')}</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statPill}>
+            <Text style={styles.statLabel}>Bought</Text>
+            <Text style={styles.statVal}>{returnItemData.sale.quantity} pcs</Text>
+          </View>
+          <View style={styles.statPill}>
+            <Text style={styles.statLabel}>Already Returned</Text>
+            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0} pcs</Text>
+          </View>
+          <View style={[styles.statPill, { borderColor: '#10b981' }]}>
+            <Text style={styles.statLabel}>Max Returnable</Text>
+            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed} pcs</Text>
+          </View>
+        </View>
+
+        <Text style={styles.selectorLabel}>Select Return Quantity:</Text>
+        <View style={styles.qtyControlRow}>
+          <TouchableOpacity 
+            style={styles.qtyBtn}
+            onPress={() => setReturnQty(prev => Math.max(1, prev - 1))}
+          >
+            <Text style={styles.qtyBtnText}>−</Text>
+          </TouchableOpacity>
+
+          <View style={styles.qtyDisplay}>
+            <Text style={styles.qtyDisplayText}>{returnQty}</Text>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.qtyBtn}
+            onPress={() => setReturnQty(prev => Math.min(returnItemData.maxAllowed, prev + 1))}
+          >
+            <Text style={styles.qtyBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.refundSummaryBox}>
+          <Text style={styles.refundLabel}>Total Refund to Customer:</Text>
+          <Text style={styles.refundAmount}>₹{(returnQty * returnItemData.sale.price).toFixed(2)}</Text>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.confirmBtn}
+          onPress={handleConfirmReturn}
+          disabled={submitting}
+          activeOpacity={0.8}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#0f172a" size="small" />
+          ) : (
+            <Text style={styles.confirmBtnText}>✓ Confirm Return & Restock</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.scanAnotherBtn}
+          onPress={() => { setReturnItemData(null); setScanner(true); }}
+        >
+          <Text style={styles.scanAnotherText}>Scan Another Item</Text>
+        </TouchableOpacity>
+      </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  topBar: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
-  header: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  backText: { color: '#10b981', fontWeight: 'bold', fontSize: 15 },
+  header: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', padding: 20 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
   btnText: { color: '#0f172a', fontWeight: 'bold' },
 
-  backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
+  uniformCameraOverlay: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 16, zIndex: 10 },
 
-  scrollContent: { paddingBottom: 30 },
   returnCard: { backgroundColor: '#1e293b', borderRadius: 20, padding: 18, borderWidth: 1.5, borderColor: '#f59e0b' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   invoicePill: { backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#38bdf8' },

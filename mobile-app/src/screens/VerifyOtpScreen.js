@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
 
 export default function VerifyOtpScreen({ route, navigation }) {
   const { t } = useContext(LanguageContext);
@@ -67,6 +68,10 @@ export default function VerifyOtpScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <View style={styles.card}>
+        <View style={{ width: '100%', alignItems: 'flex-start' }}>
+          <BackButton onPress={() => navigation.goBack()} />
+        </View>
+
         <Text style={styles.title}>{t('emailVerificationTitle')}</Text>
         <Text style={styles.subtitle}>{t('enterOtpSubtitle')}</Text>
         <Text style={styles.emailHighlight}>{email}</Text>

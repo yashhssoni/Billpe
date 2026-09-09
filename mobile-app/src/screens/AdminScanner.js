@@ -9,6 +9,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 const DEFAULT_POPULAR_CATEGORIES = [
   'General',
@@ -498,208 +500,202 @@ export default function AdminScanner({ navigation }) {
             onBarcodeScanned={handleBarCodeScanned}
             barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
           />
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
-          </TouchableOpacity>
+          <SafeAreaView style={styles.uniformCameraOverlay}>
+            <View style={{ paddingTop: Platform.OS === 'android' ? 24 : 0 }}>
+              <BackButton onPress={() => navigation.goBack()} />
+            </View>
+          </SafeAreaView>
         </View>
       ) : (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={styles.title}>{t('productEntryFormTitle')}</Text>
+        <ScreenWrapper scrollable={true}>
+          <BackButton onPress={() => {
+            if (hasUnsavedChanges()) {
+              Alert.alert(t('discardChangesTitle'), t('discardChangesMsg'), [
+                { text: t('stay'), style: 'cancel' },
+                { text: t('discardAndGoBack'), style: 'destructive', onPress: () => navigation.goBack() }
+              ]);
+            } else {
+              navigation.goBack();
+            }
+          }} />
 
-            <View style={styles.sectionCard}>
-              <Text style={styles.sectionHeading}>{t('mandatoryDetailsHeading')}</Text>
+          <Text style={styles.title}>{t('productEntryFormTitle')}</Text>
 
-              <Text style={styles.label}>{t('barcodeIdLabel')}</Text>
-              <TextInput 
-                style={[styles.input, styles.readOnlyInput]} 
-                value={p.barcodeId} 
-                editable={false} 
-              />
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionHeading}>{t('mandatoryDetailsHeading')}</Text>
 
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>{t('productNameReqLabel')}</Text>
-                {!p.name.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
-              </View>
-              <TextInput 
-                style={getRequiredInputStyle('name', p.name)} 
-                placeholder={t('productNamePlaceholder')} 
-                placeholderTextColor="#64748b" 
-                value={p.name} 
-                onFocus={() => setFocusedField('name')}
-                onBlur={() => setFocusedField(null)}
-                onChangeText={(tVal) => setP({ ...p, name: tVal })} 
-              />
+            <Text style={styles.label}>{t('barcodeIdLabel')}</Text>
+            <TextInput 
+              style={[styles.input, styles.readOnlyInput]} 
+              value={p.barcodeId} 
+              editable={false} 
+            />
 
-              {/* Product Quantity / Stock Field */}
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Quantity / Stock Units *</Text>
-                {!p.stock.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
-              </View>
-              <TextInput 
-                style={getRequiredInputStyle('stock', p.stock)} 
-                placeholder="e.g. 1 (Unique item) or 50, 100 (Bulk copies)" 
-                placeholderTextColor="#64748b" 
-                value={p.stock} 
-                keyboardType="numeric"
-                onFocus={() => setFocusedField('stock')}
-                onBlur={() => setFocusedField(null)}
-                onChangeText={(tVal) => setP({ ...p, stock: tVal })} 
-              />
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>{t('productNameReqLabel')}</Text>
+              {!p.name.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+            </View>
+            <TextInput 
+              style={getRequiredInputStyle('name', p.name)} 
+              placeholder={t('productNamePlaceholder')} 
+              placeholderTextColor="#64748b" 
+              value={p.name} 
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(tVal) => setP({ ...p, name: tVal })} 
+            />
 
-              <View style={styles.rateRow}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.label}>{t('lowestRateReqLabel')}</Text>
-                    {!String(p.lowestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
-                  </View>
-                  <TextInput 
-                    style={getRequiredInputStyle('lowestRate', p.lowestRate)} 
-                    placeholder={t('lowestRatePlaceholder')} 
-                    placeholderTextColor="#64748b" 
-                    value={String(p.lowestRate)} 
-                    onFocus={() => setFocusedField('lowestRate')}
-                    onBlur={() => setFocusedField(null)}
-                    onChangeText={(tVal) => setP({ ...p, lowestRate: tVal })} 
-                    keyboardType="numeric" 
-                  />
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Quantity / Stock Units *</Text>
+              {!p.stock.trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
+            </View>
+            <TextInput 
+              style={getRequiredInputStyle('stock', p.stock)} 
+              placeholder="e.g. 1 (Unique item) or 50, 100 (Bulk copies)" 
+              placeholderTextColor="#64748b" 
+              value={p.stock} 
+              keyboardType="numeric"
+              onFocus={() => setFocusedField('stock')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(tVal) => setP({ ...p, stock: tVal })} 
+            />
+
+            <View style={styles.rateRow}>
+              <View style={{ flex: 1 }}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>{t('lowestRateReqLabel')}</Text>
+                  {!String(p.lowestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
                 </View>
+                <TextInput 
+                  style={getRequiredInputStyle('lowestRate', p.lowestRate)} 
+                  placeholder={t('lowestRatePlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  value={String(p.lowestRate)} 
+                  onFocus={() => setFocusedField('lowestRate')}
+                  onBlur={() => setFocusedField(null)}
+                  onChangeText={(tVal) => setP({ ...p, lowestRate: tVal })} 
+                  keyboardType="numeric" 
+                />
+              </View>
 
-                <View style={{ flex: 1 }}>
-                  <View style={styles.labelRow}>
-                    <Text style={styles.label}>{t('highestRateReqLabel')}</Text>
-                    {!String(p.highestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
-                  </View>
-                  <TextInput 
-                    style={getRequiredInputStyle('highestRate', p.highestRate)} 
-                    placeholder={t('highestRatePlaceholder')} 
-                    placeholderTextColor="#64748b" 
-                    value={String(p.highestRate)} 
-                    onFocus={() => setFocusedField('highestRate')}
-                    onBlur={() => setFocusedField(null)}
-                    onChangeText={(tVal) => setP({ ...p, highestRate: tVal })} 
-                    keyboardType="numeric" 
-                  />
+              <View style={{ flex: 1 }}>
+                <View style={styles.labelRow}>
+                  <Text style={styles.label}>{t('highestRateReqLabel')}</Text>
+                  {!String(p.highestRate).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
                 </View>
+                <TextInput 
+                  style={getRequiredInputStyle('highestRate', p.highestRate)} 
+                  placeholder={t('highestRatePlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  value={String(p.highestRate)} 
+                  onFocus={() => setFocusedField('highestRate')}
+                  onBlur={() => setFocusedField(null)}
+                  onChangeText={(tVal) => setP({ ...p, highestRate: tVal })} 
+                  keyboardType="numeric" 
+                />
               </View>
             </View>
+          </View>
 
-            <View style={[styles.sectionCard, { marginTop: 16 }]}>
-              <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
+          <View style={[styles.sectionCard, { marginTop: 16 }]}>
+            <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
 
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>{t('productCategoryLabel')}</Text>
-                {p.category ? (
-                  <TouchableOpacity onPress={() => setP({ ...p, category: '' })}>
-                    <Text style={styles.clearChipText}>{t('clearCategory')}</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-
-              <TouchableOpacity 
-                style={styles.dropdownTrigger}
-                onPress={() => setCategoryDropdownVisible(true)}
-                activeOpacity={0.7}
-              >
-                <Text style={p.category ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
-                  {p.category ? p.category : t('selectCategoryPlaceholder')}
-                </Text>
-                <Text style={styles.dropdownArrow}>▼</Text>
-              </TouchableOpacity>
-
-              <TextInput 
-                style={styles.inputOptional} 
-                placeholder={t('customCategoryPlaceholder')} 
-                placeholderTextColor="#64748b" 
-                value={p.category} 
-                onChangeText={(tVal) => setP({ ...p, category: tVal })} 
-              />
-
-              <Text style={styles.label}>{t('productWeightLabel')}</Text>
-              <View style={styles.weightRow}>
-                <View style={{ flex: 1 }}>
-                  <TextInput 
-                    style={styles.inputOptional} 
-                    placeholder={t('weightKgPlaceholder')} 
-                    placeholderTextColor="#64748b" 
-                    keyboardType="numeric" 
-                    value={p.kg} 
-                    onChangeText={(tVal) => setP({ ...p, kg: tVal })} 
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <TextInput 
-                    style={styles.inputOptional} 
-                    placeholder={t('weightGramsPlaceholder')} 
-                    placeholderTextColor="#64748b" 
-                    keyboardType="numeric" 
-                    value={p.grams} 
-                    onChangeText={(tVal) => setP({ ...p, grams: tVal })} 
-                  />
-                </View>
-              </View>
-
-              <Text style={styles.label}>{t('colorLabel')}</Text>
-              <TextInput 
-                style={styles.inputOptional} 
-                placeholder={t('colorPlaceholder')} 
-                placeholderTextColor="#64748b" 
-                value={p.color} 
-                onChangeText={(tVal) => setP({ ...p, color: tVal })} 
-              />
-
-              <Text style={styles.label}>{t('descriptionLabel')}</Text>
-              <TextInput 
-                style={styles.inputOptional} 
-                placeholder={t('descriptionPlaceholder')} 
-                placeholderTextColor="#64748b" 
-                value={p.description} 
-                onChangeText={(tVal) => setP({ ...p, description: tVal })} 
-              />
-
-              <Text style={styles.label}>{t('productPhotoLabel')}</Text>
-              {p.imageUri ? (
-                <View style={{ marginBottom: 12 }}>
-                  <Image source={{ uri: p.imageUri }} style={styles.preview} />
-                  <View style={{ marginTop: 8 }}>
-                    <Button title={t('removePhotoBtn')} onPress={removeImage} color="#B71C1C" />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.photoButtonsRow}>
-                  <View style={{ flex: 1, marginRight: 6 }}>
-                    <Button title={t('clickPhotoBtn')} onPress={takePhoto} color="#2E7D32" />
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 6 }}>
-                    <Button title={t('openGalleryBtn')} onPress={pickImage} color="#1E88E5" />
-                  </View>
-                </View>
-              )}
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>{t('productCategoryLabel')}</Text>
+              {p.category ? (
+                <TouchableOpacity onPress={() => setP({ ...p, category: '' })}>
+                  <Text style={styles.clearChipText}>{t('clearCategory')}</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
 
-            <TouchableOpacity onPress={handleSaveProduct} disabled={loading} style={styles.saveBtn} activeOpacity={0.8}>
-              {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>{t('saveUpdateProductBtn')}</Text>}
+            <TouchableOpacity 
+              style={styles.dropdownTrigger}
+              onPress={() => setCategoryDropdownVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={p.category ? styles.dropdownSelectedText : styles.dropdownPlaceholderText}>
+                {p.category ? p.category : t('selectCategoryPlaceholder')}
+              </Text>
+              <Text style={styles.dropdownArrow}>▼</Text>
             </TouchableOpacity>
 
-            <View style={{ marginTop: 12 }}>
-              <Button 
-                title={t('back')} 
-                onPress={() => {
-                  if (hasUnsavedChanges()) {
-                    Alert.alert(t('discardChangesTitle'), t('discardChangesMsg'), [
-                      { text: t('stay'), style: 'cancel' },
-                      { text: t('discardAndGoBack'), style: 'destructive', onPress: () => navigation.goBack() }
-                    ]);
-                  } else {
-                    navigation.goBack();
-                  }
-                }} 
-                color="#ef4444" 
-              />
+            <TextInput 
+              style={styles.inputOptional} 
+              placeholder={t('customCategoryPlaceholder')} 
+              placeholderTextColor="#64748b" 
+              value={p.category} 
+              onChangeText={(tVal) => setP({ ...p, category: tVal })} 
+            />
+
+            <Text style={styles.label}>{t('productWeightLabel')}</Text>
+            <View style={styles.weightRow}>
+              <View style={{ flex: 1 }}>
+                <TextInput 
+                  style={styles.inputOptional} 
+                  placeholder={t('weightKgPlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  keyboardType="numeric" 
+                  value={p.kg} 
+                  onChangeText={(tVal) => setP({ ...p, kg: tVal })} 
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextInput 
+                  style={styles.inputOptional} 
+                  placeholder={t('weightGramsPlaceholder')} 
+                  placeholderTextColor="#64748b" 
+                  keyboardType="numeric" 
+                  value={p.grams} 
+                  onChangeText={(tVal) => setP({ ...p, grams: tVal })} 
+                />
+              </View>
             </View>
-            <View style={styles.androidNavSpace} />
-          </ScrollView>
-        </KeyboardAvoidingView>
+
+            <Text style={styles.label}>{t('colorLabel')}</Text>
+            <TextInput 
+              style={styles.inputOptional} 
+              placeholder={t('colorPlaceholder')} 
+              placeholderTextColor="#64748b" 
+              value={p.color} 
+              onChangeText={(tVal) => setP({ ...p, color: tVal })} 
+            />
+
+            <Text style={styles.label}>{t('descriptionLabel')}</Text>
+            <TextInput 
+              style={styles.inputOptional} 
+              placeholder={t('descriptionPlaceholder')} 
+              placeholderTextColor="#64748b" 
+              value={p.description} 
+              onChangeText={(tVal) => setP({ ...p, description: tVal })} 
+            />
+
+            <Text style={styles.label}>{t('productPhotoLabel')}</Text>
+            {p.imageUri ? (
+              <View style={{ marginBottom: 12 }}>
+                <Image source={{ uri: p.imageUri }} style={styles.preview} />
+                <View style={{ marginTop: 8 }}>
+                  <Button title={t('removePhotoBtn')} onPress={removeImage} color="#B71C1C" />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.photoButtonsRow}>
+                <View style={{ flex: 1, marginRight: 6 }}>
+                  <Button title={t('clickPhotoBtn')} onPress={takePhoto} color="#2E7D32" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 6 }}>
+                  <Button title={t('openGalleryBtn')} onPress={pickImage} color="#1E88E5" />
+                </View>
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity onPress={handleSaveProduct} disabled={loading} style={styles.saveBtn} activeOpacity={0.8}>
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.saveBtnText}>{t('saveUpdateProductBtn')}</Text>}
+          </TouchableOpacity>
+
+          <View style={{ height: 45 }} />
+        </ScreenWrapper>
       )}
 
       <Modal
@@ -751,7 +747,6 @@ export default function AdminScanner({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#0f172a' },
   title: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
 
@@ -1043,7 +1038,6 @@ const styles = StyleSheet.create({
     fontSize: 13
   },
 
-  androidNavSpace: { height: 45 },
   infoText: { color: '#cbd5e1', textAlign: 'center', marginBottom: 15, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, alignItems: 'center' },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 }

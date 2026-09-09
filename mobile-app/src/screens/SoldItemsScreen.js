@@ -6,6 +6,9 @@ import {
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
+import CustomDatePickerModal from '../components/CustomDatePickerModal'; // Apna Custom Calendar Modal
 
 export default function SoldItemsScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -18,11 +21,24 @@ export default function SoldItemsScreen({ navigation }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [archiving, setArchiving] = useState(false);
 
-  // Date Range Modal States
+  // Date Range & Calendar Modal States
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  
+  const formatDateString = (date) => {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const todayStr = formatDateString(new Date());
+  const [startDate, setStartDate] = useState(todayStr);
+  const [endDate, setEndDate] = useState(todayStr);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // States to control active calendar selection picker modal
+  const [calendarTarget, setCalendarTarget] = useState(null); // 'start' or 'end'
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   const fetchSalesHistory = async () => {
     try {
@@ -41,6 +57,14 @@ export default function SoldItemsScreen({ navigation }) {
   useEffect(() => {
     fetchSalesHistory();
   }, []);
+
+  const setQuickPreset = (daysBack) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - daysBack);
+    setStartDate(formatDateString(start));
+    setEndDate(formatDateString(end));
+  };
 
   const toggleSplitExpand = (id) => {
     setExpandedSplitIds(prev => {
@@ -73,7 +97,6 @@ export default function SoldItemsScreen({ navigation }) {
     setSelectedIds(new Set());
   };
 
-  // Soft Delete (UI se hide, DB audit mein safe)
   const executeSoftDelete = async (idsArray) => {
     if (!idsArray || idsArray.length === 0) return;
 
@@ -135,13 +158,12 @@ export default function SoldItemsScreen({ navigation }) {
     }
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDate.trim()) || !dateRegex.test(endDate.trim())) {
-      Alert.alert(t('error'), 'Please use YYYY-MM-DD format (e.g. 2026-08-01).');
+      Alert.alert(t('error'), 'Please use YYYY-MM-DD format.');
       return false;
     }
     return true;
   };
 
-  // Action 1: File Download/Print (Zero Risk)
   const handleDownloadBackup = async () => {
     if (!validateDates()) return;
 
@@ -211,7 +233,6 @@ export default function SoldItemsScreen({ navigation }) {
     }
   };
 
-  // Action 2: Permanent Delete
   const handlePermanentDelete = () => {
     if (!validateDates()) return;
 
@@ -235,8 +256,6 @@ export default function SoldItemsScreen({ navigation }) {
               if (data.success) {
                 Alert.alert(t('success'), data.message || 'Records permanently deleted.');
                 setRangeModalVisible(false);
-                setStartDate('');
-                setEndDate('');
                 fetchSalesHistory();
               }
             } catch (err) {
@@ -274,16 +293,11 @@ export default function SoldItemsScreen({ navigation }) {
   }, [sales]);
 
   return (
-    <View style={styles.container}>
-      {/* 1. Back Navigation */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>{t('backToDashboard')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
 
-      {/* 2. Full Width Title (Koi text squeeze nahi hoga) */}
       <Text style={styles.title}>{t('soldItemsTitle')}</Text>
 
-      {/* 3. Sub-bar: Left me Total Records Count | Right me Action Buttons */}
       <View style={styles.controlsBarRow}>
         <Text style={styles.subtitle}>
           {t('totalSalesRecords')} {sales.length}
@@ -309,13 +323,12 @@ export default function SoldItemsScreen({ navigation }) {
               onPress={() => setRangeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.clearRangeTriggerText}>Delete by Date</Text>
+              <Text style={styles.clearRangeTriggerText}>Date Range / Export</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* 4. Multi-Select Action Bar (Jab Select Mode ON ho) */}
       {isSelectMode && (
         <View style={styles.multiSelectBar}>
           <TouchableOpacity onPress={handleSelectAll} style={styles.multiSelectActionBtn}>
@@ -338,13 +351,13 @@ export default function SoldItemsScreen({ navigation }) {
         </View>
       )}
 
-      {/* 5. Grouped Sales List */}
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
       ) : (
         <SectionList
           sections={groupedSales}
           keyExtractor={(item) => item._id}
+          scrollEnabled={false}
           showsVerticalScrollIndicator={false}
           renderSectionHeader={({ section: { title, data, totalAmount } }) => (
             <View style={styles.sectionHeader}>
@@ -372,7 +385,6 @@ export default function SoldItemsScreen({ navigation }) {
                 ]}
               >
                 <View style={{ flex: 1 }}>
-                  {/* Header Row: Invoice + Payment Badge */}
                   <View style={styles.cardHeaderRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
                       {isSelectMode && (
@@ -417,7 +429,6 @@ export default function SoldItemsScreen({ navigation }) {
                     )}
                   </View>
 
-                  {/* Product & Total Amount */}
                   <View style={styles.productRow}>
                     <Text style={styles.itemName}>{item.productName}</Text>
                     <Text style={styles.itemTotal}>₹{(item.totalAmount || (item.price * (item.quantity || 1))).toFixed(2)}</Text>
@@ -430,7 +441,6 @@ export default function SoldItemsScreen({ navigation }) {
                     ) : null}
                   </Text>
 
-                  {/* Customer Details */}
                   <View style={styles.customerBox}>
                     <Text style={styles.itemMeta}>
                       {t('customerHistoryLabel')} <Text style={styles.metaHighlight}>{item.customerName || 'Walk-in Customer'}</Text>
@@ -441,7 +451,6 @@ export default function SoldItemsScreen({ navigation }) {
                     ) : null}
                   </View>
 
-                  {/* Footer */}
                   <View style={styles.footerRow}>
                     <Text style={styles.staffMeta}>
                       {t('billedByLabel')} {item.soldByName || item.soldBy?.name || 'Staff'}
@@ -458,7 +467,7 @@ export default function SoldItemsScreen({ navigation }) {
         />
       )}
 
-      {/* Date Range Modal */}
+      {/* Date Range Options Modal */}
       <Modal
         visible={rangeModalVisible}
         transparent={true}
@@ -474,28 +483,41 @@ export default function SoldItemsScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Start Date (YYYY-MM-DD):</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. 2026-08-01"
-              placeholderTextColor="#64748b"
-              value={startDate}
-              onChangeText={setStartDate}
-            />
+            {/* Quick Preset Chips */}
+            <View style={styles.presetsRow}>
+              <TouchableOpacity style={styles.presetChip} onPress={() => setQuickPreset(0)}>
+                <Text style={styles.presetText}>Today</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.presetChip} onPress={() => setQuickPreset(6)}>
+                <Text style={styles.presetText}>Last 7 Days</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.presetChip} onPress={() => setQuickPreset(29)}>
+                <Text style={styles.presetText}>Last 30 Days</Text>
+              </TouchableOpacity>
+            </View>
 
-            <Text style={styles.inputLabel}>End Date (YYYY-MM-DD):</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. 2026-08-31"
-              placeholderTextColor="#64748b"
-              value={endDate}
-              onChangeText={setEndDate}
-            />
+            {/* Start Date Picker Trigger */}
+            <Text style={styles.inputLabel}>Start Date:</Text>
+            <TouchableOpacity 
+              style={styles.datePickerTrigger}
+              onPress={() => { setCalendarTarget('start'); setCalendarVisible(true); }}
+            >
+              <Text style={styles.datePickerTriggerText}>📅 {startDate}</Text>
+            </TouchableOpacity>
+
+            {/* End Date Picker Trigger */}
+            <Text style={styles.inputLabel}>End Date:</Text>
+            <TouchableOpacity 
+              style={styles.datePickerTrigger}
+              onPress={() => { setCalendarTarget('end'); setCalendarVisible(true); }}
+            >
+              <Text style={styles.datePickerTriggerText}>📅 {endDate}</Text>
+            </TouchableOpacity>
 
             {actionLoading ? (
               <ActivityIndicator color="#38bdf8" style={{ marginVertical: 20 }} />
             ) : (
-              <View style={{ gap: 10, marginTop: 10 }}>
+              <View style={{ gap: 10, marginTop: 14 }}>
                 <TouchableOpacity 
                   style={styles.downloadBtn}
                   onPress={handleDownloadBackup}
@@ -509,7 +531,7 @@ export default function SoldItemsScreen({ navigation }) {
                   onPress={handlePermanentDelete}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.permanentBtnText}>🗑️ Permanent Delete</Text>
+                  <Text style={styles.permanentBtnText}>🗑️ Permanent Delete Range</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -523,18 +545,28 @@ export default function SoldItemsScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+
+      {/* Integration of CustomDatePickerModal Component */}
+      <CustomDatePickerModal
+        visible={calendarVisible}
+        onClose={() => setCalendarVisible(false)}
+        selectedDate={calendarTarget === 'start' ? startDate : endDate}
+        onSelectDate={(pickedDate) => {
+          if (calendarTarget === 'start') {
+            setStartDate(pickedDate);
+          } else {
+            setEndDate(pickedDate);
+          }
+        }}
+        title={calendarTarget === 'start' ? "Select Start Date" : "Select End Date"}
+      />
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  backText: { color: '#10b981', fontWeight: '600' },
-  
-  // Title takes full width without shrinking
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 6 },
 
-  // Dedicated flex row for Subtitle and Buttons
   controlsBarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -557,14 +589,14 @@ const styles = StyleSheet.create({
   selectModeBtnTextActive: { color: '#0f172a' },
 
   clearRangeTrigger: { 
-    backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+    backgroundColor: 'rgba(56, 189, 248, 0.15)', 
     borderWidth: 1.5, 
-    borderColor: '#ef4444', 
+    borderColor: '#38bdf8', 
     paddingHorizontal: 12, 
     paddingVertical: 6, 
     borderRadius: 8 
   },
-  clearRangeTriggerText: { color: '#ef4444', fontSize: 12, fontWeight: 'bold' },
+  clearRangeTriggerText: { color: '#38bdf8', fontSize: 12, fontWeight: 'bold' },
 
   multiSelectBar: {
     flexDirection: 'row',
@@ -632,7 +664,7 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   staffMeta: { color: '#64748b', fontSize: 11 },
   itemDate: { color: '#64748b', fontSize: 11 },
-  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
+  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40, marginBottom: 40 },
 
   // Modal Styling
   modalOverlay: {
@@ -655,23 +687,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 10
   },
   modalTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   modalCloseText: { color: '#94a3b8', fontSize: 18, fontWeight: 'bold', padding: 4 },
 
-  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 4 },
-  modalInput: {
+  presetsRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  presetChip: { flex: 1, backgroundColor: '#0f172a', paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
+  presetText: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold' },
+
+  inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold', marginBottom: 4, marginTop: 6 },
+  datePickerTrigger: {
     backgroundColor: '#0f172a',
-    color: '#fff',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#334155',
-    marginBottom: 12,
-    fontSize: 14
+    marginBottom: 6
   },
+  datePickerTriggerText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+
   downloadBtn: {
     backgroundColor: '#3b82f6',
     paddingVertical: 13,

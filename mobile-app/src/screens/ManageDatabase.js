@@ -8,6 +8,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 const POPULAR_CATEGORIES = [
   'General',
@@ -200,10 +202,8 @@ export default function ManageDatabase({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 12 }}>
-        <Text style={styles.backText}>{t('backToDashboard')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
       <Text style={styles.title}>{t('manageDbTitle')}</Text>
       <Text style={styles.subtitle}>{t('totalItemsCount')} {products.length}</Text>
 
@@ -225,6 +225,7 @@ export default function ManageDatabase({ navigation }) {
         <FlatList
           data={filteredProducts}
           keyExtractor={(item) => item._id}
+          scrollEnabled={false}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const currentStock = Number(item.stock !== undefined && item.stock !== null ? item.stock : (item.sold ? 0 : 1));
@@ -328,7 +329,7 @@ export default function ManageDatabase({ navigation }) {
         </View>
       </Modal>
 
-      {/* Uniform Edit Product Modal (Matches AdminScanner Structure) */}
+      {/* Uniform Edit Product Modal */}
       {editingProduct && (
         <Modal 
           visible={modalVisible} 
@@ -580,14 +581,12 @@ export default function ManageDatabase({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  backText: { color: '#10b981', fontWeight: '600' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 2, marginTop: 4 },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 12 },
 
   filterDropdownTrigger: {
@@ -628,9 +627,9 @@ const styles = StyleSheet.create({
   editText: { color: '#fff', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
   deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
-  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40 },
+  emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40, marginBottom: 40 },
 
-  // Edit Modal Uniform Styling (Matching AdminScanner)
+  // Edit Modal Uniform Styling
   editModalContainer: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
   editScreenTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
   sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },

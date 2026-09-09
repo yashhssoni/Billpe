@@ -1,7 +1,9 @@
 import React, { useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 export default function SettingsHubScreen({ navigation }) {
   const { logout, storeInfo } = useContext(AuthContext);
@@ -22,11 +24,9 @@ export default function SettingsHubScreen({ navigation }) {
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>{t('back')}</Text>
-        </TouchableOpacity>
         <Text style={styles.title}>{t('settingsHubTitle')}</Text>
         <Text style={styles.subtitle}>{storeInfo?.storeName || 'BillPe Store'}</Text>
       </View>
@@ -52,16 +52,12 @@ export default function SettingsHubScreen({ navigation }) {
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
         <Text style={styles.logoutText}>{t('logOutAccountBtn')}</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
-  content: { padding: 20, paddingTop: 50 },
-  header: { marginBottom: 24 },
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#1e293b', borderRadius: 8, marginBottom: 12 },
-  backText: { color: '#38bdf8', fontWeight: 'bold', fontSize: 13 },
+  header: { marginBottom: 20 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
   subtitle: { fontSize: 14, color: '#94a3b8', marginTop: 4 },
   menuContainer: { gap: 12 },

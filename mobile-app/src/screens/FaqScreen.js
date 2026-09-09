@@ -1,6 +1,8 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
 
 export default function FaqScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -14,10 +16,8 @@ export default function FaqScreen({ navigation }) {
   ];
 
   return (
-    <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t('back')}</Text>
-      </TouchableOpacity>
+    <ScreenWrapper scrollable={true}>
+      <BackButton onPress={() => navigation.goBack()} />
 
       <Text style={styles.title}>{t('faqTitle')}</Text>
       <Text style={styles.subtitle}>{t('faqSubtitle')}</Text>
@@ -39,13 +39,11 @@ export default function FaqScreen({ navigation }) {
           </TouchableOpacity>
         );
       })}
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 20, paddingTop: 40 },
-  backBtn: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1e293b', borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginBottom: 16 },
   title: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   subtitle: { color: '#94a3b8', fontSize: 13, marginBottom: 20, marginTop: 4 },
   card: { backgroundColor: '#1e293b', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 12 },

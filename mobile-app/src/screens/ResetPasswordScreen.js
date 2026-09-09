@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
+import BackButton from '../components/BackButton';
 
 export default function ResetPasswordScreen({ route, navigation }) {
   const { t } = useContext(LanguageContext);
@@ -54,6 +55,8 @@ export default function ResetPasswordScreen({ route, navigation }) {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
+          <BackButton onPress={() => navigation.goBack()} />
+
           <Text style={styles.title}>{t('setNewPasswordTitle')}</Text>
           <Text style={styles.subtitle}>{t('setNewPasswordSubtitle')} <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{email}</Text></Text>
 

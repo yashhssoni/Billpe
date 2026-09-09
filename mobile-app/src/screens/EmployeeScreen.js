@@ -485,9 +485,11 @@ export default function EmployeeScreen({ navigation }) {
           onBarcodeScanned={handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
-        <TouchableOpacity style={styles.backButton} onPress={() => setScanner(false)}>
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('back')}</Text>
-        </TouchableOpacity>
+        <SafeAreaView style={styles.uniformCameraOverlay}>
+          <View style={{ paddingTop: Platform.OS === 'android' ? 24 : 0 }}>
+            <BackButton onPress={() => setScanner(false)} />
+          </View>
+        </SafeAreaView>
       </View>
     );
   }

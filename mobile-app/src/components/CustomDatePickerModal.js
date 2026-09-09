@@ -90,16 +90,15 @@ export default function CustomDatePickerModal({
     });
   }
 
-  // Leading days of next month to complete standard grid
-  const remainingSlots = 7 - (calendarGrid.length % 7);
-  if (remainingSlots < 7) {
-    for (let d = 1; d <= remainingSlots; d++) {
-      calendarGrid.push({
-        day: d,
-        isCurrentMonth: false,
-        key: `next-${d}`
-      });
-    }
+  // Leading days of next month to complete standard grid (multiple of 7)
+  const totalSlots = Math.ceil(calendarGrid.length / 7) * 7;
+  const remainingSlots = totalSlots - calendarGrid.length;
+  for (let d = 1; d <= remainingSlots; d++) {
+    calendarGrid.push({
+      day: d,
+      isCurrentMonth: false,
+      key: `next-${d}`
+    });
   }
 
   const baseYear = new Date().getFullYear();
@@ -116,7 +115,14 @@ export default function CustomDatePickerModal({
         onPress={onClose}
       >
         <TouchableOpacity activeOpacity={1} style={styles.calendarCard}>
-          {/* Top Bar: Month Year Dropdown + Up/Down Arrows */}
+          {/* Top Bar: Title + Month Year Selector Toggle */}
+          <View style={styles.topHeaderRow}>
+            <Text style={styles.modalMainTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Text style={styles.closeModalText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.headerRow}>
             <TouchableOpacity 
               style={styles.dropdownTrigger}
@@ -126,15 +132,15 @@ export default function CustomDatePickerModal({
               <Text style={styles.headerTitle}>
                 {MONTH_NAMES[currentMonth]} {currentYear}
               </Text>
-              <Text style={styles.dropdownArrow}>▼</Text>
+              <Text style={styles.dropdownArrow}>{dropdownOpen ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
             <View style={styles.arrowsRow}>
-              <TouchableOpacity onPress={handlePrevMonth} style={styles.arrowBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.arrowIcon}>↑</Text>
+              <TouchableOpacity onPress={handlePrevMonth} style={styles.arrowBtn}>
+                <Text style={styles.arrowIcon}>◀</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleNextMonth} style={styles.arrowBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.arrowIcon}>↓</Text>
+              <TouchableOpacity onPress={handleNextMonth} style={styles.arrowBtn}>
+                <Text style={styles.arrowIcon}>▶</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -160,7 +166,7 @@ export default function CustomDatePickerModal({
                 ))}
               </View>
 
-              <Text style={[styles.sectionHeader, { marginTop: 10 }]}>Select Year</Text>
+              <Text style={[styles.sectionHeader, { marginTop: 12 }]}>Select Year</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.yearScroll}>
                 {yearOptions.map(y => (
                   <TouchableOpacity
@@ -187,7 +193,7 @@ export default function CustomDatePickerModal({
                 ))}
               </View>
 
-              {/* Day Grid Matrix */}
+              {/* Day Grid Matrix (Percentage based width taaki Saturday cut na ho) */}
               <View style={styles.daysGrid}>
                 {calendarGrid.map((item) => {
                   const mStr = String(currentMonth + 1).padStart(2, '0');
@@ -220,7 +226,7 @@ export default function CustomDatePickerModal({
 
               {/* Bottom Row: Today Button */}
               <View style={styles.footerRow}>
-                <TouchableOpacity onPress={handleSelectToday}>
+                <TouchableOpacity onPress={handleSelectToday} style={styles.todayBtn}>
                   <Text style={styles.todayBtnText}>Today</Text>
                 </TouchableOpacity>
               </View>
@@ -235,71 +241,100 @@ export default function CustomDatePickerModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(2, 6, 23, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16
   },
   calendarCard: {
-    width: 295,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 14,
-    elevation: 10,
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: '#38bdf8',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    borderWidth: 1,
-    borderColor: '#cbd5e1'
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10
+  },
+  topHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155'
+  },
+  modalMainTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#fff'
+  },
+  closeModalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#94a3b8',
+    padding: 4
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10
+    marginBottom: 14
   },
   dropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 4
+    backgroundColor: '#0f172a',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155'
   },
   headerTitle: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#0f172a'
+    color: '#38bdf8'
   },
   dropdownArrow: {
     fontSize: 10,
-    color: '#475569',
+    color: '#38bdf8',
     marginLeft: 6
   },
   arrowsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: 8
   },
   arrowBtn: {
-    padding: 4
+    backgroundColor: '#0f172a',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155'
   },
   arrowIcon: {
-    fontSize: 16,
-    color: '#334155',
+    fontSize: 12,
+    color: '#38bdf8',
     fontWeight: 'bold'
   },
   weekDaysRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6
+    marginBottom: 8
   },
   weekDayText: {
-    width: 36,
+    width: `${100 / 7}%`,
     textAlign: 'center',
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#64748b'
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#94a3b8'
   },
   daysGrid: {
     flexDirection: 'row',
@@ -307,46 +342,56 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start'
   },
   dayBox: {
-    width: 267 / 7,
-    height: 34,
+    width: `${100 / 7}%`,
+    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 1,
-    borderRadius: 4
+    marginVertical: 2,
+    borderRadius: 8
   },
   selectedDayBox: {
-    backgroundColor: '#1a73e8'
+    backgroundColor: '#10b981'
   },
   dayNumText: {
-    fontSize: 13,
-    color: '#1e293b',
-    fontWeight: '500'
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600'
   },
   otherMonthText: {
-    color: '#cbd5e1'
+    color: '#475569'
   },
   selectedDayNumText: {
-    color: '#ffffff',
+    color: '#0f172a',
     fontWeight: 'bold'
   },
   footerRow: {
-    marginTop: 8,
+    marginTop: 14,
     alignItems: 'flex-end',
-    paddingRight: 6
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    paddingTop: 10
+  },
+  todayBtn: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#10b981'
   },
   todayBtnText: {
     fontSize: 13,
-    color: '#1a73e8',
-    fontWeight: '700'
+    color: '#10b981',
+    fontWeight: 'bold'
   },
   dropdownView: {
-    paddingVertical: 6
+    paddingVertical: 4
   },
   sectionHeader: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
-    color: '#64748b',
-    marginBottom: 6,
+    color: '#38bdf8',
+    marginBottom: 8,
     textTransform: 'uppercase'
   },
   monthOptionsGrid: {
@@ -355,49 +400,51 @@ const styles = StyleSheet.create({
     gap: 6
   },
   monthOption: {
-    width: '22%',
-    paddingVertical: 6,
-    borderRadius: 6,
+    width: '31%',
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#334155',
     alignItems: 'center',
-    backgroundColor: '#f8fafc'
+    backgroundColor: '#0f172a'
   },
   monthOptionActive: {
-    backgroundColor: '#1a73e8',
-    borderColor: '#1a73e8'
+    backgroundColor: '#10b981',
+    borderColor: '#10b981'
   },
   monthOptionText: {
-    fontSize: 12,
-    color: '#334155',
+    fontSize: 13,
+    color: '#cbd5e1',
     fontWeight: '600'
   },
   monthOptionTextActive: {
-    color: '#ffffff'
+    color: '#0f172a',
+    fontWeight: 'bold'
   },
   yearScroll: {
     flexDirection: 'row',
     marginTop: 4
   },
   yearPill: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
+    borderColor: '#334155',
+    backgroundColor: '#0f172a',
     marginRight: 6
   },
   yearPillActive: {
-    backgroundColor: '#1a73e8',
-    borderColor: '#1a73e8'
+    backgroundColor: '#10b981',
+    borderColor: '#10b981'
   },
   yearPillText: {
-    fontSize: 12,
-    color: '#334155',
+    fontSize: 13,
+    color: '#cbd5e1',
     fontWeight: '600'
   },
   yearPillTextActive: {
-    color: '#ffffff'
+    color: '#0f172a',
+    fontWeight: 'bold'
   }
 });
