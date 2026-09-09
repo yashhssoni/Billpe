@@ -12,10 +12,13 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useSales } from '../hooks/useSales';
 import BackButton from '../components/BackButton';
 
-export default function EmployeeScreen({ navigation }) {
+export default function EmployeeScreen({ navigation, route }) {
   const { user, logout } = useContext(AuthContext);
   const { t } = useContext(LanguageContext);
   const { loading: salesLoading, processCheckout } = useSales();
+  
+  const isAdminSwitch = route?.params?.isAdminSwitch || false;
+
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(false);
   const [cart, setCart] = useState([]);
@@ -462,7 +465,7 @@ export default function EmployeeScreen({ navigation }) {
       setSplitOnline('');
       fetchTodayLiveSales();
     } else {
-      Alert.alert('Checkout Failed 🔒', result.message || t('Error completing checkout.'));
+      Alert.alert(t('Checkout Failed 🔒'), result.message || t('Error completing checkout.'));
     }
   };
 
@@ -483,9 +486,21 @@ export default function EmployeeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Top Header */}
+      {isAdminSwitch && (
+        <View style={styles.adminBanner}>
+          <Text style={styles.adminBannerText}>{t('Billing Mode')}</Text>
+          <TouchableOpacity 
+            style={styles.backToAdminBtn} 
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backToAdminText}>{t('← Back to Admin')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.topBar}>
-        <Text style={styles.header}>Employee Portal</Text>
+        <Text style={styles.header}>{t('Employee Portal')}</Text>
         <View style={styles.headerActions}>
           <LanguageSwitcher />
           <TouchableOpacity onPress={handleLogoutPress} style={styles.logoutBtn}>
@@ -607,6 +622,7 @@ export default function EmployeeScreen({ navigation }) {
               if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
               setCurrentScanned(null); 
               setShowLowestRate(false); 
+              setManualPrice('');
             }} 
             color="#64748b" 
           />
@@ -896,6 +912,23 @@ const styles = StyleSheet.create({
   cardBox: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155' },
   fieldHeading: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 6 },
   
+  adminBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 16
+  },
+  adminBannerText: { color: '#38bdf8', fontWeight: 'bold', fontSize: 13 },
+  backToAdminBtn: { backgroundColor: '#38bdf8', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  backToAdminText: { color: '#0f172a', fontSize: 11, fontWeight: 'bold' },
+
   uniformCameraOverlay: { 
     position: 'absolute', 
     top: 40, 
@@ -968,7 +1001,7 @@ const styles = StyleSheet.create({
   qtyBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   qtyInput: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
 
-  cartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
+  cartHeaderRow: { flexDirection: 'row', justify: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
   grandBaseHoldBtn: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   grandBaseHoldText: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold' },
 

@@ -111,8 +111,9 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
+          {/* Mandatory Field */}
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.mandatoryInput]}
             placeholder={role === 'admin' ? t('ownerNameAdmin') : t('ownerNameEmp')}
             placeholderTextColor="#64748b"
             value={form.ownerName}
@@ -122,33 +123,29 @@ export default function RegisterScreen({ navigation }) {
 
           {role === 'admin' && (
             <>
+              {/* Mandatory Field */}
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.mandatoryInput]}
                 placeholder={t('storeNameReq')}
                 placeholderTextColor="#64748b"
                 value={form.storeName}
                 onChangeText={(val) => setForm({ ...form, storeName: val })}
               />
+              {/* Mandatory Field */}
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.mandatoryInput]}
                 placeholder={t('storeAddressReq')}
                 placeholderTextColor="#64748b"
                 value={form.address}
                 onChangeText={(val) => setForm({ ...form, address: val })}
               />
-              <TextInput
-                style={styles.input}
-                placeholder={t('gstinOptional')}
-                placeholderTextColor="#64748b"
-                value={form.gstin}
-                onChangeText={(val) => setForm({ ...form, gstin: val })}
-              />
             </>
           )}
 
           {role === 'employee' && (
+            /* Mandatory Field */
             <TextInput
-              style={styles.input}
+              style={[styles.input, styles.mandatoryInput]}
               placeholder={t('storeIdReqEmp')}
               placeholderTextColor="#64748b"
               value={form.storeId}
@@ -156,8 +153,9 @@ export default function RegisterScreen({ navigation }) {
             />
           )}
 
+          {/* Mandatory Field */}
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.mandatoryInput]}
             placeholder={t('phoneNumberReq')}
             placeholderTextColor="#64748b"
             keyboardType="phone-pad"
@@ -166,8 +164,9 @@ export default function RegisterScreen({ navigation }) {
             autoComplete="tel"
           />
 
+          {/* Mandatory Field */}
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.mandatoryInput]}
             placeholder={t('emailAddressReq')}
             placeholderTextColor="#64748b"
             value={form.email}
@@ -189,8 +188,9 @@ export default function RegisterScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
+          {/* Mandatory Field */}
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.mandatoryInput]}
             placeholder={t('passwordReq')}
             placeholderTextColor="#64748b"
             secureTextEntry
@@ -199,6 +199,17 @@ export default function RegisterScreen({ navigation }) {
             autoComplete="password-new"
             textContentType="newPassword"
           />
+
+          {/* Optional Field (GSTIN shifted right below password) */}
+          {role === 'admin' && (
+            <TextInput
+              style={[styles.input, styles.optionalInput]}
+              placeholder={t('gstinOptional')}
+              placeholderTextColor="#64748b"
+              value={form.gstin}
+              onChangeText={(val) => setForm({ ...form, gstin: val })}
+            />
+          )}
 
           <TouchableOpacity onPress={handleSendOTP} disabled={loading} style={styles.btn}>
             {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndRegisterBtn')}</Text>}
@@ -224,7 +235,9 @@ const styles = StyleSheet.create({
   activeTab: { backgroundColor: '#10b981' },
   tabText: { fontWeight: 'bold', color: '#94a3b8' },
   activeTabText: { color: '#0f172a' },
-  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 12, fontSize: 15 },
+  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, marginBottom: 12, fontSize: 15 },
+  mandatoryInput: { borderWidth: 1.5, borderColor: '#38bdf8' }, // High-contrast border for important fields
+  optionalInput: { borderWidth: 1, borderColor: '#334155' },     // Normal subtle border for optional fields
   btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
   linkContainer: { marginTop: 16, alignItems: 'center' },

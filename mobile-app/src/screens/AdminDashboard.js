@@ -26,7 +26,8 @@ export default function AdminDashboard({ navigation }) {
     { title: t('soldHistoryCard'), icon: '💰', screen: 'SoldItemsScreen' },
     { title: t('addEmployeeCard'), icon: '👥', screen: 'AddEmployeeScreen' },
     { title: t('subscriptionCard'), icon: '💳', screen: 'SubscriptionScreen' },
-    { title: t('settingsSupportCard'), icon: '⚙️', screen: 'SettingsHubScreen', isFullWidth: true },
+    { title: t('settingsSupportCard'), icon: '⚙️', screen: 'SettingsHubScreen' },
+    { title: t('switchToBilling'), icon: '🛒', screen: 'EmployeeScreen', params: { isAdminSwitch: true } },
   ];
 
   useEffect(() => {
@@ -102,26 +103,25 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
+
         <View style={styles.grid}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              onPress={() => navigation.navigate(item.screen)}
-              style={[styles.card, item.isFullWidth && styles.fullWidthCard]}
+              onPress={() => navigation.navigate(item.screen, item.params ? item.params : undefined)}
+              style={styles.card}
               activeOpacity={0.7}
             >
               <View style={styles.iconBox}>
                 <Text style={{ fontSize: 24 }}>{item.icon}</Text>
               </View>
-              <View style={item.isFullWidth ? { marginLeft: 14, flex: 1 } : null}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {item.isFullWidth && (
-                  <Text style={styles.cardSubtitle}>{t('settingsSubText')}</Text>
-                )}
+              <View>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
+
         {!hasReviewed && (
           <View style={styles.reviewSection}>
             <View style={styles.reviewHeaderRow}>
@@ -188,9 +188,8 @@ const styles = StyleSheet.create({
   
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   card: { width: '48%', backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 14 },
-  fullWidthCard: { width: '100%', flexDirection: 'row', alignItems: 'center', borderColor: '#38bdf8', backgroundColor: '#1e293b' },
   iconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', justifyContent: 'center', alignItems: 'center' },
-  cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginTop: 8 },
+  cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginTop: 8 },
   cardSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
 
   reviewSection: { 

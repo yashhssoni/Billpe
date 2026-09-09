@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useContext, useEffect, useMemo } from 'react';
 import { 
   View, Text, TouchableOpacity, SectionList, Alert, ActivityIndicator, 
   StyleSheet, Modal, TextInput 
@@ -147,6 +147,7 @@ export default function SoldItemsScreen({ navigation }) {
       ]
     );
   };
+
   const validateDates = () => {
     if (!startDate.trim() || !endDate.trim()) {
       Alert.alert(t('error'), t('Please enter both Start Date and End Date.'));
@@ -282,7 +283,7 @@ export default function SoldItemsScreen({ navigation }) {
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Delete Permanently',
+          text: t('Delete Permanently'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
@@ -294,13 +295,13 @@ export default function SoldItemsScreen({ navigation }) {
               setActionLoading(false);
 
               if (data.success) {
-                Alert.alert(t('success'), data.message || 'Records permanently deleted.');
+                Alert.alert(t('success'), data.message || t('Records permanently deleted.'));
                 setRangeModalVisible(false);
                 fetchSalesHistory();
               }
             } catch (err) {
               setActionLoading(false);
-              Alert.alert(t('error'), err.response?.data?.message || 'Permanent deletion failed.');
+              Alert.alert(t('error'), err.response?.data?.message || t('Permanent deletion failed.'));
             }
           }
         }
@@ -353,7 +354,7 @@ export default function SoldItemsScreen({ navigation }) {
             activeOpacity={0.7}
           >
             <Text style={[styles.selectModeBtnText, isSelectMode && styles.selectModeBtnTextActive]}>
-              {isSelectMode ? 'Cancel' : 'Select Entry'}
+              {isSelectMode ? t('cancel') : t('Select Entry')}
             </Text>
           </TouchableOpacity>
 
@@ -373,7 +374,7 @@ export default function SoldItemsScreen({ navigation }) {
         <View style={styles.multiSelectBar}>
           <TouchableOpacity onPress={handleSelectAll} style={styles.multiSelectActionBtn}>
             <Text style={styles.multiSelectActionText}>
-              {selectedIds.size === sales.length ? 'Deselect All' : 'Select All'}
+              {selectedIds.size === sales.length ? t('Deselect All') : t('Select All')}
             </Text>
           </TouchableOpacity>
 
@@ -385,7 +386,7 @@ export default function SoldItemsScreen({ navigation }) {
             {archiving ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.multiDeleteText}>🗑️ Delete ({selectedIds.size})</Text>
+              <Text style={styles.multiDeleteText}>🗑️ {t('delete')} ({selectedIds.size})</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -506,6 +507,7 @@ export default function SoldItemsScreen({ navigation }) {
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noSalesHistory')}</Text>}
         />
       )}
+
       <Modal
         visible={rangeModalVisible}
         transparent={true}
@@ -533,13 +535,14 @@ export default function SoldItemsScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Start Date:</Text>
+            <Text style={styles.inputLabel}>{t('Start Date:')}</Text>
             <TouchableOpacity 
               style={styles.datePickerTrigger}
               onPress={() => { setCalendarTarget('start'); setCalendarVisible(true); }}
             >
               <Text style={styles.datePickerTriggerText}>📅 {startDate}</Text>
             </TouchableOpacity>
+
             <Text style={styles.inputLabel}>{t('End Date:')}</Text>
             <TouchableOpacity 
               style={styles.datePickerTrigger}

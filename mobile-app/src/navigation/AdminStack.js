@@ -1,7 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-
 import AdminDashboard from '../screens/AdminDashboard';
 import BarcodeGenerator from '../screens/BarcodeGenerator';
 import AdminScanner from '../screens/AdminScanner';
@@ -15,6 +14,9 @@ import ProfileScreen from '../screens/ProfileScreen';
 import SupportScreen from '../screens/SupportScreen';
 import ReviewScreen from '../screens/ReviewScreen';
 import FaqScreen from '../screens/FaqScreen';
+
+import EmployeeScreen from '../screens/EmployeeScreen';
+import ReturnStockScreen from '../screens/ReturnStockScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +35,9 @@ export default function AdminStack() {
       <Stack.Screen name="SupportScreen" component={SupportScreen} />
       <Stack.Screen name="ReviewScreen" component={ReviewScreen} />
       <Stack.Screen name="FaqScreen" component={FaqScreen} />
+      
+      <Stack.Screen name="EmployeeScreen" component={EmployeeScreen} />
+      <Stack.Screen name="ReturnStock" component={ReturnStockScreen} />
     </Stack.Navigator>
   );
 }

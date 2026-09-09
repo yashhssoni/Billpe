@@ -425,6 +425,16 @@ export const translations = {
     'th_ret_amt': 'Ret Amt',
     'th_mode': 'Mode',
     'th_staff': 'Staff',
+    'Billing': 'Billing',
+    '← Back': '← Back',
+    switchToBilling: 'Employee Portal',
+    'Select Entry': 'Select Entry',
+    'Date Range': 'Date Range',
+    'Select Start Date': 'Select Start Date',
+    'Select End Date': 'Select End Date',
+    'Delete Permanently': 'Delete Permanently',
+    'Permanent deletion failed.': 'Permanent deletion failed.',
+    'Start Date:': 'Start Date',
   },
 
   hi: {
@@ -853,5 +863,15 @@ export const translations = {
     'th_ret_amt': 'वापस राशि',
     'th_mode': 'तरीका',
     'th_staff': 'स्टाफ',
+    'Billing': 'बिलिंग',
+    '← Back': '← पीछे',
+    switchToBilling: 'सामान बेचें',
+    'Select Entry': 'एंट्री चुनें',
+    'Date Range': 'तारीख सीमा',
+    'Select Start Date': 'प्रारंभ तिथि चुनें',
+    'Select End Date': 'अंतिम तिथि चुनें',
+    'Delete Permanently': 'स्थायी रूप से हटाएं',
+    'Permanent deletion failed.': 'स्थायी रूप से हटाने में विफल।',
+    'Start Date:': 'प्रारंभ तिथि',
   }
 };
