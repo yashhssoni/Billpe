@@ -29,7 +29,7 @@ export default function ForgotPasswordScreen({ navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Unable to send reset code.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Unable to send reset code.'));
     }
   };
 

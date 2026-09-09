@@ -38,7 +38,7 @@ export default function ProfileScreen({ navigation }) {
         setPhone(data.data.phone || '');
       }
     } catch (err) {
-      Alert.alert(t('error'), 'Unable to load profile data.');
+      Alert.alert(t('error'), t('Unable to load profile data.'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +65,7 @@ export default function ProfileScreen({ navigation }) {
       }
     } catch (err) {
       setUpdatingProfile(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update profile.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Failed to update profile.'));
     }
   };
 

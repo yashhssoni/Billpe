@@ -25,34 +25,23 @@ export default function EmployeeScreen({ navigation }) {
   const [priceMode, setPriceMode] = useState('manual');
   const [loading, setLoading] = useState(false);
   const [employeeName, setEmployeeName] = useState(user?.name || '');
-
-  // Payment Mode (Cash, Online, Split)
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [splitCash, setSplitCash] = useState('');
   const [splitOnline, setSplitOnline] = useState('');
-
-  // Exactly 2 Live Counters
   const [todayCashTotal, setTodayCashTotal] = useState(0);
   const [todayOnlineTotal, setTodayOnlineTotal] = useState(0);
-
-  // Edit Modal States
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
   const [editQty, setEditQty] = useState('1');
   const [editPriceMode, setEditPriceMode] = useState('manual');
   const [showEditLowestRate, setShowEditLowestRate] = useState(false);
-
-  // Image Preview Modal
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState(null);
-
-  // Customer Details
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
 
-  // Timer refs for 1-second secret reveal
   const [showLowestRate, setShowLowestRate] = useState(false);
   const [showGrandBaseRate, setShowGrandBaseRate] = useState(false);
   const revealTimerRef = useRef(null);
@@ -104,7 +93,7 @@ export default function EmployeeScreen({ navigation }) {
         setTodayOnlineTotal(onlineSum);
       }
     } catch (e) {
-      console.log('Error fetching today sales:', e.message);
+      console.log(t('Error fetching today sales:'), e.message);
     }
   };
 
@@ -139,13 +128,13 @@ export default function EmployeeScreen({ navigation }) {
       if (res.success && res.products) {
         const found = res.products.find(item => item.barcode === data);
         if (!found) {
-          Alert.alert(t('error'), 'This product does not exist in the database.');
+          Alert.alert(t('error'), t('This product does not exist in the database.'));
           return;
         }
 
         if (found.stock <= 0 || found.sold === true) {
           Alert.alert(
-            '⚠️ Item Out of Stock',
+            t('⚠️ Item Out of Stock'),
             `${found.productName} has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".`,
             [
               { text: t('cancel'), style: 'cancel' },
@@ -174,7 +163,7 @@ export default function EmployeeScreen({ navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), 'Failed to fetch product details.');
+      Alert.alert(t('error'), t('Failed to fetch product details.'));
     }
   };
 
@@ -215,7 +204,7 @@ export default function EmployeeScreen({ navigation }) {
 
   const handleAddToCart = () => {
     if (!manualPrice) {
-      Alert.alert(t('error'), 'Please enter agreed selling price.');
+      Alert.alert(t('error'), t('Please enter agreed selling price.'));
       return;
     }
     const enteredPrice = parseFloat(manualPrice);
@@ -228,7 +217,7 @@ export default function EmployeeScreen({ navigation }) {
 
     const qtyToAdd = parseInt(selectedQty, 10);
     if (isNaN(qtyToAdd) || qtyToAdd <= 0) {
-      Alert.alert(t('error'), 'Please enter a valid quantity.');
+      Alert.alert(t('error'), t('Please enter a valid quantity.'));
       return;
     }
 
@@ -297,7 +286,7 @@ export default function EmployeeScreen({ navigation }) {
 
   const handleSaveCartEdit = () => {
     if (!editPrice) {
-      Alert.alert(t('error'), 'Price cannot be empty.');
+      Alert.alert(t('error'), t('Price cannot be empty.'));
       return;
     }
 
@@ -311,7 +300,7 @@ export default function EmployeeScreen({ navigation }) {
 
     const newQuantity = parseInt(editQty, 10);
     if (isNaN(newQuantity) || newQuantity <= 0) {
-      Alert.alert(t('error'), 'Quantity must be at least 1.');
+      Alert.alert(t('error'), t('Quantity must be at least 1.'));
       return;
     }
 
@@ -339,7 +328,7 @@ export default function EmployeeScreen({ navigation }) {
 
   const handleCompleteCheckout = async (shouldPrint = true) => {
     if (cart.length === 0) {
-      Alert.alert(t('error'), 'Cart is empty.');
+      Alert.alert(t('error'), t('Cart is empty.'));
       return;
     }
 
@@ -462,7 +451,7 @@ export default function EmployeeScreen({ navigation }) {
 
       Alert.alert(
         'Success ✅', 
-        `Invoice: #${invoiceNo}\n${shouldPrint ? 'Bill printed & sold successfully!' : 'Sale saved successfully!'}`
+        `Invoice: #${invoiceNo}\n${shouldPrint ? t('Bill printed & sold successfully!') : t('Sale saved successfully!')}`
       );
       setCart([]);
       setCustomerName('');
@@ -473,7 +462,7 @@ export default function EmployeeScreen({ navigation }) {
       setSplitOnline('');
       fetchTodayLiveSales();
     } else {
-      Alert.alert('Checkout Failed 🔒', result.message || 'Error completing checkout.');
+      Alert.alert('Checkout Failed 🔒', result.message || t('Error completing checkout.'));
     }
   };
 
@@ -504,16 +493,14 @@ export default function EmployeeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Today's Live Sales Dashboard: Exactly 2 Counters */}
       <View style={styles.todayStatsCard}>
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>💵 TODAY CASH</Text>
+          <Text style={styles.todayStatLabel}>{t('💵 TODAY CASH')}</Text>
           <Text style={styles.todayStatValCash}>₹{todayCashTotal.toFixed(0)}</Text>
         </View>
         <View style={styles.todayStatDivider} />
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>📲 TODAY ONLINE</Text>
+          <Text style={styles.todayStatLabel}>{t('📲 TODAY ONLINE')}</Text>
           <Text style={styles.todayStatValOnline}>₹{todayOnlineTotal.toFixed(0)}</Text>
         </View>
       </View>
@@ -533,11 +520,9 @@ export default function EmployeeScreen({ navigation }) {
               <Text style={styles.subText}>{t('categoryModalLabel')} {currentScanned?.category || 'General'}</Text>
             </View>
             <View style={styles.stockBadge}>
-              <Text style={styles.stockBadgeText}>In Stock: {currentScanned?.stock || 0}</Text>
+              <Text style={styles.stockBadgeText}>{t('In Stock:')} {currentScanned?.stock || 0}</Text>
             </View>
           </View>
-
-          {/* Pricing Row */}
           <View style={styles.priceOptionRow}>
             <TouchableOpacity 
               style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} 
@@ -639,10 +624,8 @@ export default function EmployeeScreen({ navigation }) {
             onPress={() => navigation.navigate('ReturnStock')}
             activeOpacity={0.8}
           >
-            <Text style={styles.returnNavBtnText}>🔄 Return / Exchange Stock</Text>
+            <Text style={styles.returnNavBtnText}>🔄{t(' Return / Exchange Stock')}</Text>
           </TouchableOpacity>
-
-          {/* Customer & Staff Info */}
           <View style={styles.cardBox}>
             <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
             <TextInput 
@@ -660,8 +643,6 @@ export default function EmployeeScreen({ navigation }) {
             <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
             <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
           </View>
-
-          {/* Cart Header + Grand Base Protection Guard */}
           <View style={styles.cartHeaderRow}>
             <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
 
@@ -708,18 +689,16 @@ export default function EmployeeScreen({ navigation }) {
               ))
             )}
           </View>
-
-          {/* PAYMENT MODE - DIRECTLY BELOW CART */}
           {cart.length > 0 && (
             <View style={[styles.cardBox, { marginTop: 14 }]}>
-              <Text style={styles.fieldHeading}>SELECT PAYMENT MODE</Text>
+              <Text style={styles.fieldHeading}>{t('SELECT PAYMENT MODE')}</Text>
               <View style={styles.paymentToggleRow}>
                 <TouchableOpacity 
                   style={[styles.payModeBtn, paymentMode === 'Cash' && styles.payModeBtnActive]} 
                   onPress={() => setPaymentMode('Cash')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 CASH</Text>
+                  <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 {t('CASH')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -727,7 +706,7 @@ export default function EmployeeScreen({ navigation }) {
                   onPress={() => setPaymentMode('Online')}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 ONLINE</Text>
+                  <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 {t('ONLINE')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -739,17 +718,15 @@ export default function EmployeeScreen({ navigation }) {
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.payModeText, paymentMode === 'Split' && styles.payModeTextActive]}>⚖️ SPLIT</Text>
+                  <Text style={[styles.payModeText, paymentMode === 'Split' && styles.payModeTextActive]}>⚖️ {t('SPLIT')}</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Split Inputs */}
               {paymentMode === 'Split' && (
                 <View style={styles.splitBox}>
                   <Text style={styles.splitNote}>Total Bill: ₹{grandTotalAmount.toFixed(2)}</Text>
                   <View style={styles.splitInputsRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.splitLabel}>Cash (₹):</Text>
+                      <Text style={styles.splitLabel}>{t('Cash (₹)')}:</Text>
                       <TextInput
                         style={styles.splitInput}
                         placeholder="e.g. 50"
@@ -781,8 +758,6 @@ export default function EmployeeScreen({ navigation }) {
               )}
             </View>
           )}
-
-          {/* Checkout Actions */}
           {cart.length > 0 && (
             <View style={styles.checkoutActionRow}>
               <TouchableOpacity 
@@ -791,7 +766,7 @@ export default function EmployeeScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <Text style={styles.doneBtnText}>
-                  ✓ Done (₹{grandTotalAmount.toFixed(2)})
+                  ✓ {t('Done')} (₹{grandTotalAmount.toFixed(2)})
                 </Text>
               </TouchableOpacity>
 
@@ -800,14 +775,12 @@ export default function EmployeeScreen({ navigation }) {
                 onPress={() => handleCompleteCheckout(true)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.printBtnText}>🖨️ Print Bill</Text>
+                <Text style={styles.printBtnText}>🖨️ {t('Print Bill')}</Text>
               </TouchableOpacity>
             </View>
           )}
         </ScrollView>
       )}
-
-      {/* Image Preview Modal */}
       <Modal visible={imageModalVisible} transparent={true} animationType="fade">
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
@@ -818,8 +791,6 @@ export default function EmployeeScreen({ navigation }) {
           )}
         </View>
       </Modal>
-
-      {/* Edit Item Modal */}
       {editingCartItem && (
         <Modal visible={editModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
@@ -873,7 +844,7 @@ export default function EmployeeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.label}>Agreed Price (₹)</Text>
+              <Text style={styles.label}>{t('Agreed Price (₹)')}</Text>
               <TextInput 
                 style={styles.input} 
                 keyboardType="numeric" 
@@ -882,7 +853,7 @@ export default function EmployeeScreen({ navigation }) {
                 placeholderTextColor="#64748b" 
               />
 
-              <Text style={[styles.label, { marginTop: 6 }]}>Quantity (Max: {editingCartItem.stock})</Text>
+              <Text style={[styles.label, { marginTop: 6 }]}>{t('Quantity ')}(Max: {editingCartItem.stock})</Text>
               <TextInput 
                 style={styles.input} 
                 keyboardType="numeric" 

@@ -49,7 +49,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Invalid or expired OTP.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Invalid or expired OTP.'));
     }
   };
 
@@ -61,7 +61,7 @@ export default function VerifyOtpScreen({ route, navigation }) {
       Alert.alert(t('otpResentTitle'), t('otpResentMsg'));
     } catch (err) {
       setResending(false);
-      Alert.alert(t('error'), 'Failed to resend OTP.');
+      Alert.alert(t('error'), t('Failed to resend OTP.'));
     }
   };
 

@@ -19,13 +19,13 @@ export default function SupportScreen({ navigation }) {
 
   const handleCall = () => {
     Linking.openURL(`tel:${SUPPORT_PHONE}`).catch(() => {
-      Alert.alert(t('error'), 'Unable to make call.');
+      Alert.alert(t('error'), t('Unable to make call.'));
     });
   };
 
   const handleEmail = () => {
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Support Request - BillPe Store`).catch(() => {
-      Alert.alert(t('error'), 'Unable to open email client.');
+      Alert.alert(t('error'), t('Unable to open email client.'));
     });
   };
 

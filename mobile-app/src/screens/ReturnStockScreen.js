@@ -42,9 +42,9 @@ export default function ReturnStockScreen({ navigation }) {
 
       if (!foundProduct) {
         setLoading(false);
-        Alert.alert(t('error'), 'Product not found in store database.', [
-          { text: 'Scan Again', onPress: () => setScanner(true) },
-          { text: 'Back to Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
+        Alert.alert(t('error'), t('Product not found in store database.'), [
+          { text: t('Scan Again'), onPress: () => setScanner(true) },
+          { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
         ]);
         return;
       }
@@ -56,11 +56,11 @@ export default function ReturnStockScreen({ navigation }) {
 
       if (pastSales.length === 0) {
         Alert.alert(
-          'No Sales Record', 
+          t('No Sales Record'), 
           `Product "${foundProduct.productName}" exists, but has zero sales history in this store.`,
           [
-            { text: 'Scan Again', onPress: () => setScanner(true) },
-            { text: 'Back to Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
+            { text: t('Scan Again'), onPress: () => setScanner(true) },
+            { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
           ]
         );
         return;
@@ -71,11 +71,11 @@ export default function ReturnStockScreen({ navigation }) {
 
       if (maxAllowed <= 0) {
         Alert.alert(
-          'Already Returned', 
+          t('Already Returned'), 
           `All units of Invoice #${latestSale.invoiceNo} have already been returned!`,
           [
-            { text: 'Scan Again', onPress: () => setScanner(true) },
-            { text: 'Back to Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
+            { text: t('Scan Again'), onPress: () => setScanner(true) },
+            { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
           ]
         );
         return;
@@ -90,7 +90,7 @@ export default function ReturnStockScreen({ navigation }) {
       setReturnQty(1);
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), 'Failed to fetch sales history for verification.', [
+      Alert.alert(t('error'), t('Failed to fetch sales history for verification.'), [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     }
@@ -122,11 +122,9 @@ export default function ReturnStockScreen({ navigation }) {
         ]
       );
     } else {
-      Alert.alert(t('error'), res.message || 'Failed to process return.');
+      Alert.alert(t('error'), res.message || t('Failed to process return.'));
     }
   };
-
-  // Jab scanner active ho toh absolute camera render hoga, par padding/wrapper uniform rakhenge
   if (scanner) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -135,12 +133,11 @@ export default function ReturnStockScreen({ navigation }) {
           onBarcodeScanned={handleBarCodeScanned}
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
-        {/* Uniform Back Button container placed just like ScreenWrapper */}
         <SafeAreaView style={styles.uniformCameraOverlay}>
           <View style={{ paddingTop: Platform.OS === 'android' ? 24 : 0 }}>
             <BackButton 
               onPress={() => navigation.goBack()} 
-              style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)' }} // Thoda dark background clarity ke liye
+              style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)' }} 
             />
           </View>
         </SafeAreaView>
@@ -152,7 +149,7 @@ export default function ReturnStockScreen({ navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#f59e0b" />
-        <Text style={[styles.infoText, { marginTop: 12 }]}>Verifying sale history...</Text>
+        <Text style={[styles.infoText, { marginTop: 12 }]}>{t('Verifying sale history...')}</Text>
       </View>
     );
   }
@@ -165,7 +162,7 @@ export default function ReturnStockScreen({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <BackButton onPress={() => navigation.goBack()} />
-      <Text style={styles.header}>Return & Restock Portal</Text>
+      <Text style={styles.header}>{t('Return & Restock Portal')}</Text>
 
       <View style={styles.returnCard}>
         <View style={styles.cardHeader}>
@@ -191,9 +188,9 @@ export default function ReturnStockScreen({ navigation }) {
         </View>
 
         <View style={styles.detailsBox}>
-          <Text style={styles.boxHeading}>SALE VERIFICATION</Text>
+          <Text style={styles.boxHeading}>{t('SALE VERIFICATION')}</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Customer:</Text>
+            <Text style={styles.infoLabel}>{t('Customer:')}</Text>
             <Text style={styles.infoValueHighlight}>{returnItemData.sale.customerName || 'Walk-in Customer'}</Text>
           </View>
           <View style={styles.infoRow}>
@@ -218,20 +215,20 @@ export default function ReturnStockScreen({ navigation }) {
 
         <View style={styles.statsRow}>
           <View style={styles.statPill}>
-            <Text style={styles.statLabel}>Bought</Text>
-            <Text style={styles.statVal}>{returnItemData.sale.quantity} pcs</Text>
+            <Text style={styles.statLabel}>{t('Bought')}</Text>
+            <Text style={styles.statVal}>{returnItemData.sale.quantity}{t(' pcs')}</Text>
           </View>
           <View style={styles.statPill}>
-            <Text style={styles.statLabel}>Already Returned</Text>
-            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0} pcs</Text>
+            <Text style={styles.statLabel}>{t('Already Returned')}</Text>
+            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0}{t(' pcs')}</Text>
           </View>
           <View style={[styles.statPill, { borderColor: '#10b981' }]}>
-            <Text style={styles.statLabel}>Max Returnable</Text>
-            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed} pcs</Text>
+            <Text style={styles.statLabel}>{t('Max Returnable')}</Text>
+            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed}{t(' pcs')}</Text>
           </View>
         </View>
 
-        <Text style={styles.selectorLabel}>Select Return Quantity:</Text>
+        <Text style={styles.selectorLabel}>{t('Select Return Quantity:')}</Text>
         <View style={styles.qtyControlRow}>
           <TouchableOpacity 
             style={styles.qtyBtn}
@@ -253,7 +250,7 @@ export default function ReturnStockScreen({ navigation }) {
         </View>
 
         <View style={styles.refundSummaryBox}>
-          <Text style={styles.refundLabel}>Total Refund to Customer:</Text>
+          <Text style={styles.refundLabel}>{t('Total Refund to Customer:')}</Text>
           <Text style={styles.refundAmount}>₹{(returnQty * returnItemData.sale.price).toFixed(2)}</Text>
         </View>
 
@@ -266,7 +263,7 @@ export default function ReturnStockScreen({ navigation }) {
           {submitting ? (
             <ActivityIndicator color="#0f172a" size="small" />
           ) : (
-            <Text style={styles.confirmBtnText}>✓ Confirm Return & Restock</Text>
+            <Text style={styles.confirmBtnText}>✓ {t('Confirm Return & Restock')}</Text>
           )}
         </TouchableOpacity>
 
@@ -274,7 +271,7 @@ export default function ReturnStockScreen({ navigation }) {
           style={styles.scanAnotherBtn}
           onPress={() => { setReturnItemData(null); setScanner(true); }}
         >
-          <Text style={styles.scanAnotherText}>Scan Another Item</Text>
+          <Text style={styles.scanAnotherText}>{t('Scan Another Item')}</Text>
         </TouchableOpacity>
       </View>
     </ScreenWrapper>

@@ -22,7 +22,7 @@ export default function ReviewScreen({ navigation }) {
         setReviews(data.reviews || []);
       }
     } catch (err) {
-      console.log('Error loading community reviews:', err);
+      console.log(t('Error loading community reviews:'), err);
     } finally {
       setLoading(false);
     }

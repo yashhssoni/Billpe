@@ -11,7 +11,7 @@ export default function BarcodeGenerator({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
   const [fetchingQuota, setFetchingQuota] = useState(true);
-  const [mode, setMode] = useState('unique'); // 'unique' or 'copies'
+  const [mode, setMode] = useState('unique'); 
   const [countInput, setCountInput] = useState('44');
   const [copiesInput, setCopiesInput] = useState('24');
   const [customBarcode, setCustomBarcode] = useState('');
@@ -25,7 +25,7 @@ export default function BarcodeGenerator({ navigation }) {
         setSubActive(data.isActive);
       }
     } catch (err) {
-      console.log('Failed to fetch status:', err.message);
+      console.log(t('Failed to fetch status:'), err.message);
     } finally {
       setFetchingQuota(false);
     }
@@ -138,7 +138,7 @@ export default function BarcodeGenerator({ navigation }) {
     } else {
       const requestedCopies = parseInt(copiesInput, 10);
       if (isNaN(requestedCopies) || requestedCopies <= 0 || requestedCopies > 500) {
-        Alert.alert(t('error'), 'Please enter a valid number of copies (1 - 500).');
+        Alert.alert(t('error'), t('Please enter a valid number of copies (1 - 500).'));
         return;
       }
       const singleCode = customBarcode.trim() || generateUniqueIds(1)[0];
@@ -167,7 +167,7 @@ export default function BarcodeGenerator({ navigation }) {
       await Print.printAsync({ html });
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), 'Failed to generate barcodes.');
+      Alert.alert(t('error'), t('Failed to generate barcodes.'));
     }
   };
 
@@ -191,15 +191,13 @@ export default function BarcodeGenerator({ navigation }) {
             </>
           )}
         </View>
-
-        {/* Mode Switcher */}
         <View style={styles.modeToggleRow}>
           <TouchableOpacity 
             style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
             onPress={() => setMode('unique')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>Unique Barcodes</Text>
+            <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>{t('Unique Barcodes')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -207,7 +205,7 @@ export default function BarcodeGenerator({ navigation }) {
             onPress={() => setMode('copies')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.modeBtnText, mode === 'copies' && styles.modeBtnTextActive]}>Same Barcode Copies</Text>
+            <Text style={[styles.modeBtnText, mode === 'copies' && styles.modeBtnTextActive]}>{t('Same Barcode Copies')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -226,7 +224,7 @@ export default function BarcodeGenerator({ navigation }) {
             </>
           ) : (
             <>
-              <Text style={styles.label}>Barcode ID (Leave blank to generate fresh):</Text>
+              <Text style={styles.label}>{t('Barcode ID (Leave blank to generate fresh):')}</Text>
               <TextInput
                 style={styles.input}
                 value={customBarcode}
@@ -235,7 +233,7 @@ export default function BarcodeGenerator({ navigation }) {
                 placeholderTextColor="#64748b"
               />
 
-              <Text style={styles.label}>Number of Sticker Copies (Max 500):</Text>
+              <Text style={styles.label}>{t('Number of Sticker Copies (Max 500):')}</Text>
               <TextInput
                 style={styles.input}
                 keyboardType="numeric"

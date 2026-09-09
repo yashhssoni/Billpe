@@ -8,7 +8,7 @@ import axiosInstance from '../api/axiosInstance';
 import { LanguageContext } from '../context/LanguageContext';
 import ScreenWrapper from '../components/ScreenWrapper';
 import BackButton from '../components/BackButton';
-import CustomDatePickerModal from '../components/CustomDatePickerModal'; // Apna Custom Calendar Modal
+import CustomDatePickerModal from '../components/CustomDatePickerModal'; 
 
 export default function SoldItemsScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -16,12 +16,10 @@ export default function SoldItemsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [expandedSplitIds, setExpandedSplitIds] = useState(new Set());
 
-  // Multi-Select States (File Manager Style)
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [archiving, setArchiving] = useState(false);
 
-  // Date Range & Calendar Modal States
   const [rangeModalVisible, setRangeModalVisible] = useState(false);
   
   const formatDateString = (date) => {
@@ -36,8 +34,7 @@ export default function SoldItemsScreen({ navigation }) {
   const [endDate, setEndDate] = useState(todayStr);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // States to control active calendar selection picker modal
-  const [calendarTarget, setCalendarTarget] = useState(null); // 'start' or 'end'
+  const [calendarTarget, setCalendarTarget] = useState(null); 
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   const fetchSalesHistory = async () => {
@@ -48,7 +45,7 @@ export default function SoldItemsScreen({ navigation }) {
         setSales(data.sales || []);
       }
     } catch (err) {
-      Alert.alert(t('error'), 'Failed to load sales history.');
+      Alert.alert(t('error'), t('Failed to load sales history.'));
     } finally {
       setLoading(false);
     }
@@ -108,17 +105,17 @@ export default function SoldItemsScreen({ navigation }) {
       if (data.success) {
         setSales(prev => prev.filter(item => !idsArray.includes(item._id)));
         exitSelectMode();
-        Alert.alert(t('success'), data.message || 'Records removed from history.');
+        Alert.alert(t('success'), data.message || t('Records removed from history.'));
       }
     } catch (err) {
       setArchiving(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to remove records.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Failed to remove records.'));
     }
   };
 
   const handleSingleDelete = (id, productName) => {
     Alert.alert(
-      'Remove from History?',
+      t('Remove from History?'),
       `Remove "${productName}" from sales history?`,
       [
         { text: t('cancel'), style: 'cancel' },
@@ -133,12 +130,12 @@ export default function SoldItemsScreen({ navigation }) {
 
   const handleBulkDeleteSelected = () => {
     if (selectedIds.size === 0) {
-      Alert.alert('No Items Selected', 'Please tap on items to select them first.');
+      Alert.alert(t('No Items Selected'), t('Please tap on items to select them first.'));
       return;
     }
 
     Alert.alert(
-      'Remove Selected?',
+      t('Remove Selected?'),
       `Remove ${selectedIds.size} selected item(s) from history?`,
       [
         { text: t('cancel'), style: 'cancel' },
@@ -153,12 +150,12 @@ export default function SoldItemsScreen({ navigation }) {
 
   const validateDates = () => {
     if (!startDate.trim() || !endDate.trim()) {
-      Alert.alert(t('error'), 'Please enter both Start Date and End Date.');
+      Alert.alert(t('error'), t('Please enter both Start Date and End Date.'));
       return false;
     }
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(startDate.trim()) || !dateRegex.test(endDate.trim())) {
-      Alert.alert(t('error'), 'Please use YYYY-MM-DD format.');
+      Alert.alert(t('error'), t('Please use YYYY-MM-DD format.'));
       return false;
     }
     return true;
@@ -176,7 +173,7 @@ export default function SoldItemsScreen({ navigation }) {
       setActionLoading(false);
 
       if (!res.success || !res.sales || res.sales.length === 0) {
-        Alert.alert('No Records', 'No sales found in this date range.');
+        Alert.alert(t('No Records'), t('No sales found in this date range.'));
         return;
       }
 
@@ -229,7 +226,7 @@ export default function SoldItemsScreen({ navigation }) {
       await Print.printAsync({ html });
     } catch (err) {
       setActionLoading(false);
-      Alert.alert(t('error'), 'Failed to export backup sheet.');
+      Alert.alert(t('error'), t('Failed to export backup sheet.'));
     }
   };
 
@@ -237,7 +234,7 @@ export default function SoldItemsScreen({ navigation }) {
     if (!validateDates()) return;
 
     Alert.alert(
-      'Permanent Delete?',
+      t('Permanent Delete?'),
       `Are you sure you want to permanently delete records from ${startDate.trim()} to ${endDate.trim()}? This cannot be undone.`,
       [
         { text: t('cancel'), style: 'cancel' },
@@ -323,7 +320,7 @@ export default function SoldItemsScreen({ navigation }) {
               onPress={() => setRangeModalVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.clearRangeTriggerText}>Date Range / Export</Text>
+              <Text style={styles.clearRangeTriggerText}>{t('Date Range')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -435,7 +432,7 @@ export default function SoldItemsScreen({ navigation }) {
                   </View>
 
                   <Text style={styles.itemSubDetail}>
-                    Rate: ₹{item.price} × {item.quantity || 1} pcs
+                    Rate: ₹{item.price} × {item.quantity || 1} {t('pcs')}
                     {item.returnedQuantity > 0 ? (
                       <Text style={{ color: '#f59e0b', fontWeight: 'bold' }}> ({item.returnedQuantity} Returned)</Text>
                     ) : null}
@@ -466,8 +463,6 @@ export default function SoldItemsScreen({ navigation }) {
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noSalesHistory')}</Text>}
         />
       )}
-
-      {/* Date Range Options Modal */}
       <Modal
         visible={rangeModalVisible}
         transparent={true}
@@ -477,26 +472,24 @@ export default function SoldItemsScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>📅 Date Range Options</Text>
+              <Text style={styles.modalTitle}>📅 {t('Date Range Options')}</Text>
               <TouchableOpacity onPress={() => setRangeModalVisible(false)}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Quick Preset Chips */}
             <View style={styles.presetsRow}>
               <TouchableOpacity style={styles.presetChip} onPress={() => setQuickPreset(0)}>
-                <Text style={styles.presetText}>Today</Text>
+                <Text style={styles.presetText}>{t('Today')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.presetChip} onPress={() => setQuickPreset(6)}>
-                <Text style={styles.presetText}>Last 7 Days</Text>
+                <Text style={styles.presetText}>{t('Last 7 Days')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.presetChip} onPress={() => setQuickPreset(29)}>
-                <Text style={styles.presetText}>Last 30 Days</Text>
+                <Text style={styles.presetText}>{t('Last 30 Days')}</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Start Date Picker Trigger */}
             <Text style={styles.inputLabel}>Start Date:</Text>
             <TouchableOpacity 
               style={styles.datePickerTrigger}
@@ -504,9 +497,7 @@ export default function SoldItemsScreen({ navigation }) {
             >
               <Text style={styles.datePickerTriggerText}>📅 {startDate}</Text>
             </TouchableOpacity>
-
-            {/* End Date Picker Trigger */}
-            <Text style={styles.inputLabel}>End Date:</Text>
+            <Text style={styles.inputLabel}>{t('End Date:')}</Text>
             <TouchableOpacity 
               style={styles.datePickerTrigger}
               onPress={() => { setCalendarTarget('end'); setCalendarVisible(true); }}
@@ -523,7 +514,7 @@ export default function SoldItemsScreen({ navigation }) {
                   onPress={handleDownloadBackup}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.downloadBtnText}>📥 Download / Print Backup</Text>
+                  <Text style={styles.downloadBtnText}>📥 {t('Download / Print Backup')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -531,7 +522,7 @@ export default function SoldItemsScreen({ navigation }) {
                   onPress={handlePermanentDelete}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.permanentBtnText}>🗑️ Permanent Delete Range</Text>
+                  <Text style={styles.permanentBtnText}>🗑️ {t('Permanent Delete Range')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -546,7 +537,6 @@ export default function SoldItemsScreen({ navigation }) {
         </View>
       </Modal>
 
-      {/* Integration of CustomDatePickerModal Component */}
       <CustomDatePickerModal
         visible={calendarVisible}
         onClose={() => setCalendarVisible(false)}
@@ -665,8 +655,6 @@ const styles = StyleSheet.create({
   staffMeta: { color: '#64748b', fontSize: 11 },
   itemDate: { color: '#64748b', fontSize: 11 },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40, marginBottom: 40 },
-
-  // Modal Styling
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(2, 6, 23, 0.85)',

@@ -30,13 +30,12 @@ export default function LoginScreen({ navigation }) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSavedAccounts(parsed);
-          // Default latest account load ho jayega
           setIdentifier(parsed[0].email);
           setPassword(parsed[0].pass);
         }
       }
     } catch (e) {
-      console.log('Error reading saved accounts:', e);
+      console.log(t('Error reading saved accounts:'), e);
     }
   };
 
@@ -68,13 +67,12 @@ export default function LoginScreen({ navigation }) {
     if (result.success) {
       try {
         const newEntry = { email: identifier.trim(), pass: password };
-        // Purane duplicate ko hatakar latest ko top par add karenge
         const filtered = savedAccounts.filter(acc => acc.email.toLowerCase() !== newEntry.email.toLowerCase());
-        const updatedList = [newEntry, ...filtered].slice(0, 8); // Max 8 accounts cache
+        const updatedList = [newEntry, ...filtered].slice(0, 8); 
         setSavedAccounts(updatedList);
         await AsyncStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(updatedList));
       } catch (e) {
-        console.log('Error caching account:', e);
+        console.log(t('Error caching account:'), e);
       }
     } else {
       Alert.alert(t('loginFailed'), result.message || 'Invalid credentials.');
@@ -93,8 +91,6 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.title}>{t('welcome')}</Text>
             <Text style={styles.subtitle}>{t('subtitle')}</Text>
           </View>
-
-          {/* Compact Dropdown Bar */}
           {savedAccounts.length > 0 && (
             <TouchableOpacity 
               style={styles.compactAccountBar} 
@@ -103,7 +99,7 @@ export default function LoginScreen({ navigation }) {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
                 <Text style={{ fontSize: 13 }}>⚡</Text>
-                <Text style={styles.compactBarLabel}>Saved Accounts</Text>
+                <Text style={styles.compactBarLabel}>{t('Saved Accounts')}</Text>
                 <View style={styles.accountCountBadge}>
                   <Text style={styles.accountCountText}>{savedAccounts.length}</Text>
                 </View>
@@ -153,8 +149,6 @@ export default function LoginScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
-
-      {/* Saved Accounts Modal Dropdown */}
       <Modal
         visible={dropdownVisible}
         transparent={true}
@@ -168,7 +162,7 @@ export default function LoginScreen({ navigation }) {
         >
           <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>⚡ Select Saved Account</Text>
+              <Text style={styles.modalTitle}>⚡ {t('Select Saved Account')}</Text>
               <TouchableOpacity onPress={() => setDropdownVisible(false)}>
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>

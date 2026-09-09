@@ -77,7 +77,7 @@ export default function AdminScanner({ navigation }) {
         setDynamicCategories(Array.from(categorySet));
       }
     } catch (e) {
-      console.log('Error fetching existing categories:', e);
+      console.log(t('Error fetching existing categories:'), e);
     }
   };
 
@@ -94,7 +94,7 @@ export default function AdminScanner({ navigation }) {
       );
       return manipResult.uri;
     } catch (error) {
-      console.log('Image compression error:', error);
+      console.log(t('Image compression error:'), error);
       return uri; 
     }
   };
@@ -162,8 +162,8 @@ export default function AdminScanner({ navigation }) {
       }
     } catch (err) {
       if (err.response && err.response.status === 403) {
-        Alert.alert(t('subExpiredLocked'), err.response.data.message || 'Please renew your subscription.', [
-          { text: 'Go to Subscription', onPress: () => navigation.navigate('SubscriptionScreen') }
+        Alert.alert(t('subExpiredLocked'), err.response.data.message || t('Please renew your subscription.'), [
+          { text: t('Go to Subscription'), onPress: () => navigation.navigate(t('SubscriptionScreen')) }
         ]);
         return;
       }
@@ -193,10 +193,10 @@ export default function AdminScanner({ navigation }) {
       setModalState(prev => ({ ...prev, restocking: false, visible: false }));
       if (e.response && e.response.status === 403) {
         Alert.alert(t('subExpiredLocked'), e.response.data.message || 'Please renew your subscription.', [
-          { text: 'Go to Subscription', onPress: () => navigation.navigate('SubscriptionScreen') }
+          { text: t('Go to Subscription'), onPress: () => navigation.navigate(t('SubscriptionScreen')) }
         ]);
       } else {
-        Alert.alert(t('error'), 'Error in Restock.');
+        Alert.alert(t('error'), t('Error in Restock.'));
       }
       setScanner(true);
     }
@@ -226,7 +226,7 @@ export default function AdminScanner({ navigation }) {
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission Needed', 'Give permission to select photo from Gallery.');
+      Alert.alert(t('Permission Needed'), t('Give permission to select photo from Gallery.'));
       return;
     }
 
@@ -245,7 +245,7 @@ export default function AdminScanner({ navigation }) {
   const takePhoto = async () => {
     const camPermission = await ImagePicker.requestCameraPermissionsAsync();
     if (!camPermission.granted) {
-      Alert.alert('Permission Needed', 'Give permission to click picture.');
+      Alert.alert(t('Permission Needed'), t('Give permission to click picture.'));
       return;
     }
 
@@ -265,7 +265,7 @@ export default function AdminScanner({ navigation }) {
 
   const handleSaveProduct = async () => {
     if (!p.name.trim() || !String(p.lowestRate).trim() || !String(p.highestRate).trim()) {
-      Alert.alert(t('error'), 'Please fill Product Name, Lowest Rate, and Highest Rate.');
+      Alert.alert(t('error'), t('Please fill Product Name, Lowest Rate, and Highest Rate.'));
       return;
     }
 
@@ -329,7 +329,7 @@ export default function AdminScanner({ navigation }) {
           return prev;
         });
 
-        Alert.alert(t('success'), data.message || 'Product saved successfully!', [
+        Alert.alert(t('success'), data.message || t('Product saved successfully!'), [
           { 
             text: t('scanNextItem'), 
             onPress: () => {
@@ -343,9 +343,9 @@ export default function AdminScanner({ navigation }) {
     } catch (err) {
       setLoading(false);
       if (err.response && err.response.status === 403) {
-        Alert.alert(t('subExpiredLocked'), err.response.data.message || 'Please renew subscription.');
+        Alert.alert(t('subExpiredLocked'), err.response.data.message || t('Please renew subscription.'));
       } else {
-        Alert.alert(t('error'), err.response?.data?.message || 'Failed to save product.');
+        Alert.alert(t('error'), err.response?.data?.message || t('Failed to save product.'));
       }
     }
   };

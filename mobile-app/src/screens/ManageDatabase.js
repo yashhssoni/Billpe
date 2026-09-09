@@ -36,8 +36,6 @@ export default function ManageDatabase({ navigation }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editCategoryDropdownVisible, setEditCategoryDropdownVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
-
-  // Hardware Back Button Handler for Android
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -68,7 +66,7 @@ export default function ManageDatabase({ navigation }) {
       const { data } = await axiosInstance.get('/products?includeSold=true');
       if (data.success) setProducts(data.products || []);
     } catch (err) {
-      console.log('Error fetching products', err);
+      console.log(t('Error fetching products'), err);
     } finally {
       setLoading(false);
     }
@@ -133,7 +131,7 @@ export default function ManageDatabase({ navigation }) {
 
   const handleUpdateProduct = async () => {
     if (!editingProduct.productName.trim() || !String(editingProduct.lowestRate).trim() || !String(editingProduct.highestRate).trim()) {
-      Alert.alert(t('error'), 'Please fill Product Name, Lowest Rate, and Highest Rate.');
+      Alert.alert(t('error'), t('Please fill Product Name, Lowest Rate, and Highest Rate.'));
       return;
     }
 
@@ -177,7 +175,7 @@ export default function ManageDatabase({ navigation }) {
       }
     } catch (err) {
       setUpdating(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update product.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Failed to update product.'));
     }
   };
 
@@ -194,7 +192,7 @@ export default function ManageDatabase({ navigation }) {
               setProducts(products.filter(p => p._id !== id));
             }
           } catch (err) {
-            Alert.alert(t('error'), 'Failed to delete product.');
+            Alert.alert(t('error'), t('Failed to delete product.'));
           }
         } 
       }
@@ -213,7 +211,7 @@ export default function ManageDatabase({ navigation }) {
         activeOpacity={0.7}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={styles.filterDropdownLabel}>Category:</Text>
+          <Text style={styles.filterDropdownLabel}>{t('Category:')}</Text>
           <Text style={styles.filterDropdownValue}>{selectedCategory} ({filteredProducts.length})</Text>
         </View>
         <Text style={styles.filterDropdownArrow}>▼</Text>
@@ -283,8 +281,6 @@ export default function ManageDatabase({ navigation }) {
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noProductsFound')}</Text>}
         />
       )}
-
-      {/* Filter Category Modal */}
       <Modal
         visible={filterDropdownVisible}
         transparent={true}
@@ -328,8 +324,6 @@ export default function ManageDatabase({ navigation }) {
           </View>
         </View>
       </Modal>
-
-      {/* Uniform Edit Product Modal */}
       {editingProduct && (
         <Modal 
           visible={modalVisible} 
@@ -347,8 +341,6 @@ export default function ManageDatabase({ navigation }) {
               showsVerticalScrollIndicator={false}
             >
               <Text style={styles.editScreenTitle}>{t('editProductDetailsTitle')}</Text>
-
-              {/* Mandatory Details Section */}
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionHeading}>{t('mandatoryDetailsHeading')}</Text>
 
@@ -372,7 +364,7 @@ export default function ManageDatabase({ navigation }) {
                 />
 
                 <View style={styles.labelRow}>
-                  <Text style={styles.formLabel}>Quantity / Stock Units *</Text>
+                  <Text style={styles.formLabel}>{t('Quantity / Stock Units *')}</Text>
                   {!String(editingProduct.stock).trim() && <Text style={styles.requiredTag}>{t('required')}</Text>}
                 </View>
                 <TextInput 
@@ -416,8 +408,6 @@ export default function ManageDatabase({ navigation }) {
                   </View>
                 </View>
               </View>
-
-              {/* Additional Details Section */}
               <View style={[styles.sectionCard, { marginTop: 16 }]}>
                 <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
 
@@ -537,8 +527,6 @@ export default function ManageDatabase({ navigation }) {
           </KeyboardAvoidingView>
         </Modal>
       )}
-
-      {/* Edit Category Selection Dropdown Modal */}
       <Modal
         visible={editCategoryDropdownVisible}
         transparent={true}
@@ -628,8 +616,6 @@ const styles = StyleSheet.create({
   deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11, textAlign: 'center' },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 40, marginBottom: 40 },
-
-  // Edit Modal Uniform Styling
   editModalContainer: { padding: 18, paddingTop: 35, backgroundColor: '#0f172a', flexGrow: 1 },
   editScreenTitle: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
   sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },

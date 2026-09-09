@@ -64,7 +64,7 @@ export default function AddEmployeeScreen({ navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to add employee.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Failed to add employee.'));
     }
   };
 
@@ -94,19 +94,19 @@ export default function AddEmployeeScreen({ navigation }) {
       setUpdating(false);
 
       if (data.success) {
-        Alert.alert(t('success'), 'Employee updated successfully!');
+        Alert.alert(t('success'), t('Employee updated successfully!'));
         setEditModalVisible(false);
         fetchEmployees();
       }
     } catch (err) {
       setUpdating(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to update employee.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Failed to update employee.'));
     }
   };
 
   const handleDeleteEmployee = (id, empName) => {
     Alert.alert(
-      t('confirmDeleteTitle') || 'Confirm Delete',
+      t('confirmDeleteTitle') || t('Confirm Delete'),
       `Are you sure you want to remove ${empName}?`,
       [
         { text: t('cancel'), style: 'cancel' },
@@ -118,10 +118,10 @@ export default function AddEmployeeScreen({ navigation }) {
               const { data } = await axiosInstance.delete(`/auth/employees/${id}`);
               if (data.success) {
                 setEmployees(employees.filter(e => e._id !== id));
-                Alert.alert(t('success'), 'Employee removed successfully.');
+                Alert.alert(t('success'), t('Employee removed successfully.'));
               }
             } catch (err) {
-              Alert.alert(t('error'), err.response?.data?.message || 'Failed to delete employee.');
+              Alert.alert(t('error'), err.response?.data?.message || t('Failed to delete employee.'));
             }
           }
         }
@@ -187,7 +187,7 @@ export default function AddEmployeeScreen({ navigation }) {
         renderItem={({ item }) => (
           <View style={styles.empCard}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.empName}>{item.name || 'Unnamed Employee'}</Text>
+              <Text style={styles.empName}>{item.name || t('Unnamed Employee')}</Text>
               <Text style={styles.empEmail}>{item.email}</Text>
               {item.phone ? <Text style={styles.empPhone}>📞 {item.phone}</Text> : null}
             </View>
@@ -209,9 +209,9 @@ export default function AddEmployeeScreen({ navigation }) {
         <Modal visible={editModalVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Edit Employee Details</Text>
+              <Text style={styles.modalTitle}>{t('Edit Employee Details')}</Text>
 
-              <Text style={styles.inputLabel}>Employee Name</Text>
+              <Text style={styles.inputLabel}>{t('Employee Name')}</Text>
               <TextInput
                 style={styles.input}
                 value={editingEmp.name}
@@ -219,7 +219,7 @@ export default function AddEmployeeScreen({ navigation }) {
                 placeholderTextColor="#64748b"
               />
 
-              <Text style={styles.inputLabel}>Email Address</Text>
+              <Text style={styles.inputLabel}>{t('Email Address')}</Text>
               <TextInput
                 style={styles.input}
                 value={editingEmp.email}
@@ -229,7 +229,7 @@ export default function AddEmployeeScreen({ navigation }) {
                 placeholderTextColor="#64748b"
               />
 
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              <Text style={styles.inputLabel}>{t('Phone Number')}</Text>
               <TextInput
                 style={styles.input}
                 value={editingEmp.phone}
@@ -246,7 +246,7 @@ export default function AddEmployeeScreen({ navigation }) {
                 {updating ? (
                   <ActivityIndicator color="#0f172a" />
                 ) : (
-                  <Text style={styles.saveModalBtnText}>Update Employee</Text>
+                  <Text style={styles.saveModalBtnText}>{t('Update Employee')}</Text>
                 )}
               </TouchableOpacity>
 

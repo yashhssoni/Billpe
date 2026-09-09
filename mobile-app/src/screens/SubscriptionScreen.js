@@ -35,7 +35,7 @@ export default function SubscriptionScreen({ navigation }) {
       setStatus(prev => ({ ...prev, paymentPending: true }));
       Alert.alert(t('requestSentTitle'), t('requestSentMsg'));
     } catch (e) { 
-      Alert.alert(t('error'), 'Request nahi ja payi.'); 
+      Alert.alert(t('error'), t('Request nahi ja payi.')); 
     }
     setLoading(false);
   };

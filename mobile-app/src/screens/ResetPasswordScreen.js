@@ -47,7 +47,7 @@ export default function ResetPasswordScreen({ route, navigation }) {
       }
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Invalid or expired OTP code.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Invalid or expired OTP code.'));
     }
   };
 

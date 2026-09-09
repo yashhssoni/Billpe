@@ -38,9 +38,9 @@ export default function RegisterScreen({ navigation }) {
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert(t('error'), 'Google Play Services not available on this device.');
+        Alert.alert(t('error'), t('Google Play Services not available on this device.'));
       } else {
-        Alert.alert(t('error'), 'Google Sign-In Failed. Please try again.');
+        Alert.alert(t('error'), t('Google Sign-In Failed. Please try again.'));
       }
     } finally {
       setFetchingGoogleUser(false);
@@ -84,7 +84,7 @@ export default function RegisterScreen({ navigation }) {
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert(t('error'), error.response?.data?.message || 'Something went wrong.');
+      Alert.alert(t('error'), error.response?.data?.message || t('Something went wrong.'));
     }
   };
 

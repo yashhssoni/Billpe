@@ -40,7 +40,7 @@ export default function AdminDashboard({ navigation }) {
         setHasReviewed(data.data.hasReviewed);
       }
     } catch (err) {
-      console.log('Error checking review status:', err);
+      console.log(t('Error checking review status:'), err);
     }
   };
 
@@ -64,7 +64,7 @@ export default function AdminDashboard({ navigation }) {
       }
     } catch (err) {
       setSubmittingReview(false);
-      Alert.alert(t('error'), err.response?.data?.message || 'Failed to submit review.');
+      Alert.alert(t('error'), err.response?.data?.message || t('Failed to submit review.'));
     }
   };
 
@@ -86,12 +86,11 @@ export default function AdminDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header with Switcher + Logout */}
         <View style={styles.header}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
             <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
-              {storeInfo?.storeName || 'My Store'}
+              {storeInfo?.storeName || t('My Store')}
             </Text>
             {storeInfo?._id && <Text style={styles.storeId}>{t('storeIdPrefix')} {storeInfo._id}</Text>}
           </View>
@@ -103,8 +102,6 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Menu Grid */}
         <View style={styles.grid}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
@@ -125,8 +122,6 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Inline Feedback Section */}
         {!hasReviewed && (
           <View style={styles.reviewSection}>
             <View style={styles.reviewHeaderRow}>
