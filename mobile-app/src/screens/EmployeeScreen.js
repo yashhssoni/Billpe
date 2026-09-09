@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, Button, TextInput, Alert, 
-  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image 
+  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, SafeAreaView 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Print from 'expo-print';
@@ -10,6 +10,7 @@ import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useSales } from '../hooks/useSales';
+import BackButton from '../components/BackButton';
 
 export default function EmployeeScreen({ navigation }) {
   const { user, logout } = useContext(AuthContext);
@@ -73,7 +74,6 @@ export default function EmployeeScreen({ navigation }) {
     };
   }, []);
 
-  // Aaj ke sales records ka cash & online collection
   const fetchTodayLiveSales = async () => {
     try {
       const { data } = await axiosInstance.get('/sales/history');
@@ -486,9 +486,7 @@ export default function EmployeeScreen({ navigation }) {
           barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
         />
         <SafeAreaView style={styles.uniformCameraOverlay}>
-          <View style={{ paddingTop: Platform.OS === 'android' ? 24 : 0 }}>
-            <BackButton onPress={() => setScanner(false)} />
-          </View>
+          <BackButton onPress={() => setScanner(false)} />
         </SafeAreaView>
       </View>
     );
@@ -927,6 +925,14 @@ const styles = StyleSheet.create({
   cardBox: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155' },
   fieldHeading: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 6 },
   
+  uniformCameraOverlay: { 
+    position: 'absolute', 
+    top: 40, 
+    left: 20, 
+    right: 20, 
+    zIndex: 10 
+  },
+
   todayStatsCard: {
     flexDirection: 'row',
     backgroundColor: '#1e293b',
@@ -990,8 +996,6 @@ const styles = StyleSheet.create({
   qtyBtn: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#334155', justifyContent: 'center', alignItems: 'center' },
   qtyBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   qtyInput: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
-
-  backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
 
   cartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
   grandBaseHoldBtn: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { 
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, 
-  Platform, Image, Button, Modal, FlatList 
+  Platform, Image, Button, Modal, FlatList, SafeAreaView 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -501,9 +501,7 @@ export default function AdminScanner({ navigation }) {
             barcodeScannerSettings={{ barcodeTypes: ["code128"] }}
           />
           <SafeAreaView style={styles.uniformCameraOverlay}>
-            <View style={{ paddingTop: Platform.OS === 'android' ? 24 : 0 }}>
-              <BackButton onPress={() => navigation.goBack()} />
-            </View>
+            <BackButton onPress={() => navigation.goBack()} />
           </SafeAreaView>
         </View>
       ) : (
@@ -750,6 +748,14 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#0f172a' },
   title: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
 
+  uniformCameraOverlay: { 
+    position: 'absolute', 
+    top: 40, 
+    left: 20, 
+    right: 20, 
+    zIndex: 10 
+  },
+
   sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
   sectionHeading: { fontSize: 13, fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
   sectionHeadingOptional: { fontSize: 13, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
@@ -880,7 +886,6 @@ const styles = StyleSheet.create({
   rateRow: { flexDirection: 'row', gap: 10 },
   weightRow: { flexDirection: 'row', gap: 10 },
   photoButtonsRow: { flexDirection: 'row', marginBottom: 12 },
-  backButton: { position: 'absolute', top: 50, left: 20, padding: 12, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8 },
   preview: { width: '100%', height: 180, borderRadius: 10, resizeMode: 'cover' },
 
   saveBtn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 18, shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4 },
