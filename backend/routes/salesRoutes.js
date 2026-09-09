@@ -15,7 +15,6 @@ router.post('/checkout', protect, checkSubscriptionAndQuota, checkout);
 router.get('/history', protect, getSalesHistory);
 router.post('/return', protect, processReturn);
 
-// History Soft-Delete & Permanent Range Actions
 router.post('/history/archive', protect, archiveSales);
 router.post('/history/export-range', protect, exportSalesRange);
 router.post('/history/permanent-delete-range', protect, permanentDeleteRange);

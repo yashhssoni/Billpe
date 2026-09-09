@@ -164,7 +164,6 @@ exports.processReturn = async (req, res, next) => {
   }
 };
 
-// Soft Delete (Single Item ID ya Multiple Selected Item IDs)
 exports.archiveSales = async (req, res, next) => {
   try {
     const { ids } = req.body;
@@ -189,7 +188,6 @@ exports.archiveSales = async (req, res, next) => {
   }
 };
 
-// Date Range Backup Data Fetch (PDF / Printable Sheet ke liye)
 exports.exportSalesRange = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.body;
@@ -205,18 +203,25 @@ exports.exportSalesRange = async (req, res, next) => {
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
+    const storeInfo = await Store.findById(storeId);
+
     const sales = await SoldItem.find({
       storeId,
-      createdAt: { $gte: start, $lte: end }
+      createdAt: { $gte: start, $lte: end },
+      isArchived: { $ne: true } 
     }).sort({ createdAt: -1 });
 
-    res.json({ success: true, sales, count: sales.length });
+    res.json({ 
+      success: true, 
+      storeInfo, 
+      sales, 
+      count: sales.length 
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// Date Range Permanent Delete (Database se permanently clear)
 exports.permanentDeleteRange = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.body;
