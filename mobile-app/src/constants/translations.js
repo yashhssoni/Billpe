@@ -454,7 +454,7 @@ export const translations = {
   "Success ✅": "Success ✅",
   "Bill printed & sold successfully!": "Bill printed & sold successfully!",
   "Sale saved successfully!": "Sale saved successfully!",
-  "Checkout Failed 🔒": "Checkout Failed 🔒"
+  "Checkout Failed 🔒": "Checkout Failed 🔒",
   "error": "Error",
   "success": "Success",
   "cancel": "Cancel",
@@ -925,8 +925,7 @@ export const translations = {
   "Success ✅": "सफल ✅",
   "Bill printed & sold successfully!": "बिल प्रिंट और बिक्री सफलतापूर्वक हो گئی!",
   "Sale saved successfully!": "बिक्री सफलतापूर्वक सहेज ली गई!",
-  "Checkout Failed 🔒": "चेकआउट असफल 🔒"
-  {
+  "Checkout Failed 🔒": "चेकआउट असफल 🔒",
   "error": "त्रुटि",
   "success": "सफलता",
   "cancel": "रद्द करें",
@@ -940,6 +939,6 @@ export const translations = {
   "Failed to fetch product details.": "उत्पाद विवरण लाने में विफल।",
   "Price cannot be empty.": "मूल्य खाली नहीं हो सकता।",
   "Quantity must be at least 1.": "मात्रा कम से कम 1 होनी चाहिए।"
-}
+
   }
 };
