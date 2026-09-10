@@ -308,7 +308,8 @@ export default function SoldItemsScreen({ navigation }) {
       ]
     );
   };
-const groupedSales = useMemo(() => {
+
+  const groupedSales = useMemo(() => {
     const groups = {};
 
     sales.forEach((item) => {
@@ -326,15 +327,7 @@ const groupedSales = useMemo(() => {
       }
 
       groups[dateKey].data.push(item);
-      
-      const itemAmount = Number(item.totalAmount || item.price) || 0;
-      const isReturn = item.type === 'return' || item.isReturn === true || item.totalAmount < 0;
-
-      if (isReturn) {
-        groups[dateKey].totalAmount -= Math.abs(itemAmount);
-      } else {
-        groups[dateKey].totalAmount += itemAmount;
-      }
+      groups[dateKey].totalAmount += Number(item.totalAmount || item.price) || 0;
     });
 
     return Object.values(groups);
