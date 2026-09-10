@@ -143,9 +143,11 @@ exports.processReturn = async (req, res, next) => {
       });
     }
 
+    // 1. Update original sale's returned quantity
     soldRecord.returnedQuantity += qtyToReturn;
     await soldRecord.save();
 
+    // 2. Restock the product inventory
     const product = await Product.findOne({ _id: soldRecord.productId, storeId });
     if (product) {
       product.stock += qtyToReturn;
@@ -153,10 +155,34 @@ exports.processReturn = async (req, res, next) => {
       await product.save();
     }
 
+    const refundValue = qtyToReturn * soldRecord.price;
+
+    // 3. Create a separate Return / Refund log in SoldItem history with negative amounts
+    await SoldItem.create({
+      storeId,
+      productId: soldRecord.productId,
+      productName: `${soldRecord.productName} (Return)`,
+      barcode: soldRecord.barcode,
+      invoiceNo: soldRecord.invoiceNo,
+      quantity: -qtyToReturn, // Negative quantity
+      returnedQuantity: 0,
+      price: soldRecord.price,
+      totalAmount: -refundValue, // Negative amount so it automatically subtracts in net calculations
+      customerName: soldRecord.customerName,
+      customerPhone: soldRecord.customerPhone,
+      customerAddress: soldRecord.customerAddress,
+      soldBy: req.user.id,
+      soldByName: req.user.name || 'Employee',
+      paymentMode: soldRecord.paymentMode,
+      cashAmount: -refundValue, // Deducts from cash drawer
+      onlineAmount: 0,
+      isArchived: false
+    });
+
     res.json({
       success: true,
       message: `${qtyToReturn} unit(s) returned to stock successfully.`,
-      refundAmount: qtyToReturn * soldRecord.price,
+      refundAmount: refundValue,
       currentStock: product ? product.stock : null
     });
   } catch (error) {

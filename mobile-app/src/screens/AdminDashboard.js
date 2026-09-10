@@ -26,8 +26,6 @@ export default function AdminDashboard({ navigation }) {
     { title: t('soldHistoryCard'), icon: '💰', screen: 'SoldItemsScreen' },
     { title: t('addEmployeeCard'), icon: '👥', screen: 'AddEmployeeScreen' },
     { title: t('subscriptionCard'), icon: '💳', screen: 'SubscriptionScreen' },
-    { title: t('settingsSupportCard'), icon: '⚙️', screen: 'SettingsHubScreen' },
-    { title: t('switchToBilling'), icon: '🛒', screen: 'EmployeeScreen', params: { isAdminSwitch: true } },
   ];
 
   useEffect(() => {
@@ -87,6 +85,7 @@ export default function AdminDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Header with store info on left, and original top row buttons on right with billing button right below them */}
         <View style={styles.header}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
@@ -96,14 +95,28 @@ export default function AdminDashboard({ navigation }) {
             {storeInfo?._id && <Text style={styles.storeId}>{t('storeIdPrefix')} {storeInfo._id}</Text>}
           </View>
 
-          <View style={styles.headerActions}>
-            <LanguageSwitcher />
-            <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
-              <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
+          <View style={styles.headerRightCol}>
+            <View style={styles.headerActions}>
+              <LanguageSwitcher />
+              <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+                <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('EmployeeScreen', { isAdminSwitch: true })}
+              style={styles.topBillingBtn}
+              activeOpacity={0.8}
+            >
+              <View style={styles.topBillingIconBox}>
+                <Text style={{ fontSize: 16 }}>🛒</Text>
+              </View>
+              <Text style={styles.topBillingText} numberOfLines={1}>{t('switchToBilling')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Original 3x2 Grid */}
         <View style={styles.grid}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
@@ -121,6 +134,21 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Original Full-Width Settings Card */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('SettingsHubScreen')}
+          style={styles.fullWidthCard}
+          activeOpacity={0.7}
+        >
+          <View style={styles.fullWidthIconBox}>
+            <Text style={{ fontSize: 24 }}>⚙️</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{t('settingsSupportCard')}</Text>
+            <Text style={styles.fullWidthSubText}>{t('settingsSubText')}</Text>
+          </View>
+        </TouchableOpacity>
 
         {!hasReviewed && (
           <View style={styles.reviewSection}>
@@ -176,10 +204,40 @@ export default function AdminDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', paddingHorizontal: 20 },
+  container: { flex: 1, backgroundColor: '#0f172a', paddingHorizontal: 20, paddingTop: 36 },
   scrollContent: { paddingBottom: 80 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 24 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 24, marginBottom: 20 },
+  
+  headerRightCol: { width: '48%', alignItems: 'flex-end', gap: 6 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  
+  topBillingBtn: {
+    width: '100%',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  topBillingIconBox: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topBillingText: {
+    color: '#38bdf8',
+    fontWeight: 'bold',
+    fontSize: 11,
+    flex: 1,
+  },
+
   eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
   storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
   storeId: { fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: '500' },
@@ -190,7 +248,10 @@ const styles = StyleSheet.create({
   card: { width: '48%', backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 14 },
   iconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', justifyContent: 'center', alignItems: 'center' },
   cardTitle: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginTop: 8 },
-  cardSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+
+  fullWidthCard: { width: '100%', backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155', marginBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  fullWidthIconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', justifyContent: 'center', alignItems: 'center' },
+  fullWidthSubText: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
 
   reviewSection: { 
     backgroundColor: '#1e293b', 

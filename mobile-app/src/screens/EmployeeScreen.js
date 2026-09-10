@@ -1,7 +1,8 @@
 import React, { useState, useContext, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, Button, TextInput, Alert, 
-  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, SafeAreaView 
+  TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, SafeAreaView,
+  KeyboardAvoidingView, Platform 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Print from 'expo-print';
@@ -31,8 +32,12 @@ export default function EmployeeScreen({ navigation, route }) {
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [splitCash, setSplitCash] = useState('');
   const [splitOnline, setSplitOnline] = useState('');
-  const [todayCashTotal, setTodayCashTotal] = useState(0);
-  const [todayOnlineTotal, setTodayOnlineTotal] = useState(0);
+  
+  // 3-Column Stats States
+  const [todayTotalSold, setTodayTotalSold] = useState(0);
+  const [todayTotalReturns, setTodayTotalReturns] = useState(0);
+  const [todayNetTotal, setTodayNetTotal] = useState(0);
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
@@ -73,27 +78,26 @@ export default function EmployeeScreen({ navigation, route }) {
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-        let cashSum = 0;
-        let onlineSum = 0;
+        let soldSum = 0;
+        let returnSum = 0;
 
         data.sales.forEach(sale => {
           const saleTime = new Date(sale.createdAt).getTime();
           if (saleTime >= startOfDay) {
             const netAmount = Number(sale.totalAmount || sale.price || 0);
+            const isReturn = sale.type === 'return' || sale.isReturn === true || netAmount < 0;
 
-            if (sale.paymentMode === 'Split') {
-              cashSum += Number(sale.cashAmount || 0);
-              onlineSum += Number(sale.onlineAmount || 0);
-            } else if (sale.paymentMode === 'Online') {
-              onlineSum += netAmount;
+            if (isReturn) {
+              returnSum += Math.abs(netAmount);
             } else {
-              cashSum += netAmount;
+              soldSum += netAmount;
             }
           }
         });
 
-        setTodayCashTotal(cashSum);
-        setTodayOnlineTotal(onlineSum);
+        setTodayTotalSold(soldSum);
+        setTodayTotalReturns(returnSum);
+        setTodayNetTotal(soldSum - returnSum);
       }
     } catch (e) {
       console.log(t('Error fetching today sales:'), e.message);
@@ -138,10 +142,10 @@ export default function EmployeeScreen({ navigation, route }) {
         if (found.stock <= 0 || found.sold === true) {
           Alert.alert(
             t('⚠️ Item Out of Stock'),
-            `${found.productName} has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".`,
+            `${found.productName} ${t('has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".')}`,
             [
               { text: t('cancel'), style: 'cancel' },
-              { text: 'Open Return Portal', onPress: () => navigation.navigate('ReturnStock') }
+              { text: t('Open Return Portal') || 'Open Return Portal', onPress: () => navigation.navigate('ReturnStock') }
             ]
           );
           return;
@@ -152,7 +156,7 @@ export default function EmployeeScreen({ navigation, route }) {
         const availableStock = found.stock - currentCartQty;
 
         if (availableStock <= 0) {
-          Alert.alert(t('error'), `All available units (${found.stock}) are already in your cart.`);
+          Alert.alert(t('error'), `${t('All available units')} (${found.stock}) ${t('are already in your cart.')}`);
           return;
         }
 
@@ -214,7 +218,7 @@ export default function EmployeeScreen({ navigation, route }) {
     const minAllowed = parseFloat(currentScanned?.lowestRate ?? currentScanned?.price ?? 0);
 
     if (enteredPrice < minAllowed) {
-      Alert.alert(t('error'), `Minimum allowed price is ₹${minAllowed}`);
+      Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
       return;
     }
 
@@ -229,7 +233,7 @@ export default function EmployeeScreen({ navigation, route }) {
     const totalDesired = currentInCart + qtyToAdd;
 
     if (totalDesired > currentScanned.stock) {
-      Alert.alert(t('error'), `Only ${currentScanned.stock} units available in stock. You already have ${currentInCart} in cart.`);
+      Alert.alert(t('error'), `${t('Only')} ${currentScanned.stock} ${t('units available in stock. You already have')} ${currentInCart} ${t('in cart.')}`);
       return;
     }
 
@@ -297,7 +301,7 @@ export default function EmployeeScreen({ navigation, route }) {
     const minAllowed = parseFloat(editingCartItem?.lowestRate ?? editingCartItem?.price ?? 0);
 
     if (newPrice < minAllowed) {
-      Alert.alert(t('error'), `Minimum allowed price is ₹${minAllowed}`);
+      Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
       return;
     }
 
@@ -308,7 +312,7 @@ export default function EmployeeScreen({ navigation, route }) {
     }
 
     if (newQuantity > editingCartItem.stock) {
-      Alert.alert(t('error'), `Only ${editingCartItem.stock} units available in stock.`);
+      Alert.alert(t('error'), `${t('Only')} ${editingCartItem.stock} ${t('units available in stock.')}`);
       return;
     }
 
@@ -348,8 +352,8 @@ export default function EmployeeScreen({ navigation, route }) {
 
       if (Math.round((finalCash + finalOnline) * 100) !== Math.round(grandTotalAmount * 100)) {
         Alert.alert(
-          'Split Amount Mismatch', 
-          `Cash (₹${finalCash}) + Online (₹${finalOnline}) = ₹${finalCash + finalOnline}.\nIt must equal Grand Total (₹${grandTotalAmount.toFixed(2)})`
+          t('Split Amount Mismatch'), 
+          `${t('Cash')} (₹${finalCash}) + ${t('Online')} (₹${finalOnline}) = ₹${finalCash + finalOnline}.\n${t('It must equal Grand Total')} (₹${grandTotalAmount.toFixed(2)})`
         );
         return;
       }
@@ -363,14 +367,14 @@ export default function EmployeeScreen({ navigation, route }) {
       paymentMode, 
       customerName, 
       customerPhone, 
-      employeeName, 
+      employeeName || user?.name || 'Admin', 
       customerAddress, 
       invoiceNo,
       finalCash,
       finalOnline
     );
     
-    if (result.success) {
+    if (result && result.success) {
       if (shouldPrint) {
         const now = new Date();
         let hours = now.getHours();
@@ -409,7 +413,7 @@ export default function EmployeeScreen({ navigation, route }) {
                   <span><strong>Time:</strong> ${formattedTime}</span>
                 </div>
                 <div style="margin-bottom: 6px;">
-                  <strong>Billed By:</strong> ${employeeName || 'Staff'}
+                  <strong>Billed By:</strong> ${employeeName || user?.name || 'Staff'}
                 </div>
 
                 <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
@@ -450,12 +454,13 @@ export default function EmployeeScreen({ navigation, route }) {
         `;
 
         await Print.printAsync({ html: htmlContent });
+      } else {
+        Alert.alert(
+          'Success ✅', 
+          `Invoice: #${invoiceNo}\n${t('Sale saved successfully!')}`
+        );
       }
 
-      Alert.alert(
-        'Success ✅', 
-        `Invoice: #${invoiceNo}\n${shouldPrint ? t('Bill printed & sold successfully!') : t('Sale saved successfully!')}`
-      );
       setCart([]);
       setCustomerName('');
       setCustomerPhone('');
@@ -465,7 +470,7 @@ export default function EmployeeScreen({ navigation, route }) {
       setSplitOnline('');
       fetchTodayLiveSales();
     } else {
-      Alert.alert(t('Checkout Failed 🔒'), result.message || t('Error completing checkout.'));
+      Alert.alert(t('Checkout Failed 🔒'), result?.message || t('Error completing checkout.'));
     }
   };
 
@@ -485,417 +490,432 @@ export default function EmployeeScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
-      {isAdminSwitch && (
-        <View style={styles.adminBanner}>
-          <Text style={styles.adminBannerText}>{t('Billing Mode')}</Text>
-          <TouchableOpacity 
-            style={styles.backToAdminBtn} 
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.backToAdminText}>{t('← Back to Admin')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={styles.topBar}>
-        <Text style={styles.header}>{t('Employee Portal')}</Text>
-        <View style={styles.headerActions}>
-          <LanguageSwitcher />
-          <TouchableOpacity onPress={handleLogoutPress} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View style={styles.todayStatsCard}>
-        <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>{t('💵 TODAY CASH')}</Text>
-          <Text style={styles.todayStatValCash}>₹{todayCashTotal.toFixed(0)}</Text>
-        </View>
-        <View style={styles.todayStatDivider} />
-        <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>{t('📲 TODAY ONLINE')}</Text>
-          <Text style={styles.todayStatValOnline}>₹{todayOnlineTotal.toFixed(0)}</Text>
-        </View>
-      </View>
-
-      {currentScanned ? (
-        <ScrollView contentContainerStyle={styles.billingContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.productHeaderRow}>
-            {currentScanned?.imageUri ? (
-              <TouchableOpacity onPress={() => { setSelectedImageUri(currentScanned.imageUri); setImageModalVisible(true); }}>
-                <Image source={{ uri: currentScanned.imageUri }} style={styles.thumbnailImg} />
-              </TouchableOpacity>
-            ) : (
-              <View style={[styles.thumbnailImg, styles.noImgBox]}><Text style={{fontSize: 9, color: '#94a3b8'}}>{t('noPhoto')}</Text></View>
-            )}
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.productTitle}>{currentScanned?.productName}</Text>
-              <Text style={styles.subText}>{t('categoryModalLabel')} {currentScanned?.category || 'General'}</Text>
-            </View>
-            <View style={styles.stockBadge}>
-              <Text style={styles.stockBadgeText}>{t('In Stock:')} {currentScanned?.stock || 0}</Text>
-            </View>
-          </View>
-          <View style={styles.priceOptionRow}>
+    <KeyboardAvoidingView 
+      style={{ flex: 1, backgroundColor: '#0f172a' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={styles.container}>
+        {isAdminSwitch && (
+          <View style={styles.adminBanner}>
+            <Text style={styles.adminBannerText}>{t('Billing Mode')}</Text>
             <TouchableOpacity 
-              style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} 
-              onPress={handlePressLowest}
-              onLongPress={handleLongPressLowest}
-              delayLongPress={350}
+              style={styles.backToAdminBtn} 
+              onPress={() => navigation.goBack()}
               activeOpacity={0.8}
             >
-              <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>
-                {showLowestRate ? t('basePriceLabel') : `🔒 ${t('basePriceLabel')}`}
-              </Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive, !showLowestRate && styles.hintText]}>
-                {showLowestRate ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` : t('holdToView')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} 
-              onPress={selectManual}
-            >
-              <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>
-                {t('manualPrice')}
-              </Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'manual' && styles.priceOptionLabelActive]}>
-                {t('enterPriceAction')}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} 
-              onPress={selectHighest}
-            >
-              <Text style={[styles.priceOptionLabel, priceMode === 'max' && styles.priceOptionLabelActive]}>
-                {t('storeMrpLabel')}
-              </Text>
-              <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>
-                ₹{currentScanned?.highestRate ?? currentScanned?.price ?? '-'}
-              </Text>
+              <Text style={styles.backToAdminText}>{t('← Back to Admin')}</Text>
             </TouchableOpacity>
           </View>
+        )}
 
-          <Text style={styles.label}>{t('agreedSellingPriceLabel')}</Text>
-          <TextInput 
-            style={styles.input} 
-            placeholder={t('enterPricePlaceholder')} 
-            placeholderTextColor="#64748b" 
-            value={manualPrice} 
-            onChangeText={(tVal) => { setManualPrice(tVal); setPriceMode('manual'); }} 
-            keyboardType="numeric" 
-          />
-
-          <Text style={[styles.label, { marginTop: 8 }]}>Quantity (Max: {currentScanned?.stock})</Text>
-          <View style={styles.qtyRow}>
-            <TouchableOpacity 
-              style={styles.qtyBtn}
-              onPress={() => setSelectedQty(String(Math.max(1, (parseInt(selectedQty, 10) || 1) - 1)))}
-            >
-              <Text style={styles.qtyBtnText}>-</Text>
-            </TouchableOpacity>
-
-            <TextInput 
-              style={[styles.input, styles.qtyInput]} 
-              value={selectedQty}
-              onChangeText={setSelectedQty}
-              keyboardType="numeric"
-            />
-
-            <TouchableOpacity 
-              style={styles.qtyBtn}
-              onPress={() => setSelectedQty(String(Math.min(currentScanned?.stock || 1, (parseInt(selectedQty, 10) || 1) + 1)))}
-            >
-              <Text style={styles.qtyBtnText}>+</Text>
+        <View style={styles.topBar}>
+          <Text style={styles.header}>{t('Employee Portal')}</Text>
+          <View style={styles.headerActions}>
+            <LanguageSwitcher />
+            <TouchableOpacity onPress={handleLogoutPress} style={styles.logoutBtn}>
+              <Text style={styles.logoutText}>{t('logoutBtn')}</Text>
             </TouchableOpacity>
           </View>
+        </View>
 
-          <View style={{ marginVertical: 10 }}>
-            <Button title={t('addToCartBtn')} onPress={handleAddToCart} color="#10b981" />
-          </View>
-          <Button 
-            title={t('cancel')} 
-            onPress={() => { 
-              if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
-              setCurrentScanned(null); 
-              setShowLowestRate(false); 
-              setManualPrice('');
-            }} 
-            color="#64748b" 
-          />
-        </ScrollView>
-      ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {(loading || salesLoading) && <ActivityIndicator size="small" color="#10b981" style={{ marginBottom: 10 }} />}
-          
-          <TouchableOpacity style={styles.scanBtn} onPress={() => setScanner(true)}>
-            <Text style={styles.scanBtnText}>📸 {t('scanAddStockCard')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.returnNavBtn} 
-            onPress={() => navigation.navigate('ReturnStock')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.returnNavBtnText}>🔄{t(' Return / Exchange Stock')}</Text>
-          </TouchableOpacity>
-          <View style={styles.cardBox}>
-            <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder={t('empNamePlaceholder')} 
-              placeholderTextColor="#64748b" 
-              value={employeeName} 
-              onChangeText={setEmployeeName} 
-            />
-          </View>
-
-          <View style={[styles.cardBox, { marginTop: 10 }]}>
-            <Text style={styles.fieldHeading}>{t('customerHistoryLabel')} ({t('additionalDetailsHeading')})</Text>
-            <TextInput style={styles.input} placeholder="Customer Name" placeholderTextColor="#64748b" value={customerName} onChangeText={setCustomerName} />
-            <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
-            <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
-          </View>
-          <View style={styles.cartHeaderRow}>
-            <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
-
-            {cart.length > 0 && (
+        {currentScanned ? (
+          <ScrollView contentContainerStyle={styles.billingContainer} showsVerticalScrollIndicator={false}>
+            <View style={styles.productHeaderRow}>
+              {currentScanned?.imageUri ? (
+                <TouchableOpacity onPress={() => { setSelectedImageUri(currentScanned.imageUri); setImageModalVisible(true); }}>
+                  <Image source={{ uri: currentScanned.imageUri }} style={styles.thumbnailImg} />
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.thumbnailImg, styles.noImgBox]}><Text style={{fontSize: 9, color: '#94a3b8'}}>{t('noPhoto')}</Text></View>
+              )}
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.productTitle}>{currentScanned?.productName}</Text>
+                <Text style={styles.subText}>{t('categoryModalLabel')} {currentScanned?.category || 'General'}</Text>
+              </View>
+              <View style={styles.stockBadge}>
+                <Text style={styles.stockBadgeText}>{t('In Stock:')} {currentScanned?.stock || 0}</Text>
+              </View>
+            </View>
+            <View style={styles.priceOptionRow}>
               <TouchableOpacity 
-                style={styles.grandBaseHoldBtn}
-                onLongPress={handleLongPressGrandBase}
+                style={[styles.priceOptionBtn, priceMode === 'min' && styles.priceOptionBtnActive]} 
+                onPress={handlePressLowest}
+                onLongPress={handleLongPressLowest}
                 delayLongPress={350}
                 activeOpacity={0.8}
               >
-                <Text style={styles.grandBaseHoldText}>
-                  {showGrandBaseRate ? `Min Cost: ₹${totalBaseCostAmount}` : '🔒 Min Cost (Hold)'}
+                <Text style={[styles.priceOptionLabel, priceMode === 'min' && styles.priceOptionLabelActive]}>
+                  {showLowestRate ? t('basePriceLabel') : `🔒 ${t('basePriceLabel')}`}
+                </Text>
+                <Text style={[styles.priceOptionValue, priceMode === 'min' && styles.priceOptionLabelActive, !showLowestRate && styles.hintText]}>
+                  {showLowestRate ? `₹${currentScanned?.lowestRate ?? currentScanned?.price ?? '-'}` : t('holdToView')}
                 </Text>
               </TouchableOpacity>
-            )}
-          </View>
-          
-          <View style={styles.list}>
-            {cart.length === 0 ? (
-              <Text style={{ textAlign: 'center', paddingVertical: 12, color: '#64748b' }}>
-                Your cart is empty.
-              </Text>
-            ) : (
-              cart.map((item) => (
-                <View key={item.cartKey} style={styles.cartItem}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#fff' }}>{item.productName}</Text>
-                    <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                      ₹{item.agreedPrice} × {item.quantity} pcs
-                    </Text>
-                  </View>
-                  <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>
-                    ₹{(item.agreedPrice * item.quantity).toFixed(2)}
-                  </Text>
-                  
-                  <TouchableOpacity style={styles.editBtn} onPress={() => handleOpenEditCartItem(item)}>
-                    <Text style={styles.editText}>{t('edit')}</Text>
-                  </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFromCart(item.cartKey)}>
-                    <Text style={styles.removeBtnText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-          {cart.length > 0 && (
-            <View style={[styles.cardBox, { marginTop: 14 }]}>
-              <Text style={styles.fieldHeading}>{t('SELECT PAYMENT MODE')}</Text>
-              <View style={styles.paymentToggleRow}>
-                <TouchableOpacity 
-                  style={[styles.payModeBtn, paymentMode === 'Cash' && styles.payModeBtnActive]} 
-                  onPress={() => setPaymentMode('Cash')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 {t('CASH')}</Text>
-                </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.priceOptionBtn, priceMode === 'manual' && styles.priceOptionBtnActive]} 
+                onPress={selectManual}
+              >
+                <Text style={[styles.priceOptionLabel, priceMode === 'manual' && styles.priceOptionLabelActive]}>
+                  {t('manualPrice')}
+                </Text>
+                <Text style={[styles.priceOptionValue, priceMode === 'manual' && styles.priceOptionLabelActive]}>
+                  {t('enterPriceAction')}
+                </Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.payModeBtn, paymentMode === 'Online' && styles.payModeBtnActive]} 
-                  onPress={() => setPaymentMode('Online')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 {t('ONLINE')}</Text>
-                </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.priceOptionBtn, priceMode === 'max' && styles.priceOptionBtnActive]} 
+                onPress={selectHighest}
+              >
+                <Text style={[styles.priceOptionLabel, priceMode === 'max' && styles.priceOptionLabelActive]}>
+                  {t('storeMrpLabel')}
+                </Text>
+                <Text style={[styles.priceOptionValue, priceMode === 'max' && styles.priceOptionLabelActive]}>
+                  ₹{currentScanned?.highestRate ?? currentScanned?.price ?? '-'}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-                <TouchableOpacity 
-                  style={[styles.payModeBtn, paymentMode === 'Split' && styles.payModeBtnActive]} 
-                  onPress={() => {
-                    setPaymentMode('Split');
-                    setSplitCash('');
-                    setSplitOnline('');
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.payModeText, paymentMode === 'Split' && styles.payModeTextActive]}>⚖️ {t('SPLIT')}</Text>
-                </TouchableOpacity>
+            <Text style={styles.label}>{t('agreedSellingPriceLabel')}</Text>
+            <TextInput 
+              style={styles.input} 
+              placeholder={t('enterPricePlaceholder')} 
+              placeholderTextColor="#64748b" 
+              value={manualPrice} 
+              onChangeText={(tVal) => { setManualPrice(tVal); setPriceMode('manual'); }} 
+              keyboardType="numeric" 
+            />
+
+            <Text style={[styles.label, { marginTop: 8 }]}>Quantity (Max: {currentScanned?.stock})</Text>
+            <View style={styles.qtyRow}>
+              <TouchableOpacity 
+                style={styles.qtyBtn}
+                onPress={() => setSelectedQty(String(Math.max(1, (parseInt(selectedQty, 10) || 1) - 1)))}
+              >
+                <Text style={styles.qtyBtnText}>-</Text>
+              </TouchableOpacity>
+
+              <TextInput 
+                style={[styles.input, styles.qtyInput]} 
+                value={selectedQty}
+                onChangeText={setSelectedQty}
+                keyboardType="numeric"
+              />
+
+              <TouchableOpacity 
+                style={styles.qtyBtn}
+                onPress={() => setSelectedQty(String(Math.min(currentScanned?.stock || 1, (parseInt(selectedQty, 10) || 1) + 1)))}
+              >
+                <Text style={styles.qtyBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ marginVertical: 10 }}>
+              <Button title={t('addToCartBtn')} onPress={handleAddToCart} color="#10b981" />
+            </View>
+            <Button 
+              title={t('cancel')} 
+              onPress={() => { 
+                if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+                setCurrentScanned(null); 
+                setShowLowestRate(false); 
+                setManualPrice('');
+              }} 
+              color="#64748b" 
+            />
+          </ScrollView>
+        ) : (
+          <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+            {(loading || salesLoading) && <ActivityIndicator size="small" color="#10b981" style={{ marginBottom: 10 }} />}
+            
+            {/* 3-Column Stats Card (Total Sold, Returns, Net Total) */}
+            <View style={styles.todayStatsCard}>
+              <View style={styles.todayStatCol}>
+                <Text style={styles.todayStatLabel}>{t('📦 TOTAL SOLD')}</Text>
+                <Text style={styles.todayStatValSold}>₹{todayTotalSold.toFixed(0)}</Text>
               </View>
-              {paymentMode === 'Split' && (
-                <View style={styles.splitBox}>
-                  <Text style={styles.splitNote}>Total Bill: ₹{grandTotalAmount.toFixed(2)}</Text>
-                  <View style={styles.splitInputsRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.splitLabel}>{t('Cash (₹)')}:</Text>
-                      <TextInput
-                        style={styles.splitInput}
-                        placeholder="e.g. 50"
-                        placeholderTextColor="#64748b"
-                        keyboardType="numeric"
-                        value={splitCash}
-                        onChangeText={(val) => {
-                          setSplitCash(val);
-                          const num = parseFloat(val) || 0;
-                          const rem = Math.max(0, grandTotalAmount - num);
-                          setSplitOnline(rem > 0 ? String(rem) : '');
-                        }}
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.splitLabel}>Online (₹):</Text>
-                      <TextInput
-                        style={styles.splitInput}
-                        placeholder="e.g. 100"
-                        placeholderTextColor="#64748b"
-                        keyboardType="numeric"
-                        value={splitOnline}
-                        onChangeText={setSplitOnline}
-                      />
-                    </View>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-          {cart.length > 0 && (
-            <View style={styles.checkoutActionRow}>
-              <TouchableOpacity 
-                style={styles.doneBtn} 
-                onPress={() => handleCompleteCheckout(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.doneBtnText}>
-                  ✓ {t('Done')} (₹{grandTotalAmount.toFixed(2)})
+              <View style={styles.todayStatDivider} />
+              <View style={styles.todayStatCol}>
+                <Text style={styles.todayStatLabel}>{t('🔄 RETURNS')}</Text>
+                <Text style={styles.todayStatValReturn}>-₹{todayTotalReturns.toFixed(0)}</Text>
+              </View>
+              <View style={styles.todayStatDivider} />
+              <View style={styles.todayStatCol}>
+                <Text style={styles.todayStatLabel}>{t('💰 NET TOTAL')}</Text>
+                <Text style={[styles.todayStatValNet, { color: todayNetTotal < 0 ? '#ef4444' : '#10b981' }]}>
+                  ₹{todayNetTotal.toFixed(0)}
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.printBtn} 
-                onPress={() => handleCompleteCheckout(true)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.printBtnText}>🖨️ {t('Print Bill')}</Text>
-              </TouchableOpacity>
+              </View>
             </View>
-          )}
-        </ScrollView>
-      )}
-      <Modal visible={imageModalVisible} transparent={true} animationType="fade">
-        <View style={styles.imageModalOverlay}>
-          <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
-            <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>✕ {t('cancel')}</Text>
-          </TouchableOpacity>
-          {selectedImageUri && (
-            <Image source={{ uri: selectedImageUri }} style={styles.fullScreenImage} resizeMode="contain" />
-          )}
-        </View>
-      </Modal>
-      {editingCartItem && (
-        <Modal visible={editModalVisible} animationType="slide" transparent={true}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{t('editProductDetailsTitle')}</Text>
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center', marginBottom: 12 }}>
-                {editingCartItem.productName}
-              </Text>
 
-              <View style={styles.priceOptionRow}>
+            <TouchableOpacity style={styles.scanBtn} onPress={() => setScanner(true)}>
+              <Text style={styles.scanBtnText}>📸 {t('scanAddStockCard')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.returnNavBtn} 
+              onPress={() => navigation.navigate('ReturnStock')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.returnNavBtnText}>🔄{t(' Return / Exchange Stock')}</Text>
+            </TouchableOpacity>
+            <View style={styles.cardBox}>
+              <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder={t('empNamePlaceholder')} 
+                placeholderTextColor="#64748b" 
+                value={employeeName} 
+                onChangeText={setEmployeeName} 
+              />
+            </View>
+
+            <View style={[styles.cardBox, { marginTop: 10 }]}>
+              <Text style={styles.fieldHeading}>{t('customerHistoryLabel')} ({t('additionalDetailsHeading')})</Text>
+              <TextInput style={styles.input} placeholder="Customer Name" placeholderTextColor="#64748b" value={customerName} onChangeText={setCustomerName} />
+              <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
+              <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
+            </View>
+            
+            <View style={styles.cartHeaderRow}>
+              <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
+
+              {cart.length > 0 && (
                 <TouchableOpacity 
-                  style={[styles.priceOptionBtn, editPriceMode === 'min' && styles.priceOptionBtnActive]} 
-                  onPress={handleEditPressLowest}
-                  onLongPress={handleEditLongPressLowest}
+                  style={styles.grandBaseHoldBtn}
+                  onLongPress={handleLongPressGrandBase}
                   delayLongPress={350}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.priceOptionLabel, editPriceMode === 'min' && styles.priceOptionLabelActive]}>
-                    {showEditLowestRate ? t('basePriceLabel') : `🔒 ${t('basePriceLabel')}`}
+                  <Text style={styles.grandBaseHoldText}>
+                    {showGrandBaseRate ? `Min Cost: ₹${totalBaseCostAmount}` : '🔒 Min Cost (Hold)'}
                   </Text>
-                  <Text style={[styles.priceOptionValue, editPriceMode === 'min' && styles.priceOptionLabelActive, !showEditLowestRate && styles.hintText]}>
-                    {showEditLowestRate ? `₹${editingCartItem.lowestRate || editingCartItem.price || '-'}` : t('holdToView')}
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            <View style={styles.list}>
+              {cart.length === 0 ? (
+                <Text style={{ textAlign: 'center', paddingVertical: 12, color: '#64748b' }}>
+                  Your cart is empty.
+                </Text>
+              ) : (
+                cart.map((item) => (
+                  <View key={item.cartKey} style={styles.cartItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#fff' }}>{item.productName}</Text>
+                      <Text style={{ color: '#94a3b8', fontSize: 12 }}>
+                        ₹{item.agreedPrice} × {item.quantity} pcs
+                      </Text>
+                    </View>
+                    <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>
+                      ₹{(item.agreedPrice * item.quantity).toFixed(2)}
+                    </Text>
+                    
+                    <TouchableOpacity style={styles.editBtn} onPress={() => handleOpenEditCartItem(item)}>
+                      <Text style={styles.editText}>{t('edit')}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveFromCart(item.cartKey)}>
+                      <Text style={styles.removeBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+            {cart.length > 0 && (
+              <View style={[styles.cardBox, { marginTop: 14 }]}>
+                <Text style={styles.fieldHeading}>{t('SELECT PAYMENT MODE')}</Text>
+                <View style={styles.paymentToggleRow}>
+                  <TouchableOpacity 
+                    style={[styles.payModeBtn, paymentMode === 'Cash' && styles.payModeBtnActive]} 
+                    onPress={() => setPaymentMode('Cash')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.payModeText, paymentMode === 'Cash' && styles.payModeTextActive]}>💵 {t('CASH')}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.payModeBtn, paymentMode === 'Online' && styles.payModeBtnActive]} 
+                    onPress={() => setPaymentMode('Online')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.payModeText, paymentMode === 'Online' && styles.payModeTextActive]}>📲 {t('ONLINE')}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.payModeBtn, paymentMode === 'Split' && styles.payModeBtnActive]} 
+                    onPress={() => {
+                      setPaymentMode('Split');
+                      setSplitCash('');
+                      setSplitOnline('');
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.payModeText, paymentMode === 'Split' && styles.payModeTextActive]}>⚖️ {t('SPLIT')}</Text>
+                  </TouchableOpacity>
+                </View>
+                {paymentMode === 'Split' && (
+                  <View style={styles.splitBox}>
+                    <Text style={styles.splitNote}>Total Bill: ₹{grandTotalAmount.toFixed(2)}</Text>
+                    <View style={styles.splitInputsRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.splitLabel}>{t('Cash (₹)')}:</Text>
+                        <TextInput
+                          style={styles.splitInput}
+                          placeholder="e.g. 50"
+                          placeholderTextColor="#64748b"
+                          keyboardType="numeric"
+                          value={splitCash}
+                          onChangeText={(val) => {
+                            setSplitCash(val);
+                            const num = parseFloat(val) || 0;
+                            const rem = Math.max(0, grandTotalAmount - num);
+                            setSplitOnline(rem > 0 ? String(rem) : '');
+                          }}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.splitLabel}>Online (₹):</Text>
+                        <TextInput
+                          style={styles.splitInput}
+                          placeholder="e.g. 100"
+                          placeholderTextColor="#64748b"
+                          keyboardType="numeric"
+                          value={splitOnline}
+                          onChangeText={setSplitOnline}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+            {cart.length > 0 && (
+              <View style={styles.checkoutActionRow}>
+                <TouchableOpacity 
+                  style={styles.doneBtn} 
+                  onPress={() => handleCompleteCheckout(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.doneBtnText}>
+                    ✓ {t('Done')} (₹{grandTotalAmount.toFixed(2)})
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
-                  style={[styles.priceOptionBtn, editPriceMode === 'manual' && styles.priceOptionBtnActive]} 
-                  onPress={() => { setEditPriceMode('manual'); setEditPrice(''); }}
+                  style={styles.printBtn} 
+                  onPress={() => handleCompleteCheckout(true)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={[styles.priceOptionLabel, editPriceMode === 'manual' && styles.priceOptionLabelActive]}>
-                    {t('manualPrice')}
-                  </Text>
-                  <Text style={[styles.priceOptionValue, editPriceMode === 'manual' && styles.priceOptionLabelActive]}>
-                    {t('enterPriceAction')}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.priceOptionBtn, editPriceMode === 'max' && styles.priceOptionBtnActive]} 
-                  onPress={() => {
-                    setEditPriceMode('max');
-                    setEditPrice(String(editingCartItem.highestRate || editingCartItem.price || 0));
-                  }}
-                >
-                  <Text style={[styles.priceOptionLabel, editPriceMode === 'max' && styles.priceOptionLabelActive]}>
-                    {t('storeMrpLabel')}
-                  </Text>
-                  <Text style={[styles.priceOptionValue, editPriceMode === 'max' && styles.priceOptionLabelActive]}>
-                    ₹{editingCartItem.highestRate || editingCartItem.price || '-'}
-                  </Text>
+                  <Text style={styles.printBtnText}>🖨️ {t('Print Bill')}</Text>
                 </TouchableOpacity>
               </View>
-
-              <Text style={styles.label}>{t('Agreed Price (₹)')}</Text>
-              <TextInput 
-                style={styles.input} 
-                keyboardType="numeric" 
-                value={editPrice} 
-                onChangeText={(v) => { setEditPrice(v); setEditPriceMode('manual'); }} 
-                placeholderTextColor="#64748b" 
-              />
-
-              <Text style={[styles.label, { marginTop: 6 }]}>{t('Quantity ')}(Max: {editingCartItem.stock})</Text>
-              <TextInput 
-                style={styles.input} 
-                keyboardType="numeric" 
-                value={editQty} 
-                onChangeText={setEditQty} 
-                placeholderTextColor="#64748b" 
-              />
-
-              <TouchableOpacity onPress={handleSaveCartEdit} style={styles.updateBtn}>
-                <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                onPress={() => {
-                  if (editRevealTimerRef.current) clearTimeout(editRevealTimerRef.current);
-                  setEditModalVisible(false);
-                }} 
-                style={{ padding: 10, alignItems: 'center', marginTop: 5 }}
-              >
-                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t('cancel')}</Text>
-              </TouchableOpacity>
-            </View>
+            )}
+          </ScrollView>
+        )}
+        <Modal visible={imageModalVisible} transparent={true} animationType="fade">
+          <View style={styles.imageModalOverlay}>
+            <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
+              <Text style={{color: '#fff', fontSize: 16, fontWeight: 'bold'}}>✕ {t('cancel')}</Text>
+            </TouchableOpacity>
+            {selectedImageUri && (
+              <Image source={{ uri: selectedImageUri }} style={styles.fullScreenImage} resizeMode="contain" />
+            )}
           </View>
         </Modal>
-      )}
-    </View>
+        {editingCartItem && (
+          <Modal visible={editModalVisible} animationType="slide" transparent={true}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>{t('editProductDetailsTitle')}</Text>
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, textAlign: 'center', marginBottom: 12 }}>
+                  {editingCartItem.productName}
+                </Text>
+
+                <View style={styles.priceOptionRow}>
+                  <TouchableOpacity 
+                    style={[styles.priceOptionBtn, editPriceMode === 'min' && styles.priceOptionBtnActive]} 
+                    onPress={handleEditPressLowest}
+                    onLongPress={handleEditLongPressLowest}
+                    delayLongPress={350}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.priceOptionLabel, editPriceMode === 'min' && styles.priceOptionLabelActive]}>
+                      {showEditLowestRate ? t('basePriceLabel') : `🔒 ${t('basePriceLabel')}`}
+                    </Text>
+                    <Text style={[styles.priceOptionValue, editPriceMode === 'min' && styles.priceOptionLabelActive, !showEditLowestRate && styles.hintText]}>
+                      {showEditLowestRate ? `₹${editingCartItem.lowestRate || editingCartItem.price || '-'}` : t('holdToView')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.priceOptionBtn, editPriceMode === 'manual' && styles.priceOptionBtnActive]} 
+                    onPress={() => { setEditPriceMode('manual'); setEditPrice(''); }}
+                  >
+                    <Text style={[styles.priceOptionLabel, editPriceMode === 'manual' && styles.priceOptionLabelActive]}>
+                      {t('manualPrice')}
+                    </Text>
+                    <Text style={[styles.priceOptionValue, editPriceMode === 'manual' && styles.priceOptionLabelActive]}>
+                      {t('enterPriceAction')}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.priceOptionBtn, editPriceMode === 'max' && styles.priceOptionBtnActive]} 
+                    onPress={() => {
+                      setEditPriceMode('max');
+                      setEditPrice(String(editingCartItem.highestRate || editingCartItem.price || 0));
+                    }}
+                  >
+                    <Text style={[styles.priceOptionLabel, editPriceMode === 'max' && styles.priceOptionLabelActive]}>
+                      {t('storeMrpLabel')}
+                    </Text>
+                    <Text style={[styles.priceOptionValue, editPriceMode === 'max' && styles.priceOptionLabelActive]}>
+                      ₹{editingCartItem.highestRate || editingCartItem.price || '-'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.label}>{t('Agreed Price (₹)')}</Text>
+                <TextInput 
+                  style={styles.input} 
+                  keyboardType="numeric" 
+                  value={editPrice} 
+                  onChangeText={(v) => { setEditPrice(v); setEditPriceMode('manual'); }} 
+                  placeholderTextColor="#64748b" 
+                />
+
+                <Text style={[styles.label, { marginTop: 6 }]}>{t('Quantity ')}(Max: {editingCartItem.stock})</Text>
+                <TextInput 
+                  style={styles.input} 
+                  keyboardType="numeric" 
+                  value={editQty} 
+                  onChangeText={setEditQty} 
+                  placeholderTextColor="#64748b" 
+                />
+
+                <TouchableOpacity onPress={handleSaveCartEdit} style={styles.updateBtn}>
+                  <Text style={styles.updateBtnText}>{t('updateProductBtn')}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={() => {
+                    if (editRevealTimerRef.current) clearTimeout(editRevealTimerRef.current);
+                    setEditModalVisible(false);
+                  }} 
+                  style={{ padding: 10, alignItems: 'center', marginTop: 5 }}
+                >
+                  <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t('cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -915,13 +935,13 @@ const styles = StyleSheet.create({
   adminBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    alignSelf: 'flex-start',
     gap: 12,
     backgroundColor: '#1e293b',
     borderWidth: 1,
     borderColor: '#38bdf8',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 10,
     marginBottom: 16
   },
@@ -944,15 +964,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#38bdf8',
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     marginBottom: 14,
     alignItems: 'center',
     justifyContent: 'space-around'
   },
   todayStatCol: { flex: 1, alignItems: 'center' },
-  todayStatLabel: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', marginBottom: 3 },
-  todayStatValCash: { color: '#10b981', fontSize: 18, fontWeight: 'bold' },
-  todayStatValOnline: { color: '#38bdf8', fontSize: 18, fontWeight: 'bold' },
+  todayStatLabel: { color: '#94a3b8', fontSize: 9, fontWeight: 'bold', marginBottom: 3, textAlign: 'center' },
+  todayStatValSold: { color: '#38bdf8', fontSize: 15, fontWeight: 'bold' },
+  todayStatValReturn: { color: '#f59e0b', fontSize: 15, fontWeight: 'bold' },
+  todayStatValNet: { color: '#10b981', fontSize: 15, fontWeight: 'bold' },
   todayStatDivider: { width: 1.5, height: 32, backgroundColor: '#334155' },
 
   paymentToggleRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
@@ -1001,7 +1022,7 @@ const styles = StyleSheet.create({
   qtyBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   qtyInput: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
 
-  cartHeaderRow: { flexDirection: 'row', justify: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
+  cartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
   grandBaseHoldBtn: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   grandBaseHoldText: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold' },
 
