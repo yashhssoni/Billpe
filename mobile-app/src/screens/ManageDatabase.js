@@ -36,6 +36,9 @@ export default function ManageDatabase({ navigation }) {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editCategoryDropdownVisible, setEditCategoryDropdownVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  const [stockFilterLimit, setStockFilterLimit] = useState('');
+
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -87,9 +90,24 @@ export default function ManageDatabase({ navigation }) {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    if (selectedCategory === 'All') return products;
-    return products.filter((p) => (p.category || 'General').toLowerCase() === selectedCategory.toLowerCase());
-  }, [products, selectedCategory]);
+    let result = products;
+
+    if (selectedCategory !== 'All') {
+      result = result.filter((p) => (p.category || 'General').toLowerCase() === selectedCategory.toLowerCase());
+    }
+
+    if (stockFilterLimit && stockFilterLimit.trim() !== '') {
+      const limitNum = parseInt(stockFilterLimit, 10);
+      if (!isNaN(limitNum)) {
+        result = result.filter((p) => {
+          const st = Number(p.stock !== undefined && p.stock !== null ? p.stock : (p.sold ? 0 : 1));
+          return st <= limitNum;
+        });
+      }
+    }
+
+    return result;
+  }, [products, selectedCategory, stockFilterLimit]);
 
   const handleOpenEdit = (item) => {
     setEditingProduct({
@@ -217,6 +235,28 @@ export default function ManageDatabase({ navigation }) {
         <Text style={styles.filterDropdownArrow}>▼</Text>
       </TouchableOpacity>
 
+      <View style={styles.quantityFilterContainer}>
+        <Text style={styles.quantityFilterLabel}>⚠️ Filter by Max Stock Quantity:</Text>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <TextInput
+            style={styles.quantityFilterInput}
+            placeholder="e.g. 5 or 10 (Max Stock)"
+            placeholderTextColor="#64748b"
+            keyboardType="numeric"
+            value={stockFilterLimit}
+            onChangeText={setStockFilterLimit}
+          />
+          {stockFilterLimit !== '' && (
+            <TouchableOpacity 
+              style={styles.clearQtyBtn} 
+              onPress={() => setStockFilterLimit('')}
+            >
+              <Text style={styles.clearQtyText}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
       ) : (
@@ -281,6 +321,7 @@ export default function ManageDatabase({ navigation }) {
           ListEmptyComponent={<Text style={styles.emptyText}>{t('noProductsFound')}</Text>}
         />
       )}
+
       <Modal
         visible={filterDropdownVisible}
         transparent={true}
@@ -324,6 +365,7 @@ export default function ManageDatabase({ navigation }) {
           </View>
         </View>
       </Modal>
+
       {editingProduct && (
         <Modal 
           visible={modalVisible} 
@@ -408,6 +450,7 @@ export default function ManageDatabase({ navigation }) {
                   </View>
                 </View>
               </View>
+
               <View style={[styles.sectionCard, { marginTop: 16 }]}>
                 <Text style={styles.sectionHeadingOptional}>{t('additionalDetailsHeading')}</Text>
 
@@ -527,6 +570,7 @@ export default function ManageDatabase({ navigation }) {
           </KeyboardAvoidingView>
         </Modal>
       )}
+
       <Modal
         visible={editCategoryDropdownVisible}
         transparent={true}
@@ -587,11 +631,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14
+    marginBottom: 12
   },
   filterDropdownLabel: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
   filterDropdownValue: { color: '#38bdf8', fontSize: 14, fontWeight: 'bold' },
   filterDropdownArrow: { color: '#38bdf8', fontSize: 12 },
+
+  quantityFilterContainer: {
+    backgroundColor: '#1e293b',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+    marginBottom: 14
+  },
+  quantityFilterLabel: { color: '#f59e0b', fontSize: 12, fontWeight: 'bold', marginBottom: 6 },
+  quantityFilterInput: { 
+    flex: 1,
+    backgroundColor: '#0f172a', 
+    color: '#fff', 
+    padding: 10, 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: '#334155', 
+    fontSize: 14,
+    fontWeight: 'bold'
+  },
+  clearQtyBtn: { backgroundColor: '#334155', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8 },
+  clearQtyText: { color: '#ef4444', fontSize: 11, fontWeight: 'bold' },
 
   itemCard: { backgroundColor: '#1e293b', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#334155', marginBottom: 12, flexDirection: 'row', alignItems: 'center' },
   thumb: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#334155' },
