@@ -1,9 +1,10 @@
-import React, { useState, useContext, useEffect, useRef } from 'react';
+import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, Button, TextInput, Alert, 
   TouchableOpacity, ActivityIndicator, ScrollView, Modal, Image, SafeAreaView 
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import axiosInstance from '../api/axiosInstance';
 import { AuthContext } from '../context/AuthContext';
@@ -59,8 +60,14 @@ export default function EmployeeScreen({ navigation, route }) {
     if (user?.name) {
       setEmployeeName(user.name);
     }
-    fetchTodayLiveSales();
   }, [user]);
+
+  // Real-time update on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchTodayLiveSales();
+    }, [])
+  );
 
   useEffect(() => {
     return () => {
@@ -144,7 +151,7 @@ export default function EmployeeScreen({ navigation, route }) {
             `${found.productName} has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".`,
             [
               { text: t('cancel'), style: 'cancel' },
-              { text: 'Open Return Portal', onPress: () => navigation.navigate('ReturnStock') }
+              { text: t('Open Return Portal') || 'Open Return Portal', onPress: () => navigation.navigate('ReturnStock') }
             ]
           );
           return;
@@ -375,84 +382,88 @@ export default function EmployeeScreen({ navigation, route }) {
 
     if (result.success) {
       if (shouldPrint) {
-        const now = new Date();
-        let hours = now.getHours();
-        const minutes = now.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12 || 12;
-        const formattedTime = `${hours}:${minutes} ${ampm}`;
-        const formattedDate = now.toLocaleDateString('en-IN');
+        try {
+          const now = new Date();
+          let hours = now.getHours();
+          const minutes = now.getMinutes().toString().padStart(2, '0');
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          hours = hours % 12 || 12;
+          const formattedTime = `${hours}:${minutes} ${ampm}`;
+          const formattedDate = now.toLocaleDateString('en-IN');
 
-        let rowsHtml = cart.map(item => `
-          <tr>
-            <td style="padding: 6px 0; border-bottom: 1px dotted #ccc; text-align: left; font-size: 13px;">
-              <strong>${item.productName}</strong><br>
-              <span style="color: #555; font-size: 11px;">Qty: ${item.quantity} x ₹${item.agreedPrice}</span>
-            </td>
-            <td style="text-align: right; border-bottom: 1px dotted #ccc; font-size: 13px; vertical-align: top;">₹${(item.agreedPrice * item.quantity).toFixed(2)}</td>
-          </tr>
-        `).join('');
+          let rowsHtml = cart.map(item => `
+            <tr>
+              <td style="padding: 6px 0; border-bottom: 1px dotted #ccc; text-align: left; font-size: 13px;">
+                <strong>${item.productName}</strong><br>
+                <span style="color: #555; font-size: 11px;">Qty: ${item.quantity} x ₹${item.agreedPrice}</span>
+              </td>
+              <td style="text-align: right; border-bottom: 1px dotted #ccc; font-size: 13px; vertical-align: top;">₹${(item.agreedPrice * item.quantity).toFixed(2)}</td>
+            </tr>
+          `).join('');
 
-        const htmlContent = `
-          <html>
-            <body style="padding: 15px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; max-width: 350px; margin: auto;">
-              <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
-                <h2 style="margin: 0; font-size: 20px; font-weight: bold; text-transform: uppercase;">${result.storeInfo?.storeName || 'RETAIL STORE'}</h2>
-                <p style="margin: 3px 0; font-size: 12px; color: #444;">${result.storeInfo?.address || ''}</p>
-                <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #222;">Contact: ${result.storeInfo?.phone || result.storeInfo?.ownerPhone || 'N/A'}</p>
-              </div>
-
-              <div style="font-size: 12px; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                  <span><strong>Invoice:</strong> ${invoiceNo}</span>
-                  <span><strong>Pay Mode:</strong> <span style="background: #eee; padding: 2px 5px; border-radius: 3px; font-weight: bold;">${paymentMode.toUpperCase()}</span></span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                  <span><strong>Date:</strong> ${formattedDate}</span>
-                  <span><strong>Time:</strong> ${formattedTime}</span>
-                </div>
-                <div style="margin-bottom: 6px;">
-                  <strong>Billed By:</strong> ${employeeName || 'Staff'}
+          const htmlContent = `
+            <html>
+              <body style="padding: 15px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; max-width: 350px; margin: auto;">
+                <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px;">
+                  <h2 style="margin: 0; font-size: 20px; font-weight: bold; text-transform: uppercase;">${result.storeInfo?.storeName || 'RETAIL STORE'}</h2>
+                  <p style="margin: 3px 0; font-size: 12px; color: #444;">${result.storeInfo?.address || ''}</p>
+                  <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #222;">Contact: ${result.storeInfo?.phone || result.storeInfo?.ownerPhone || 'N/A'}</p>
                 </div>
 
-                <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
-                  <div style="margin-bottom: 3px;"><strong>Customer:</strong> ${customerName ? customerName : 'N/A'}</div>
-                  <div style="margin-bottom: 3px;"><strong>Phone:</strong> ${customerPhone ? customerPhone : 'N/A'}</div>
-                  <div><strong>Address:</strong> ${customerAddress ? customerAddress : 'N/A'}</div>
-                </div>
-              </div>
-
-              <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
-                <thead>
-                  <tr style="border-bottom: 1.5px solid #000; text-align: left; font-size: 12px;">
-                    <th style="padding-bottom: 4px; width: 65%;">Item</th>
-                    <th style="padding-bottom: 4px; text-align: right; width: 35%;">Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${rowsHtml}
-                </tbody>
-              </table>
-
-              <div style="border-top: 1.5px solid #000; padding-top: 8px; margin-bottom: 10px; text-align: right;">
-                <div style="font-size: 13px; color: #555; margin-bottom: 2px;">Grand Total</div>
-                <div style="font-size: 20px; font-weight: bold; color: #000;">₹${grandTotalAmount.toFixed(2)}</div>
-                ${paymentMode === 'Split' ? `
-                  <div style="font-size: 11px; color: #444; margin-top: 4px;">
-                    Paid Cash: ₹${finalCash.toFixed(2)} | Paid Online: ₹${finalOnline.toFixed(2)}
+                <div style="font-size: 12px; margin-bottom: 10px; border-bottom: 1px dashed #000; padding-bottom: 8px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span><strong>Invoice:</strong> ${invoiceNo}</span>
+                    <span><strong>Pay Mode:</strong> <span style="background: #eee; padding: 2px 5px; border-radius: 3px; font-weight: bold;">${paymentMode.toUpperCase()}</span></span>
                   </div>
-                ` : ''}
-              </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span><strong>Date:</strong> ${formattedDate}</span>
+                    <span><strong>Time:</strong> ${formattedTime}</span>
+                  </div>
+                  <div style="margin-bottom: 6px;">
+                    <strong>Billed By:</strong> ${employeeName || 'Staff'}
+                  </div>
 
-              <div style="text-align: center; font-size: 11px; color: #555; border-top: 1px dotted #ccc; padding-top: 8px;">
-                <p style="margin: 2px 0; font-weight: bold;">Thank You for Shopping!</p>
-                <p style="margin: 2px 0;">Please visit again.</p>
-              </div>
-            </body>
-          </html>
-        `;
+                  <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                    <div style="margin-bottom: 3px;"><strong>Customer:</strong> ${customerName ? customerName : 'N/A'}</div>
+                    <div style="margin-bottom: 3px;"><strong>Phone:</strong> ${customerPhone ? customerPhone : 'N/A'}</div>
+                    <div><strong>Address:</strong> ${customerAddress ? customerAddress : 'N/A'}</div>
+                  </div>
+                </div>
 
-        await Print.printAsync({ html: htmlContent });
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+                  <thead>
+                    <tr style="border-bottom: 1.5px solid #000; text-align: left; font-size: 12px;">
+                      <th style="padding-bottom: 4px; width: 65%;">Item</th>
+                      <th style="padding-bottom: 4px; text-align: right; width: 35%;">Price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rowsHtml}
+                  </tbody>
+                </table>
+
+                <div style="border-top: 1.5px solid #000; padding-top: 8px; margin-bottom: 10px; text-align: right;">
+                  <div style="font-size: 13px; color: #555; margin-bottom: 2px;">Grand Total</div>
+                  <div style="font-size: 20px; font-weight: bold; color: #000;">₹${grandTotalAmount.toFixed(2)}</div>
+                  ${paymentMode === 'Split' ? `
+                    <div style="font-size: 11px; color: #444; margin-top: 4px;">
+                      Paid Cash: ₹${finalCash.toFixed(2)} | Paid Online: ₹${finalOnline.toFixed(2)}
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div style="text-align: center; font-size: 11px; color: #555; border-top: 1px dotted #ccc; padding-top: 8px;">
+                  <p style="margin: 2px 0; font-weight: bold;">Thank You for Shopping!</p>
+                  <p style="margin: 2px 0;">Please visit again.</p>
+                </div>
+              </body>
+            </html>
+          `;
+
+          await Print.printAsync({ html: htmlContent });
+        } catch (printErr) {
+          console.log('Print error or cancelled:', printErr);
+        }
       }
 
       Alert.alert(
@@ -515,17 +526,17 @@ export default function EmployeeScreen({ navigation, route }) {
       {/* 3-Column Stats Card (Total Sold, Returns, Net Total) */}
       <View style={styles.todayStatsCard}>
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>📦 TOTAL SOLD</Text>
+          <Text style={styles.todayStatLabel}>📦 {t('TOTAL SOLD') || 'TOTAL SOLD'}</Text>
           <Text style={styles.todayStatValSold}>₹{todayTotalSold.toFixed(0)}</Text>
         </View>
         <View style={styles.todayStatDivider} />
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>🔄 RETURNS</Text>
+          <Text style={styles.todayStatLabel}>🔄 {t('RETURNS') || 'RETURNS'}</Text>
           <Text style={styles.todayStatValReturn}>-₹{todayTotalReturns.toFixed(0)}</Text>
         </View>
         <View style={styles.todayStatDivider} />
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>💰 NET TOTAL</Text>
+          <Text style={styles.todayStatLabel}>💰 {t('NET TOTAL') || 'NET TOTAL'}</Text>
           <Text style={[styles.todayStatValNet, { color: todayNetTotal < 0 ? '#ef4444' : '#10b981' }]}>
             ₹{todayNetTotal.toFixed(0)}
           </Text>

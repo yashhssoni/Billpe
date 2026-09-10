@@ -446,6 +446,28 @@ export const translations = {
   'units available in stock.': 'units available in stock.',
   'Split Amount Mismatch': 'Split Amount Mismatch',
   'It must equal Grand Total': 'It must equal Grand Total',
+  "TOTAL SOLD": "TOTAL SOLD",
+  "RETURNS": "RETURNS",
+  "NET TOTAL": "NET TOTAL",
+  "Open Return Portal": "Open Return Portal",
+  "Split Amount Mismatch": "Split Amount Mismatch",
+  "Success ✅": "Success ✅",
+  "Bill printed & sold successfully!": "Bill printed & sold successfully!",
+  "Sale saved successfully!": "Sale saved successfully!",
+  "Checkout Failed 🔒": "Checkout Failed 🔒"
+  "error": "Error",
+  "success": "Success",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "Cart is empty.": "Cart is empty.",
+  "Please enter agreed selling price.": "Please enter agreed selling price.",
+  "Please enter a valid quantity.": "Please enter a valid quantity.",
+  "Checkout Failed 🔒": "Checkout Failed 🔒",
+  "Error completing checkout.": "Error completing checkout.",
+  "This product does not exist in the database.": "This product does not exist in the database.",
+  "Failed to fetch product details.": "Failed to fetch product details.",
+  "Price cannot be empty.": "Price cannot be empty.",
+  "Quantity must be at least 1.": "Quantity must be at least 1."
   },
 
   hi: {
@@ -895,5 +917,29 @@ export const translations = {
   'units available in stock.': 'इकाईयां स्टॉक में उपलब्ध हैं।',
   'Split Amount Mismatch': 'स्प्लिट राशि मेल नहीं खाती',
   'It must equal Grand Total': 'यह कुल योग के बराबर होनी चाहिए',
+  "TOTAL SOLD": "कुल बिक्री",
+  "RETURNS": "वापसी (रिटर्न)",
+  "NET TOTAL": "शुद्ध योग (नेट टोटल)",
+  "Open Return Portal": "रिटर्न पोर्टल खोलें",
+  "Split Amount Mismatch": "स्प्लिट राशि मेल नहीं खाती",
+  "Success ✅": "सफल ✅",
+  "Bill printed & sold successfully!": "बिल प्रिंट और बिक्री सफलतापूर्वक हो گئی!",
+  "Sale saved successfully!": "बिक्री सफलतापूर्वक सहेज ली गई!",
+  "Checkout Failed 🔒": "चेकआउट असफल 🔒"
+  {
+  "error": "त्रुटि",
+  "success": "सफलता",
+  "cancel": "रद्द करें",
+  "delete": "हटाएं",
+  "Cart is empty.": "कार्ट खाली है।",
+  "Please enter agreed selling price.": "कृपया तय की गई बिक्री मूल्य दर्ज करें।",
+  "Please enter a valid quantity.": "कृपया एक मान्य मात्रा दर्ज करें।",
+  "Checkout Failed 🔒": "चेकआउट असफल 🔒",
+  "Error completing checkout.": "चेकआउट पूरा करने में त्रुटि।",
+  "This product does not exist in the database.": "यह उत्पाद डेटाबेस में मौजूद नहीं है।",
+  "Failed to fetch product details.": "उत्पाद विवरण लाने में विफल।",
+  "Price cannot be empty.": "मूल्य खाली नहीं हो सकता।",
+  "Quantity must be at least 1.": "मात्रा कम से कम 1 होनी चाहिए।"
+}
   }
 };

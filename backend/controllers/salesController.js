@@ -237,12 +237,13 @@ exports.exportSalesRange = async (req, res, next) => {
 
     res.json({ 
       success: true, 
-      storeInfo, 
-      sales, 
-      count: sales.length 
+      storeInfo: storeInfo || {}, 
+      sales: sales || [], 
+      count: sales ? sales.length : 0 
     });
   } catch (error) {
-    next(error);
+    console.error("Export Range Error:", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to export sales range." });
   }
 };
 
