@@ -16,7 +16,7 @@ export default function EmployeeScreen({ navigation, route }) {
   const { user, logout } = useContext(AuthContext);
   const { t } = useContext(LanguageContext);
   const { loading: salesLoading, processCheckout } = useSales();
-  
+
   const isAdminSwitch = route?.params?.isAdminSwitch || false;
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -31,8 +31,12 @@ export default function EmployeeScreen({ navigation, route }) {
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [splitCash, setSplitCash] = useState('');
   const [splitOnline, setSplitOnline] = useState('');
-  const [todayCashTotal, setTodayCashTotal] = useState(0);
-  const [todayOnlineTotal, setTodayOnlineTotal] = useState(0);
+  
+  // 3-Column Stats States
+  const [todayTotalSold, setTodayTotalSold] = useState(0);
+  const [todayTotalReturns, setTodayTotalReturns] = useState(0);
+  const [todayNetTotal, setTodayNetTotal] = useState(0);
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState(null);
   const [editPrice, setEditPrice] = useState('');
@@ -73,27 +77,26 @@ export default function EmployeeScreen({ navigation, route }) {
         const now = new Date();
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-        let cashSum = 0;
-        let onlineSum = 0;
+        let soldSum = 0;
+        let returnSum = 0;
 
         data.sales.forEach(sale => {
           const saleTime = new Date(sale.createdAt).getTime();
           if (saleTime >= startOfDay) {
             const netAmount = Number(sale.totalAmount || sale.price || 0);
+            const isReturn = sale.type === 'return' || sale.isReturn === true || netAmount < 0;
 
-            if (sale.paymentMode === 'Split') {
-              cashSum += Number(sale.cashAmount || 0);
-              onlineSum += Number(sale.onlineAmount || 0);
-            } else if (sale.paymentMode === 'Online') {
-              onlineSum += netAmount;
+            if (isReturn) {
+              returnSum += Math.abs(netAmount);
             } else {
-              cashSum += netAmount;
+              soldSum += netAmount;
             }
           }
         });
 
-        setTodayCashTotal(cashSum);
-        setTodayOnlineTotal(onlineSum);
+        setTodayTotalSold(soldSum);
+        setTodayTotalReturns(returnSum);
+        setTodayNetTotal(soldSum - returnSum);
       }
     } catch (e) {
       console.log(t('Error fetching today sales:'), e.message);
@@ -369,7 +372,7 @@ export default function EmployeeScreen({ navigation, route }) {
       finalCash,
       finalOnline
     );
-    
+
     if (result.success) {
       if (shouldPrint) {
         const now = new Date();
@@ -508,15 +511,24 @@ export default function EmployeeScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* 3-Column Stats Card (Total Sold, Returns, Net Total) */}
       <View style={styles.todayStatsCard}>
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>{t('💵 TODAY CASH')}</Text>
-          <Text style={styles.todayStatValCash}>₹{todayCashTotal.toFixed(0)}</Text>
+          <Text style={styles.todayStatLabel}>📦 TOTAL SOLD</Text>
+          <Text style={styles.todayStatValSold}>₹{todayTotalSold.toFixed(0)}</Text>
         </View>
         <View style={styles.todayStatDivider} />
         <View style={styles.todayStatCol}>
-          <Text style={styles.todayStatLabel}>{t('📲 TODAY ONLINE')}</Text>
-          <Text style={styles.todayStatValOnline}>₹{todayOnlineTotal.toFixed(0)}</Text>
+          <Text style={styles.todayStatLabel}>🔄 RETURNS</Text>
+          <Text style={styles.todayStatValReturn}>-₹{todayTotalReturns.toFixed(0)}</Text>
+        </View>
+        <View style={styles.todayStatDivider} />
+        <View style={styles.todayStatCol}>
+          <Text style={styles.todayStatLabel}>💰 NET TOTAL</Text>
+          <Text style={[styles.todayStatValNet, { color: todayNetTotal < 0 ? '#ef4444' : '#10b981' }]}>
+            ₹{todayNetTotal.toFixed(0)}
+          </Text>
         </View>
       </View>
 
@@ -630,7 +642,7 @@ export default function EmployeeScreen({ navigation, route }) {
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {(loading || salesLoading) && <ActivityIndicator size="small" color="#10b981" style={{ marginBottom: 10 }} />}
-          
+
           <TouchableOpacity style={styles.scanBtn} onPress={() => setScanner(true)}>
             <Text style={styles.scanBtnText}>📸 {t('scanAddStockCard')}</Text>
           </TouchableOpacity>
@@ -675,7 +687,7 @@ export default function EmployeeScreen({ navigation, route }) {
               </TouchableOpacity>
             )}
           </View>
-          
+
           <View style={styles.list}>
             {cart.length === 0 ? (
               <Text style={{ textAlign: 'center', paddingVertical: 12, color: '#64748b' }}>
@@ -693,7 +705,7 @@ export default function EmployeeScreen({ navigation, route }) {
                   <Text style={{ fontWeight: 'bold', fontSize: 15, color: '#10b981', marginRight: 10 }}>
                     ₹{(item.agreedPrice * item.quantity).toFixed(2)}
                   </Text>
-                  
+
                   <TouchableOpacity style={styles.editBtn} onPress={() => handleOpenEditCartItem(item)}>
                     <Text style={styles.editText}>{t('edit')}</Text>
                   </TouchableOpacity>
@@ -911,11 +923,11 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#0f172a', color: '#fff', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', marginVertical: 4, fontSize: 14 },
   cardBox: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155' },
   fieldHeading: { color: '#94a3b8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 6 },
-  
+
   adminBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    alignSelf: 'flex-start',
     gap: 12,
     backgroundColor: '#1e293b',
     borderWidth: 1,
@@ -944,15 +956,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#38bdf8',
     paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     marginBottom: 14,
     alignItems: 'center',
     justifyContent: 'space-around'
   },
   todayStatCol: { flex: 1, alignItems: 'center' },
-  todayStatLabel: { color: '#94a3b8', fontSize: 10, fontWeight: 'bold', marginBottom: 3 },
-  todayStatValCash: { color: '#10b981', fontSize: 18, fontWeight: 'bold' },
-  todayStatValOnline: { color: '#38bdf8', fontSize: 18, fontWeight: 'bold' },
+  todayStatLabel: { color: '#94a3b8', fontSize: 9, fontWeight: 'bold', marginBottom: 3, textAlign: 'center' },
+  todayStatValSold: { color: '#38bdf8', fontSize: 15, fontWeight: 'bold' },
+  todayStatValReturn: { color: '#f59e0b', fontSize: 15, fontWeight: 'bold' },
+  todayStatValNet: { color: '#10b981', fontSize: 15, fontWeight: 'bold' },
   todayStatDivider: { width: 1.5, height: 32, backgroundColor: '#334155' },
 
   paymentToggleRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
@@ -987,7 +1000,7 @@ const styles = StyleSheet.create({
 
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
-  
+
   priceOptionRow: { flexDirection: 'row', marginVertical: 10, gap: 8 },
   priceOptionBtn: { flex: 1, minHeight: 52, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
   priceOptionBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
@@ -995,13 +1008,13 @@ const styles = StyleSheet.create({
   priceOptionValue: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginTop: 2 },
   priceOptionLabelActive: { color: '#0f172a' },
   hintText: { fontSize: 10, color: '#64748b', fontWeight: '600', letterSpacing: 0.2, marginTop: 3 },
-  
+
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
   qtyBtn: { width: 44, height: 44, borderRadius: 8, backgroundColor: '#334155', justifyContent: 'center', alignItems: 'center' },
   qtyBtnText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   qtyInput: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: 'bold' },
 
-  cartHeaderRow: { flexDirection: 'row', justify: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
+  cartHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8 },
   grandBaseHoldBtn: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderWidth: 1, borderColor: '#38bdf8', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   grandBaseHoldText: { color: '#38bdf8', fontSize: 11, fontWeight: 'bold' },
 
