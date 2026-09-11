@@ -1,7 +1,7 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, Text, StyleSheet, Alert, TouchableOpacity, 
-  ActivityIndicator, ScrollView, Image, SafeAreaView, Platform
+  ActivityIndicator, ScrollView, Image, SafeAreaView, Platform, Modal, FlatList
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axiosInstance from '../api/axiosInstance';
@@ -16,6 +16,13 @@ export default function ReturnStockScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
+  
+  // States for multiple invoices management
+  const [availableInvoices, setAvailableInvoices] = useState([]);
+  const [invoiceDropdownVisible, setInvoiceDropdownVisible] = useState(false);
+  const [targetProduct, setTargetProduct] = useState(null);
+  const [scannedBarcode, setScannedBarcode] = useState('');
+
   const [returnItemData, setReturnItemData] = useState(null);
   const [returnQty, setReturnQty] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -42,65 +49,66 @@ export default function ReturnStockScreen({ navigation }) {
 
       if (!foundProduct) {
         setLoading(false);
-        Alert.alert(t('error'), t('Product not found in store database.'), [
-          { text: t('Scan Again'), onPress: () => setScanner(true) },
-          { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+        Alert.alert(t('error'), 'Product not found in store database.', [
+          { text: 'Scan Again', onPress: () => setScanner(true) },
+          { text: 'Back', style: 'cancel', onPress: () => navigation.goBack() }
         ]);
         return;
       }
 
       const { data: saleRes } = await axiosInstance.get('/sales/history');
-      const pastSales = (saleRes.sales || []).filter(s => s.barcode === data || (s.productId && s.productId._id === foundProduct._id));
+      // Saari returnable sales nikalo is barcode ki
+      const pastSales = (saleRes.sales || []).filter(s => {
+        const isMatch = s.barcode === data || (s.productId && s.productId._id === foundProduct._id);
+        const maxAllowed = Number(s.quantity || 0) - Number(s.returnedQuantity || 0);
+        return isMatch && maxAllowed > 0;
+      });
 
       setLoading(false);
 
       if (pastSales.length === 0) {
         Alert.alert(
-          t('noSalesRecordTitle'), 
-          t('noSalesRecordMsg').replace('{productName}', foundProduct.productName),
+          'No Active Sales', 
+          `No returnable items found for "${foundProduct.productName}". All units might have already been returned.`,
           [
-            { text: t('scanAgain'), onPress: () => setScanner(true) },
-            { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+            { text: 'Scan Again', onPress: () => setScanner(true) },
+            { text: 'Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
           ]
         );
         return;
       }
 
-      const latestSale = pastSales[0];
-      const maxAllowed = Math.max(0, latestSale.quantity - (latestSale.returnedQuantity || 0));
+      setTargetProduct(foundProduct);
+      setScannedBarcode(data);
+      setAvailableInvoices(pastSales);
 
-      if (maxAllowed <= 0) {
-        Alert.alert(
-          t('alreadyReturnedTitle'), 
-          t('alreadyReturnedMsg').replace('{invoiceNo}', latestSale.invoiceNo),
-          [
-            { text: t('scanAgain'), onPress: () => setScanner(true) },
-            { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
-          ]
-        );
-        return;
-      }
-
-      setReturnItemData({
-        product: foundProduct,
-        sale: latestSale,
-        barcode: data,
-        maxAllowed
-      });
-      setReturnQty(1);
+      // By default sabse pehli/latest invoice select kar lo
+      selectActiveInvoice(pastSales[0], foundProduct, data);
     } catch (err) {
       setLoading(false);
-      Alert.alert(t('error'), t('Failed to fetch sales history for verification.'), [
+      Alert.alert('Error', 'Failed to fetch sales history for verification.', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     }
+  };
+
+  const selectActiveInvoice = (saleRecord, product, barcode) => {
+    const maxAllowed = Math.max(0, Number(saleRecord.quantity) - Number(saleRecord.returnedQuantity || 0));
+
+    setReturnItemData({
+      product: product || targetProduct,
+      sale: saleRecord,
+      barcode: barcode || scannedBarcode,
+      maxAllowed
+    });
+    setReturnQty(1);
   };
 
   const handleConfirmReturn = async () => {
     if (!returnItemData) return;
 
     if (returnQty <= 0 || returnQty > returnItemData.maxAllowed) {
-      Alert.alert(t('error'), t('invalidReturnQtyMsg').replace('{max}', returnItemData.maxAllowed));
+      Alert.alert('Error', `Please enter valid quantity (Max allowed: ${returnItemData.maxAllowed})`);
       return;
     }
 
@@ -118,11 +126,11 @@ export default function ReturnStockScreen({ navigation }) {
         `Restocked: ${returnQty} unit(s)\nRefund to Customer: ₹${res.refundAmount?.toFixed(2)}\nCurrent Stock: ${res.currentStock} pcs`,
         [
           { text: 'Return Another', onPress: () => { setReturnItemData(null); setScanner(true); } },
-          { text: 'Back to Portal', onPress: () => navigation.goBack() }
+          { text: 'Back to Dashboard', onPress: () => navigation.goBack() }
         ]
       );
     } else {
-      Alert.alert(t('error'), res.message || t('Failed to process return.'));
+      Alert.alert('Error', res.message || 'Failed to process return.');
     }
   };
 
@@ -150,7 +158,7 @@ export default function ReturnStockScreen({ navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#f59e0b" />
-        <Text style={[styles.infoText, { marginTop: 12 }]}>{t('Verifying sale history...')}</Text>
+        <Text style={[styles.infoText, { marginTop: 12 }]}>Verifying sale history...</Text>
       </View>
     );
   }
@@ -162,13 +170,27 @@ export default function ReturnStockScreen({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <BackButton onPress={() => navigation.goBack()} />
-      <Text style={styles.header}>{t('Return & Restock Portal')}</Text>
+      <Text style={styles.header}>वापसी पोर्टल (Return Portal)</Text>
 
       <View style={styles.returnCard}>
         <View style={styles.cardHeader}>
-          <View style={styles.invoicePill}>
-            <Text style={styles.invoicePillText}>#{returnItemData.sale.invoiceNo}</Text>
-          </View>
+          {/* Invoice Dropdown Pill Button */}
+          <TouchableOpacity 
+            style={styles.invoiceDropdownPill}
+            onPress={() => {
+              if (availableInvoices.length > 1) {
+                setInvoiceDropdownVisible(true);
+              } else {
+                Alert.alert('Info', 'Only 1 active invoice available for this item.');
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.invoicePillText}>
+              #{returnItemData.sale.invoiceNo} {availableInvoices.length > 1 ? '▼' : ''}
+            </Text>
+          </TouchableOpacity>
+
           <View style={[styles.payBadge, returnItemData.sale.paymentMode === 'Online' ? styles.payOnline : styles.payCash]}>
             <Text style={styles.payBadgeText}>{returnItemData.sale.paymentMode || 'CASH'}</Text>
           </View>
@@ -188,9 +210,9 @@ export default function ReturnStockScreen({ navigation }) {
         </View>
 
         <View style={styles.detailsBox}>
-          <Text style={styles.boxHeading}>{t('SALE VERIFICATION')}</Text>
+          <Text style={styles.boxHeading}>सत्यापन (Verification)</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>{t('Customer:')}</Text>
+            <Text style={styles.infoLabel}>ग्राहक (Customer):</Text>
             <Text style={styles.infoValueHighlight}>{returnItemData.sale.customerName || 'Walk-in Customer'}</Text>
           </View>
           <View style={styles.infoRow}>
@@ -215,20 +237,20 @@ export default function ReturnStockScreen({ navigation }) {
 
         <View style={styles.statsRow}>
           <View style={styles.statPill}>
-            <Text style={styles.statLabel}>{t('Bought')}</Text>
-            <Text style={styles.statVal}>{returnItemData.sale.quantity}{t(' pcs')}</Text>
+            <Text style={styles.statLabel}>खरीदा (Bought)</Text>
+            <Text style={styles.statVal}>{returnItemData.sale.quantity} पीस</Text>
           </View>
           <View style={styles.statPill}>
-            <Text style={styles.statLabel}>{t('Already Returned')}</Text>
-            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0}{t(' pcs')}</Text>
+            <Text style={styles.statLabel}>पहले ही वापस (Returned)</Text>
+            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0} पीस</Text>
           </View>
           <View style={[styles.statPill, { borderColor: '#10b981' }]}>
-            <Text style={styles.statLabel}>{t('Max Returnable')}</Text>
-            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed}{t(' pcs')}</Text>
+            <Text style={styles.statLabel}>अधिकतम वापसी (Max)</Text>
+            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed} पीस</Text>
           </View>
         </View>
 
-        <Text style={styles.selectorLabel}>{t('Select Return Quantity:')}</Text>
+        <Text style={styles.selectorLabel}>वापसी मात्रा (Return Qty):</Text>
         <View style={styles.qtyControlRow}>
           <TouchableOpacity 
             style={styles.qtyBtn}
@@ -250,7 +272,7 @@ export default function ReturnStockScreen({ navigation }) {
         </View>
 
         <View style={styles.refundSummaryBox}>
-          <Text style={styles.refundLabel}>{t('Total Refund to Customer:')}</Text>
+          <Text style={styles.refundLabel}>कुल रिफंड (Total Refund):</Text>
           <Text style={styles.refundAmount}>₹{(returnQty * returnItemData.sale.price).toFixed(2)}</Text>
         </View>
 
@@ -263,7 +285,7 @@ export default function ReturnStockScreen({ navigation }) {
           {submitting ? (
             <ActivityIndicator color="#0f172a" size="small" />
           ) : (
-            <Text style={styles.confirmBtnText}>✓ {t('Confirm Return & Restock')}</Text>
+            <Text style={styles.confirmBtnText}>✓ पुष्टि करें (Confirm Return)</Text>
           )}
         </TouchableOpacity>
 
@@ -271,9 +293,53 @@ export default function ReturnStockScreen({ navigation }) {
           style={styles.scanAnotherBtn}
           onPress={() => { setReturnItemData(null); setScanner(true); }}
         >
-          <Text style={styles.scanAnotherText}>{t('Scan Another Item')}</Text>
+          <Text style={styles.scanAnotherText}>दूसरा स्कैन (Scan Another)</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Invoice Switcher Modal */}
+      <Modal visible={invoiceDropdownVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>📄 Select Invoice Number</Text>
+            <Text style={styles.modalSubTitle}>Multiple invoices found for this barcode. Choose customer bill:</Text>
+
+            <FlatList
+              data={availableInvoices}
+              keyExtractor={(item) => item._id}
+              style={{ maxHeight: 320, marginVertical: 10 }}
+              renderItem={({ item }) => {
+                const maxRet = Number(item.quantity) - Number(item.returnedQuantity || 0);
+                const isSelected = returnItemData?.sale?._id === item._id;
+                return (
+                  <TouchableOpacity 
+                    style={[styles.invoiceSelectItem, isSelected && styles.invoiceSelectItemActive]}
+                    onPress={() => {
+                      setInvoiceDropdownVisible(false);
+                      selectActiveInvoice(item);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={styles.selectInvoiceNo}>#{item.invoiceNo}</Text>
+                      <Text style={styles.selectDate}>{new Date(item.createdAt).toLocaleDateString('en-IN')}</Text>
+                    </View>
+                    <Text style={styles.selectCustomer}>👤 {item.customerName || 'Walk-in'} ({item.customerPhone || 'N/A'})</Text>
+                    <Text style={styles.selectQty}>Returnable: <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{maxRet} pcs</Text></Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+
+            <TouchableOpacity 
+              style={styles.modalCloseBtn}
+              onPress={() => setInvoiceDropdownVisible(false)}
+            >
+              <Text style={styles.modalCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenWrapper>
   );
 }
@@ -287,9 +353,22 @@ const styles = StyleSheet.create({
 
   uniformCameraOverlay: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 16, zIndex: 10 },
 
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#1e293b', borderRadius: 20, padding: 20, borderWidth: 1.5, borderColor: '#38bdf8' },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', marginBottom: 6, textAlign: 'center' },
+  modalSubTitle: { fontSize: 12, color: '#94a3b8', textAlign: 'center', marginBottom: 12 },
+  invoiceSelectItem: { backgroundColor: '#0f172a', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
+  invoiceSelectItemActive: { borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.15)' },
+  selectInvoiceNo: { color: '#38bdf8', fontWeight: 'bold', fontSize: 14 },
+  selectDate: { color: '#94a3b8', fontSize: 12 },
+  selectCustomer: { color: '#fff', fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  selectQty: { color: '#cbd5e1', fontSize: 12 },
+  modalCloseBtn: { backgroundColor: '#334155', padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 4 },
+  modalCloseText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 },
+
   returnCard: { backgroundColor: '#1e293b', borderRadius: 20, padding: 18, borderWidth: 1.5, borderColor: '#f59e0b' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  invoicePill: { backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#38bdf8' },
+  invoiceDropdownPill: { backgroundColor: '#0f172a', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#38bdf8' },
   invoicePillText: { color: '#38bdf8', fontWeight: 'bold', fontSize: 13 },
   payBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   payCash: { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderWidth: 1, borderColor: '#10b981' },
