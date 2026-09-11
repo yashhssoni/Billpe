@@ -236,7 +236,7 @@ export default function ManageDatabase({ navigation }) {
       </TouchableOpacity>
 
       <View style={styles.quantityFilterContainer}>
-        <Text style={styles.quantityFilterLabel}>⚠️ Filter by Max Stock Quantity:</Text>
+        <Text style={styles.quantityFilterLabel}>{t('⚠️ Filter by Max Stock Quantity:')}</Text>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
           <TextInput
             style={styles.quantityFilterInput}

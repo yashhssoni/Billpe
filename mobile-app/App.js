@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { Alert } from 'react-native';
 import * as Updates from 'expo-updates';
+import NetInfo from '@react-native-community/netinfo';
 import { AuthProvider } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import UpdateAlert from './src/components/UpdateAlert';
+import { syncOfflineBillsToServer } from './src/services/offlineSyncService';
 
 export default function App() {
   useEffect(() => {
@@ -34,6 +36,16 @@ export default function App() {
     if (!__DEV__) {
       onFetchUpdateAsync();
     }
+
+    syncOfflineBillsToServer();
+
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        syncOfflineBillsToServer();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   return (

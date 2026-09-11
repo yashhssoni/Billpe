@@ -280,3 +280,95 @@ exports.permanentDeleteRange = async (req, res, next) => {
     next(error);
   }
 };
+exports.syncOfflineSales = async (req, res, next) => {
+  try {
+    const { sales } = req.body;
+    const storeId = req.user.storeId;
+
+    if (!sales || !Array.isArray(sales) || sales.length === 0) {
+      return res.status(400).json({ success: false, message: "No offline sales data provided." });
+    }
+
+    let syncedCount = 0;
+
+    for (const saleData of sales) {
+      const { 
+        invoiceNo, items, cartItems: rawCartItems, totalAmount, paymentMode, 
+        customerName, customerPhone, customerAddress, employeeName,
+        cashAmount, onlineAmount, createdAt 
+      } = saleData;
+
+      const itemsList = items || rawCartItems;
+      if (!itemsList || itemsList.length === 0) continue;
+
+      // Check if invoice already synced to prevent duplicates
+      const existingSale = await SoldItem.findOne({ storeId, invoiceNo });
+      if (existingSale) continue;
+
+      const generatedInvoiceNo = invoiceNo || `BP-${Date.now().toString().slice(-6)}`;
+      const finalCustomerName = customerName && customerName.trim() ? customerName.trim() : 'N/A';
+      const finalCustomerPhone = customerPhone && customerPhone.trim() ? customerPhone.trim() : 'N/A';
+      const finalCustomerAddress = customerAddress && customerAddress.trim() ? customerAddress.trim() : 'N/A';
+      const finalEmployeeName = employeeName && employeeName.trim() ? employeeName.trim() : (req.user.name || 'Employee');
+      const finalPaymentMode = paymentMode || 'Cash';
+
+      const parsedCash = Number(cashAmount) || 0;
+      const parsedOnline = Number(onlineAmount) || 0;
+      const soldEntries = [];
+
+      for (let item of itemsList) {
+        const productId = item.productId || item._id;
+        const product = await Product.findOne({ _id: productId, storeId });
+        const requestedQty = Number(item.quantity || 1);
+        const salePrice = Number(item.agreedPrice || item.price || (product ? product.price : 0));
+
+        if (product) {
+          const newStock = product.stock - requestedQty;
+          product.stock = newStock >= 0 ? newStock : 0;
+          product.sold = product.stock <= 0;
+          product.soldPrice = salePrice;
+          product.soldCustomerName = finalCustomerName;
+          product.soldCustomerPhone = finalCustomerPhone;
+          product.soldCustomerAddress = finalCustomerAddress;
+          product.lastInvoiceNo = generatedInvoiceNo;
+          product.soldAt = createdAt ? new Date(createdAt) : new Date();
+          await product.save();
+        }
+
+        soldEntries.push({
+          storeId,
+          productId: productId,
+          productName: item.productName || (product ? product.productName : 'Unknown Product'),
+          barcode: item.barcode || (product ? product.barcode : ''),
+          invoiceNo: generatedInvoiceNo,
+          quantity: requestedQty,
+          returnedQuantity: 0,
+          price: salePrice,
+          totalAmount: salePrice * requestedQty,
+          customerName: finalCustomerName,
+          customerPhone: finalCustomerPhone,
+          customerAddress: finalCustomerAddress,
+          soldBy: req.user.id,
+          soldByName: finalEmployeeName,
+          paymentMode: finalPaymentMode,
+          cashAmount: parsedCash,
+          onlineAmount: parsedOnline,
+          isArchived: false,
+          createdAt: createdAt ? new Date(createdAt) : new Date()
+        });
+      }
+
+      if (soldEntries.length > 0) {
+        await SoldItem.insertMany(soldEntries);
+        syncedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Synced ${syncedCount} offline sale(s) successfully.`
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -12,6 +12,7 @@ import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { useSales } from '../hooks/useSales';
 import BackButton from '../components/BackButton';
+import { isConnectedToInternet, saveBillOffline } from '../services/offlineSyncService';
 
 export default function EmployeeScreen({ navigation, route }) {
   const { user, logout } = useContext(AuthContext);
@@ -339,7 +340,7 @@ export default function EmployeeScreen({ navigation, route }) {
     return sum + (base * item.quantity);
   }, 0);
 
-  const handleCompleteCheckout = async (shouldPrint = true) => {
+ const handleCompleteCheckout = async (shouldPrint = true) => {
     if (cart.length === 0) {
       Alert.alert(t('error'), t('Cart is empty.'));
       return;
@@ -358,8 +359,8 @@ export default function EmployeeScreen({ navigation, route }) {
 
       if (Math.round((finalCash + finalOnline) * 100) !== Math.round(grandTotalAmount * 100)) {
         Alert.alert(
-          'Split Amount Mismatch', 
-          `Cash (₹${finalCash}) + Online (₹${finalOnline}) = ₹${finalCash + finalOnline}.\nIt must equal Grand Total (₹${grandTotalAmount.toFixed(2)})`
+          t('Split Amount Mismatch'), 
+          `${t('Cash')} (₹${finalCash}) + ${t('Online')} (₹${finalOnline}) = ₹${finalCash + finalOnline}.\n${t('It must equal Grand Total')} (₹${grandTotalAmount.toFixed(2)})`
         );
         return;
       }
@@ -367,18 +368,52 @@ export default function EmployeeScreen({ navigation, route }) {
 
     const invoiceNo = `BP-${Date.now().toString().slice(-6)}`;
 
-    const result = await processCheckout(
-      cart, 
-      grandTotalAmount, 
-      paymentMode, 
-      customerName, 
-      customerPhone, 
-      employeeName, 
-      customerAddress, 
+    const billPayload = {
+      cartItems: cart,
+      totalAmount: grandTotalAmount,
+      paymentMode,
+      customerName,
+      customerPhone,
+      employeeName,
+      customerAddress,
       invoiceNo,
-      finalCash,
-      finalOnline
-    );
+      cashAmount: finalCash,
+      onlineAmount: finalOnline,
+      createdAt: new Date().toISOString()
+    };
+
+    const online = await isConnectedToInternet();
+    let result = { success: false };
+
+    if (online) {
+      try {
+        result = await processCheckout(
+          cart, 
+          grandTotalAmount, 
+          paymentMode, 
+          customerName, 
+          customerPhone, 
+          employeeName, 
+          customerAddress, 
+          invoiceNo,
+          finalCash,
+          finalOnline
+        );
+      } catch (err) {
+        result = { success: false, message: err.message };
+      }
+    }
+
+    if (!online || !result.success) {
+      const savedOffline = await saveBillOffline(billPayload);
+      if (savedOffline) {
+        result = {
+          success: true,
+          storeInfo: { storeName: 'RETAIL STORE' },
+          offlineSaved: true
+        };
+      }
+    }
 
     if (result.success) {
       if (shouldPrint) {
@@ -420,7 +455,7 @@ export default function EmployeeScreen({ navigation, route }) {
                     <span><strong>Time:</strong> ${formattedTime}</span>
                   </div>
                   <div style="margin-bottom: 6px;">
-                    <strong>Billed By:</strong> ${employeeName || 'Staff'}
+                    <strong>Billed By:</strong> ${employeeName || 'Staff'} ${result.offlineSaved ? '(Offline)' : ''}
                   </div>
 
                   <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
@@ -467,9 +502,12 @@ export default function EmployeeScreen({ navigation, route }) {
       }
 
       Alert.alert(
-        'Success ✅', 
-        `Invoice: #${invoiceNo}\n${shouldPrint ? t('Bill printed & sold successfully!') : t('Sale saved successfully!')}`
+        result.offlineSaved ? t('Offline Mode ⚠️') : t('Success ✅'), 
+        result.offlineSaved 
+          ? `${t('Invoice:')} #${invoiceNo}\n${t('No internet message')}`
+          : `${t('Invoice:')} #${invoiceNo}\n${shouldPrint ? t('Bill printed & sold successfully!') : t('Sale saved successfully!')}`
       );
+
       setCart([]);
       setCustomerName('');
       setCustomerPhone('');
@@ -523,7 +561,6 @@ export default function EmployeeScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* 3-Column Stats Card (Total Sold, Returns, Net Total) */}
       <View style={styles.todayStatsCard}>
         <View style={styles.todayStatCol}>
           <Text style={styles.todayStatLabel}>📦 {t('TOTAL SOLD') || 'TOTAL SOLD'}</Text>

@@ -428,6 +428,17 @@ export const translations = {
     'Billing': 'Billing',
     '← Back': '← Back',
     switchToBilling: 'Employee Portal',
+  
+  "billingMode": "Billing Mode",
+  "backToAdmin": "← Back to Admin",
+  "invalidReturnQtyMsg": "Invalid quantity! Max return allowed is {max}.",
+  "noSalesRecordTitle": "No Sales Record",
+  "noSalesRecordMsg": "Product \"{productName}\" exists, but has zero sales history in this store.",
+  "scanAgain": "Scan Again",
+  "backToDashboard": "Back to Dashboard",
+
+    
+    'Employee Portal': 'Employee Portal',
     'Select Entry': 'Select Entry',
     'Date Range': 'Date Range',
     'Select Start Date': 'Select Start Date',
@@ -467,7 +478,17 @@ export const translations = {
   "This product does not exist in the database.": "This product does not exist in the database.",
   "Failed to fetch product details.": "Failed to fetch product details.",
   "Price cannot be empty.": "Price cannot be empty.",
-  "Quantity must be at least 1.": "Quantity must be at least 1."
+  "Quantity must be at least 1.": "Quantity must be at least 1.",
+  "alreadyReturnedTitle": "Already Returned",
+  "alreadyReturnedMsg": "All units of Invoice #{invoiceNo} have already been returned!",
+  "filterByMaxStock": "Filter by Max Stock Quantity",
+  "Offline Mode ⚠️": "Offline Mode ⚠️",
+"Success ✅": "Success ✅",
+"Invoice:": "Invoice:",
+"No internet message": "No internet. Bill saved securely locally & will sync automatically when online!",
+"Split Amount Mismatch": "Split Amount Mismatch",
+"It must equal Grand Total": "It must equal Grand Total"
+
   },
 
   hi: {
@@ -487,6 +508,27 @@ export const translations = {
     active: 'सक्रिय',
     expired: 'समाप्त',
     switchLangText: 'EN (English)',
+    
+    'Employee Portal': 'कर्मचारी पोर्टल',
+    
+  "billingMode": "बिलिंग मोड",
+  "backToAdmin": "← एडमिन पर वापस जाएं",
+  "invalidReturnQtyMsg": "अमान्य मात्रा! अधिकतम अनुमति प्राप्त वापसी {max} है।",
+  "noSalesRecordTitle": "कोई बिक्री रिकॉर्ड नहीं",
+  "noSalesRecordMsg": "उत्पाद \"{productName}\" मौजूद है, लेकिन इस स्टोर में इसका कोई बिक्री इतिहास नहीं है।",
+  "scanAgain": "फिर से स्कैन करें",
+  "backToDashboard": "डैशबोर्ड पर वापस जाएं",
+  
+  "alreadyReturnedTitle": "पहले ही वापस किया जा चुका है",
+  "alreadyReturnedMsg": "चालान #{invoiceNo} की सभी इकाइयाँ पहले ही वापस की जा चुकी हैं!",
+  "filterByMaxStock": "अधिकतम स्टॉक मात्रा के अनुसार फ़िल्टर करें",
+  "Offline Mode ⚠️": "ऑफ़लाइन मोड ⚠️",
+"Success ✅": "सफल ✅",
+"Invoice:": "रसीद नं:",
+"No internet message": "इंटरनेट नहीं है। बिल सुरक्षित रूप से सेव हो गया है और ऑनलाइन होते ही ऑटोमैटिक सिंक हो जाएगा!",
+"Split Amount Mismatch": "स्प्लिट राशि मेल नहीं खा रही",
+"It must equal Grand Total": "यह कुल राशि के बराबर होना चाहिए",
+
 
     // Auth & Login
     welcome: 'BillPe में स्वागत है',

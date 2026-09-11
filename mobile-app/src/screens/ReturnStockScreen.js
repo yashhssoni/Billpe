@@ -55,31 +55,31 @@ export default function ReturnStockScreen({ navigation }) {
       setLoading(false);
 
       if (pastSales.length === 0) {
-        Alert.alert(
-          t('No Sales Record'), 
-          `Product "${foundProduct.productName}" exists, but has zero sales history in this store.`,
-          [
-            { text: t('Scan Again'), onPress: () => setScanner(true) },
-            { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
-          ]
-        );
-        return;
-      }
+  Alert.alert(
+    t('noSalesRecordTitle'), 
+    t('noSalesRecordMsg').replace('{productName}', foundProduct.productName),
+    [
+      { text: t('scanAgain'), onPress: () => setScanner(true) },
+      { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+    ]
+  );
+  return;
+}
 
       const latestSale = pastSales[0];
       const maxAllowed = Math.max(0, latestSale.quantity - (latestSale.returnedQuantity || 0));
 
       if (maxAllowed <= 0) {
-        Alert.alert(
-          t('Already Returned'), 
-          `All units of Invoice #${latestSale.invoiceNo} have already been returned!`,
-          [
-            { text: t('Scan Again'), onPress: () => setScanner(true) },
-            { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
-          ]
-        );
-        return;
-      }
+  Alert.alert(
+    t('alreadyReturnedTitle'), 
+    t('alreadyReturnedMsg').replace('{invoiceNo}', latestSale.invoiceNo),
+    [
+      { text: t('scanAgain'), onPress: () => setScanner(true) },
+      { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+    ]
+  );
+  return;
+}
 
       setReturnItemData({
         product: foundProduct,
@@ -99,10 +99,10 @@ export default function ReturnStockScreen({ navigation }) {
   const handleConfirmReturn = async () => {
     if (!returnItemData) return;
 
-    if (returnQty <= 0 || returnQty > returnItemData.maxAllowed) {
-      Alert.alert(t('error'), `Invalid quantity! Max return allowed is ${returnItemData.maxAllowed}.`);
-      return;
-    }
+   if (returnQty <= 0 || returnQty > returnItemData.maxAllowed) {
+  Alert.alert(t('error'), t('invalidReturnQtyMsg').replace('{max}', returnItemData.maxAllowed));
+  return;
+}
 
     setSubmitting(true);
     const res = await processReturn(
