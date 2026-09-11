@@ -6,6 +6,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../api/axiosInstance';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
@@ -80,34 +81,50 @@ export default function EmployeeScreen({ navigation, route }) {
 
   const fetchTodayLiveSales = async () => {
     try {
-      const { data } = await axiosInstance.get('/sales/history');
-      if (data.success && data.sales) {
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-        let soldSum = 0;
-        let returnSum = 0;
+      let soldSum = 0;
+      let returnSum = 0;
 
-        data.sales.forEach(sale => {
+      const online = await isConnectedToInternet();
+
+      if (online) {
+        const { data } = await axiosInstance.get('/sales/history');
+        if (data.success && data.sales) {
+          data.sales.forEach(sale => {
+            const saleTime = new Date(sale.createdAt).getTime();
+            if (saleTime >= startOfDay) {
+              const netAmount = Number(sale.totalAmount || sale.price || 0);
+              const isReturn = sale.type === 'return' || sale.isReturn === true || netAmount < 0;
+
+              if (isReturn) {
+                returnSum += Math.abs(netAmount);
+              } else {
+                soldSum += netAmount;
+              }
+            }
+          });
+        }
+      }
+
+      // Offline queue ke pending bills ko bhi stats mein jod lo
+      const localOfflineSales = await AsyncStorage.getItem('offline_sales_queue');
+      if (localOfflineSales) {
+        const queue = JSON.parse(localOfflineSales);
+        queue.forEach(sale => {
           const saleTime = new Date(sale.createdAt).getTime();
           if (saleTime >= startOfDay) {
-            const netAmount = Number(sale.totalAmount || sale.price || 0);
-            const isReturn = sale.type === 'return' || sale.isReturn === true || netAmount < 0;
-
-            if (isReturn) {
-              returnSum += Math.abs(netAmount);
-            } else {
-              soldSum += netAmount;
-            }
+            soldSum += Number(sale.totalAmount || 0);
           }
         });
-
-        setTodayTotalSold(soldSum);
-        setTodayTotalReturns(returnSum);
-        setTodayNetTotal(soldSum - returnSum);
       }
+
+      setTodayTotalSold(soldSum);
+      setTodayTotalReturns(returnSum);
+      setTodayNetTotal(soldSum - returnSum);
     } catch (e) {
-      console.log(t('Error fetching today sales:'), e.message);
+      console.log('Error fetching today sales:', e.message);
     }
   };
 
@@ -131,16 +148,39 @@ export default function EmployeeScreen({ navigation, route }) {
     if (typeof logout === 'function') logout();
   };
 
+  const cacheProductsLocally = async (productsArray) => {
+    try {
+      await AsyncStorage.setItem('cached_products_list', JSON.stringify(productsArray));
+    } catch (err) {
+      console.log('Error caching products:', err);
+    }
+  };
+
   const handleBarCodeScanned = async ({ data }) => {
     setScanner(false);
     setLoading(true);
 
     try {
-      const { data: res } = await axiosInstance.get('/products?includeSold=true');
+      const online = await isConnectedToInternet();
+      let productsList = [];
+
+      if (online) {
+        const { data: res } = await axiosInstance.get('/products?includeSold=true');
+        if (res.success && res.products) {
+          productsList = res.products;
+          await cacheProductsLocally(productsList);
+        }
+      } else {
+        const cachedData = await AsyncStorage.getItem('cached_products_list');
+        if (cachedData) {
+          productsList = JSON.parse(cachedData);
+        }
+      }
+
       setLoading(false);
 
-      if (res.success && res.products) {
-        const found = res.products.find(item => item.barcode === data);
+      if (productsList.length > 0) {
+        const found = productsList.find(item => item.barcode === data);
         if (!found) {
           Alert.alert(t('error'), t('This product does not exist in the database.'));
           return;
@@ -174,6 +214,8 @@ export default function EmployeeScreen({ navigation, route }) {
         setSelectedQty('1');
         setPriceMode('manual');
         setManualPrice('');
+      } else {
+        Alert.alert(t('error'), t('No products found locally. Please connect to internet once to sync products.'));
       }
     } catch (err) {
       setLoading(false);
@@ -340,7 +382,7 @@ export default function EmployeeScreen({ navigation, route }) {
     return sum + (base * item.quantity);
   }, 0);
 
- const handleCompleteCheckout = async (shouldPrint = true) => {
+  const handleCompleteCheckout = async (shouldPrint = true) => {
     if (cart.length === 0) {
       Alert.alert(t('error'), t('Cart is empty.'));
       return;
@@ -359,8 +401,8 @@ export default function EmployeeScreen({ navigation, route }) {
 
       if (Math.round((finalCash + finalOnline) * 100) !== Math.round(grandTotalAmount * 100)) {
         Alert.alert(
-          t('Split Amount Mismatch'), 
-          `${t('Cash')} (₹${finalCash}) + ${t('Online')} (₹${finalOnline}) = ₹${finalCash + finalOnline}.\n${t('It must equal Grand Total')} (₹${grandTotalAmount.toFixed(2)})`
+          t('Split Amount Mismatch') || 'Split Amount Mismatch', 
+          `${t('Cash') || 'Cash'} (₹${finalCash}) + ${t('Online') || 'Online'} (₹${finalOnline}) = ₹${finalCash + finalOnline}.\n${t('It must equal Grand Total') || 'It must equal Grand Total'} (₹${grandTotalAmount.toFixed(2)})`
         );
         return;
       }
@@ -412,6 +454,8 @@ export default function EmployeeScreen({ navigation, route }) {
           storeInfo: { storeName: 'RETAIL STORE' },
           offlineSaved: true
         };
+        setTodayTotalSold(prev => prev + grandTotalAmount);
+        setTodayNetTotal(prev => prev + grandTotalAmount);
       }
     }
 
@@ -502,7 +546,7 @@ export default function EmployeeScreen({ navigation, route }) {
       }
 
       Alert.alert(
-        result.offlineSaved ? t('Offline Mode ⚠️') : t('Success ✅'), 
+        result.offlineSaved ? (t('Offline Mode ⚠️') || 'Offline Mode ⚠️') : (t('Success ✅') || 'Success ✅'), 
         result.offlineSaved 
           ? `${t('Invoice:')} #${invoiceNo}\n${t('No internet message')}`
           : `${t('Invoice:')} #${invoiceNo}\n${shouldPrint ? t('Bill printed & sold successfully!') : t('Sale saved successfully!')}`
@@ -680,6 +724,7 @@ export default function EmployeeScreen({ navigation, route }) {
             title={t('cancel')} 
             onPress={() => { 
               if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+              setScanner(false);
               setCurrentScanned(null); 
               setShowLowestRate(false); 
               setManualPrice('');

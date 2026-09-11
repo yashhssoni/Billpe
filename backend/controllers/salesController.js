@@ -102,7 +102,6 @@ exports.checkout = async (req, res, next) => {
 
 exports.getSalesHistory = async (req, res, next) => {
   try {
-    // Only non-archived items are fetched
     const sales = await SoldItem.find({ 
       storeId: req.user.storeId,
       isArchived: { $ne: true }
@@ -128,24 +127,27 @@ exports.processReturn = async (req, res, next) => {
     let filter = { storeId, barcode };
     if (invoiceNo) filter.invoiceNo = invoiceNo;
 
-    const soldRecord = await SoldItem.findOne(filter).sort({ createdAt: -1 });
+    // Exact invoice match karke record uthao
+    const soldRecord = await SoldItem.findOne(filter);
 
     if (!soldRecord) {
       return res.status(404).json({ success: false, message: "No sales record found for this product/invoice." });
     }
 
-    const availableToReturn = soldRecord.quantity - soldRecord.returnedQuantity;
+    const availableToReturn = soldRecord.quantity - (soldRecord.returnedQuantity || 0);
 
     if (qtyToReturn > availableToReturn) {
       return res.status(400).json({ 
         success: false, 
-        message: `Cannot return ${qtyToReturn} units. Maximum allowed for this sale is ${availableToReturn} unit(s).` 
+        message: `Cannot return ${qtyToReturn} units. Maximum allowed for this invoice is ${availableToReturn} unit(s).` 
       });
     }
 
-    soldRecord.returnedQuantity += qtyToReturn;
+    // Sirf original record update hoga, koi nayi negative entry nahi banegi
+    soldRecord.returnedQuantity = (soldRecord.returnedQuantity || 0) + qtyToReturn;
     await soldRecord.save();
 
+    // Product inventory mein stock wapas jodh do
     const product = await Product.findOne({ _id: soldRecord.productId, storeId });
     if (product) {
       product.stock += qtyToReturn;
@@ -154,28 +156,6 @@ exports.processReturn = async (req, res, next) => {
     }
 
     const refundValue = qtyToReturn * soldRecord.price;
-
-    await SoldItem.create({
-      storeId,
-      productId: soldRecord.productId,
-      productName: `${soldRecord.productName} (Return)`,
-      barcode: soldRecord.barcode,
-      invoiceNo: soldRecord.invoiceNo,
-      quantity: qtyToReturn, 
-      returnedQuantity: 0,
-      price: soldRecord.price,
-      totalAmount: -refundValue, 
-      customerName: soldRecord.customerName,
-      customerPhone: soldRecord.customerPhone,
-      customerAddress: soldRecord.customerAddress,
-      soldBy: req.user.id,
-      soldByName: req.user.name || 'Employee',
-      paymentMode: soldRecord.paymentMode,
-      cashAmount: -refundValue, 
-      onlineAmount: 0,
-      isReturn: true, 
-      isArchived: false
-    });
 
     res.json({
       success: true,
@@ -280,6 +260,7 @@ exports.permanentDeleteRange = async (req, res, next) => {
     next(error);
   }
 };
+
 exports.syncOfflineSales = async (req, res, next) => {
   try {
     const { sales } = req.body;
@@ -301,7 +282,6 @@ exports.syncOfflineSales = async (req, res, next) => {
       const itemsList = items || rawCartItems;
       if (!itemsList || itemsList.length === 0) continue;
 
-      // Check if invoice already synced to prevent duplicates
       const existingSale = await SoldItem.findOne({ storeId, invoiceNo });
       if (existingSale) continue;
 

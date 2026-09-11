@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, Alert, TouchableOpacity, 
   ActivityIndicator, ScrollView, Image, SafeAreaView, Platform
@@ -55,31 +55,31 @@ export default function ReturnStockScreen({ navigation }) {
       setLoading(false);
 
       if (pastSales.length === 0) {
-  Alert.alert(
-    t('noSalesRecordTitle'), 
-    t('noSalesRecordMsg').replace('{productName}', foundProduct.productName),
-    [
-      { text: t('scanAgain'), onPress: () => setScanner(true) },
-      { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
-    ]
-  );
-  return;
-}
+        Alert.alert(
+          t('noSalesRecordTitle'), 
+          t('noSalesRecordMsg').replace('{productName}', foundProduct.productName),
+          [
+            { text: t('scanAgain'), onPress: () => setScanner(true) },
+            { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+          ]
+        );
+        return;
+      }
 
       const latestSale = pastSales[0];
       const maxAllowed = Math.max(0, latestSale.quantity - (latestSale.returnedQuantity || 0));
 
       if (maxAllowed <= 0) {
-  Alert.alert(
-    t('alreadyReturnedTitle'), 
-    t('alreadyReturnedMsg').replace('{invoiceNo}', latestSale.invoiceNo),
-    [
-      { text: t('scanAgain'), onPress: () => setScanner(true) },
-      { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
-    ]
-  );
-  return;
-}
+        Alert.alert(
+          t('alreadyReturnedTitle'), 
+          t('alreadyReturnedMsg').replace('{invoiceNo}', latestSale.invoiceNo),
+          [
+            { text: t('scanAgain'), onPress: () => setScanner(true) },
+            { text: t('backToDashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+          ]
+        );
+        return;
+      }
 
       setReturnItemData({
         product: foundProduct,
@@ -99,10 +99,10 @@ export default function ReturnStockScreen({ navigation }) {
   const handleConfirmReturn = async () => {
     if (!returnItemData) return;
 
-   if (returnQty <= 0 || returnQty > returnItemData.maxAllowed) {
-  Alert.alert(t('error'), t('invalidReturnQtyMsg').replace('{max}', returnItemData.maxAllowed));
-  return;
-}
+    if (returnQty <= 0 || returnQty > returnItemData.maxAllowed) {
+      Alert.alert(t('error'), t('invalidReturnQtyMsg').replace('{max}', returnItemData.maxAllowed));
+      return;
+    }
 
     setSubmitting(true);
     const res = await processReturn(
@@ -125,6 +125,7 @@ export default function ReturnStockScreen({ navigation }) {
       Alert.alert(t('error'), res.message || t('Failed to process return.'));
     }
   };
+
   if (scanner) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -155,7 +156,6 @@ export default function ReturnStockScreen({ navigation }) {
   }
 
   if (!returnItemData) {
-    navigation.goBack();
     return null;
   }
 
