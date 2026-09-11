@@ -127,7 +127,6 @@ exports.processReturn = async (req, res, next) => {
     let filter = { storeId, barcode };
     if (invoiceNo) filter.invoiceNo = invoiceNo;
 
-    // Exact invoice match karke record uthao
     const soldRecord = await SoldItem.findOne(filter);
 
     if (!soldRecord) {
@@ -143,11 +142,9 @@ exports.processReturn = async (req, res, next) => {
       });
     }
 
-    // Sirf original record update hoga, koi nayi negative entry nahi banegi
     soldRecord.returnedQuantity = (soldRecord.returnedQuantity || 0) + qtyToReturn;
     await soldRecord.save();
 
-    // Product inventory mein stock wapas jodh do
     const product = await Product.findOne({ _id: soldRecord.productId, storeId });
     if (product) {
       product.stock += qtyToReturn;

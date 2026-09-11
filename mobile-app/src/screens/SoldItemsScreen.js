@@ -179,13 +179,17 @@ export default function SoldItemsScreen({ navigation }) {
 
       const totalQty = res.sales.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0);
       const totalReturnedQty = res.sales.reduce((acc, curr) => acc + Number(curr.returnedQuantity || 0), 0);
-      const grandTotal = res.sales.reduce((acc, curr) => acc + Number(curr.totalAmount || curr.price || 0), 0);
+      const grandTotal = res.sales.reduce((acc, curr) => {
+        const activeQty = Number(curr.quantity || 1) - Number(curr.returnedQuantity || 0);
+        return acc + (Number(curr.price || 0) * activeQty);
+      }, 0);
 
       const rows = res.sales.map((item, idx) => {
         const qty = Number(item.quantity || 1);
         const rate = Number(item.price || 0);
-        const total = Number(item.totalAmount || (rate * qty));
         const retQty = Number(item.returnedQuantity || 0);
+        const activeQty = qty - retQty;
+        const netTotal = rate * activeQty;
         const retPrice = retQty * rate;
 
         return `
@@ -196,7 +200,7 @@ export default function SoldItemsScreen({ navigation }) {
             <td><strong>${item.productName}</strong></td>
             <td style="text-align: center;">${qty}</td>
             <td style="text-align: right;">₹${rate.toFixed(2)}</td>
-            <td style="text-align: right;"><strong>₹${total.toFixed(2)}</strong></td>
+            <td style="text-align: right;"><strong>₹${netTotal.toFixed(2)}</strong></td>
             <td style="text-align: center; color: ${retQty > 0 ? '#d97706' : '#666'};">${retQty > 0 ? retQty : '-'}</td>
             <td style="text-align: right; color: ${retPrice > 0 ? '#d97706' : '#666'};">${retPrice > 0 ? '₹' + retPrice.toFixed(2) : '-'}</td>
             <td>${item.paymentMode || 'Cash'}</td>
@@ -229,37 +233,37 @@ export default function SoldItemsScreen({ navigation }) {
             </div>
 
             <div class="meta-box">
-              <div><strong>${t('ReportPeriod:') || 'Report Period:'}</strong> ${startDate.trim()} to ${endDate.trim()}</div>
-              <div><strong>${t('ExportedOn:') || 'Exported On:'}</strong> ${new Date().toLocaleString('en-IN')}</div>
+              <div><strong>Report Period:</strong> ${startDate.trim()} to ${endDate.trim()}</div>
+              <div><strong>Exported On:</strong> ${new Date().toLocaleString('en-IN')}</div>
             </div>
 
-            <h3 style="text-align: center; font-size: 13px; margin: 8px 0; text-transform: uppercase;">${t('Detailed Sales & Return Report')}</h3>
+            <h3 style="text-align: center; font-size: 13px; margin: 8px 0; text-transform: uppercase;">Detailed Sales & Return Report</h3>
 
             <table>
               <thead>
                 <tr>
-                  <th>${t('th_sr')}</th>
-                  <th>${t('th_date')}</th>
-                  <th>${t('th_invoice')}</th>
-                  <th>${t('th_product')}</th>
-                  <th>${t('th_qty')}</th>
-                  <th>${t('th_rate')}</th>
-                  <th>${t('th_total')}</th>
-                  <th>${t('th_ret_qty')}</th>
-                  <th>${t('th_ret_amt')}</th>
-                  <th>${t('th_mode')}</th>
-                  <th>${t('th_staff')}</th>
+                  <th>Sr</th>
+                  <th>Date</th>
+                  <th>Invoice</th>
+                  <th>Product</th>
+                  <th>Qty</th>
+                  <th>Rate</th>
+                  <th>Net Total</th>
+                  <th>Ret Qty</th>
+                  <th>Ret Amt</th>
+                  <th>Mode</th>
+                  <th>Staff</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
 
             <div class="summary-box">
-              <div class="summary-row"><span>${t('Total Records / Bills:')}</span> <strong>${res.sales.length}</strong></div>
-              <div class="summary-row"><span>${t('Total Items Sold (Qty):')}</span> <strong>${totalQty} pcs</strong></div>
-              <div class="summary-row"><span>${t('Total Items Returned:')}</span> <strong style="color: #d97706;">${totalReturnedQty} pcs</strong></div>
+              <div class="summary-row"><span>Total Records / Bills:</span> <strong>${res.sales.length}</strong></div>
+              <div class="summary-row"><span>Total Items Sold (Qty):</span> <strong>${totalQty} pcs</strong></div>
+              <div class="summary-row"><span>Total Items Returned:</span> <strong style="color: #d97706;">${totalReturnedQty} pcs</strong></div>
               <div class="summary-row" style="font-size: 14px; border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 6px;">
-                <span><strong>${t('Net Grand Total:')}</strong></span> 
+                <span><strong>Net Grand Total:</strong></span> 
                 <strong style="color: #059669;">₹${grandTotal.toFixed(2)}</strong>
               </div>
             </div>
@@ -328,14 +332,10 @@ export default function SoldItemsScreen({ navigation }) {
 
       groups[dateKey].data.push(item);
       
-      const itemAmount = Number(item.totalAmount || item.price) || 0;
-      const isReturn = item.type === 'return' || item.isReturn === true || item.totalAmount < 0;
+      const activeQty = Number(item.quantity || 1) - Number(item.returnedQuantity || 0);
+      const netItemAmount = Number(item.price || 0) * activeQty;
 
-      if (isReturn) {
-        groups[dateKey].totalAmount -= Math.abs(itemAmount);
-      } else {
-        groups[dateKey].totalAmount += itemAmount;
-      }
+      groups[dateKey].totalAmount += netItemAmount;
     });
 
     return Object.values(groups);
@@ -422,6 +422,9 @@ export default function SoldItemsScreen({ navigation }) {
             const isExpanded = expandedSplitIds.has(item._id);
             const isSelected = selectedIds.has(item._id);
 
+            const activeQty = Number(item.quantity || 1) - Number(item.returnedQuantity || 0);
+            const netItemAmount = Number(item.price || 0) * activeQty;
+
             return (
               <TouchableOpacity 
                 activeOpacity={isSelectMode ? 0.7 : 1}
@@ -480,7 +483,7 @@ export default function SoldItemsScreen({ navigation }) {
 
                   <View style={styles.productRow}>
                     <Text style={styles.itemName}>{item.productName}</Text>
-                    <Text style={styles.itemTotal}>₹{(item.totalAmount || (item.price * (item.quantity || 1))).toFixed(2)}</Text>
+                    <Text style={styles.itemTotal}>₹{netItemAmount.toFixed(2)}</Text>
                   </View>
 
                   <Text style={styles.itemSubDetail}>

@@ -95,13 +95,15 @@ export default function EmployeeScreen({ navigation, route }) {
           data.sales.forEach(sale => {
             const saleTime = new Date(sale.createdAt).getTime();
             if (saleTime >= startOfDay) {
-              const netAmount = Number(sale.totalAmount || sale.price || 0);
-              const isReturn = sale.type === 'return' || sale.isReturn === true || netAmount < 0;
+              const unitPrice = Number(sale.price || 0);
+              const totalQty = Number(sale.quantity || 0);
+              const returnedQty = Number(sale.returnedQuantity || 0);
 
-              if (isReturn) {
-                returnSum += Math.abs(netAmount);
-              } else {
-                soldSum += netAmount;
+              const grossAmount = unitPrice * totalQty;
+              soldSum += grossAmount;
+
+              if (returnedQty > 0) {
+                returnSum += (unitPrice * returnedQty);
               }
             }
           });
