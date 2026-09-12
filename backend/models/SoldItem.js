@@ -35,6 +35,10 @@ const soldItemSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  lastReturnedAt: {
+    type: Date,
+    default: null
+  },
   price: { 
     type: Number, 
     required: true 

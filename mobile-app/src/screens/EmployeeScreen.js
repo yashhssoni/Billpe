@@ -35,7 +35,6 @@ export default function EmployeeScreen({ navigation, route }) {
   const [splitCash, setSplitCash] = useState('');
   const [splitOnline, setSplitOnline] = useState('');
   
-  // 3-Column Stats States
   const [todayTotalSold, setTodayTotalSold] = useState(0);
   const [todayTotalReturns, setTodayTotalReturns] = useState(0);
   const [todayNetTotal, setTodayNetTotal] = useState(0);
@@ -64,7 +63,6 @@ export default function EmployeeScreen({ navigation, route }) {
     }
   }, [user]);
 
-  // Real-time update on screen focus
   useFocusEffect(
     useCallback(() => {
       fetchTodayLiveSales();
@@ -94,23 +92,22 @@ export default function EmployeeScreen({ navigation, route }) {
         if (data.success && data.sales) {
           data.sales.forEach(sale => {
             const saleTime = new Date(sale.createdAt).getTime();
-            if (saleTime >= startOfDay) {
-              const unitPrice = Number(sale.price || 0);
-              const totalQty = Number(sale.quantity || 0);
-              const returnedQty = Number(sale.returnedQuantity || 0);
+            const lastReturnTime = sale.lastReturnedAt ? new Date(sale.lastReturnedAt).getTime() : 0;
+            const unitPrice = Number(sale.price || 0);
+            const totalQty = Number(sale.quantity || 0);
+            const returnedQty = Number(sale.returnedQuantity || 0);
 
+            if (saleTime >= startOfDay) {
               const grossAmount = unitPrice * totalQty;
               soldSum += grossAmount;
-
-              if (returnedQty > 0) {
-                returnSum += (unitPrice * returnedQty);
-              }
+            }
+            if (returnedQty > 0 && lastReturnTime >= startOfDay) {
+              returnSum += (unitPrice * returnedQty);
             }
           });
         }
       }
 
-      // Offline queue ke pending bills ko bhi stats mein jod lo
       const localOfflineSales = await AsyncStorage.getItem('offline_sales_queue');
       if (localOfflineSales) {
         const queue = JSON.parse(localOfflineSales);
@@ -188,13 +185,13 @@ export default function EmployeeScreen({ navigation, route }) {
           return;
         }
 
-        if (found.stock <= 0 || found.sold === true) {
+       if (found.stock <= 0 || found.sold === true) {
           Alert.alert(
             t('⚠️ Item Out of Stock'),
-            `${found.productName} has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".`,
+            `${found.productName} ${t('has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".')}`,
             [
               { text: t('cancel'), style: 'cancel' },
-              { text: t('Open Return Portal') || 'Open Return Portal', onPress: () => navigation.navigate('ReturnStock') }
+              { text: t('Open Return Portal'), onPress: () => navigation.navigate('ReturnStock') }
             ]
           );
           return;
@@ -204,10 +201,10 @@ export default function EmployeeScreen({ navigation, route }) {
         const currentCartQty = existingCartItem ? existingCartItem.quantity : 0;
         const availableStock = found.stock - currentCartQty;
 
-        if (availableStock <= 0) {
-          Alert.alert(t('error'), `All available units (${found.stock}) are already in your cart.`);
-          return;
-        }
+       if (availableStock <= 0) {
+    Alert.alert(t('error'), `${t('All available units')} (${found.stock}) ${t('are already in your cart.')}`);
+    return;
+  }
 
         if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
         setShowLowestRate(false);
@@ -269,9 +266,9 @@ export default function EmployeeScreen({ navigation, route }) {
     const minAllowed = parseFloat(currentScanned?.lowestRate ?? currentScanned?.price ?? 0);
 
     if (enteredPrice < minAllowed) {
-      Alert.alert(t('error'), `Minimum allowed price is ₹${minAllowed}`);
-      return;
-    }
+    Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
+    return;
+  }
 
     const qtyToAdd = parseInt(selectedQty, 10);
     if (isNaN(qtyToAdd) || qtyToAdd <= 0) {
@@ -284,7 +281,7 @@ export default function EmployeeScreen({ navigation, route }) {
     const totalDesired = currentInCart + qtyToAdd;
 
     if (totalDesired > currentScanned.stock) {
-      Alert.alert(t('error'), `Only ${currentScanned.stock} units available in stock. You already have ${currentInCart} in cart.`);
+      Alert.alert(t('error'), `${t('Only')} ${currentScanned.stock} ${t('units available in stock. You already have')} ${currentInCart} ${t('in cart.')}`);
       return;
     }
 
@@ -351,8 +348,8 @@ export default function EmployeeScreen({ navigation, route }) {
     const newPrice = parseFloat(editPrice);
     const minAllowed = parseFloat(editingCartItem?.lowestRate ?? editingCartItem?.price ?? 0);
 
-    if (newPrice < minAllowed) {
-      Alert.alert(t('error'), `Minimum allowed price is ₹${minAllowed}`);
+   if (newPrice < minAllowed) {
+      Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
       return;
     }
 
@@ -363,7 +360,7 @@ export default function EmployeeScreen({ navigation, route }) {
     }
 
     if (newQuantity > editingCartItem.stock) {
-      Alert.alert(t('error'), `Only ${editingCartItem.stock} units available in stock.`);
+      Alert.alert(t('error'), `${t('Only')} ${editingCartItem.stock} ${t('units available in stock.')}`);
       return;
     }
 

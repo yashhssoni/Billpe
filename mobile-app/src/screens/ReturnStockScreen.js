@@ -16,8 +16,6 @@ export default function ReturnStockScreen({ navigation }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
-  
-  // States for multiple invoices management
   const [availableInvoices, setAvailableInvoices] = useState([]);
   const [invoiceDropdownVisible, setInvoiceDropdownVisible] = useState(false);
   const [targetProduct, setTargetProduct] = useState(null);
@@ -48,16 +46,15 @@ export default function ReturnStockScreen({ navigation }) {
       const foundProduct = (prodRes.products || []).find(p => p.barcode === data);
 
       if (!foundProduct) {
-        setLoading(false);
-        Alert.alert(t('error'), 'Product not found in store database.', [
-          { text: 'Scan Again', onPress: () => setScanner(true) },
-          { text: 'Back', style: 'cancel', onPress: () => navigation.goBack() }
-        ]);
-        return;
-      }
+      setLoading(false);
+      Alert.alert(t('error'), t('Product not found in store database.'), [
+        { text: t('Scan Again'), onPress: () => setScanner(true) },
+        { text: t('back'), style: 'cancel', onPress: () => navigation.goBack() }
+      ]);
+      return;
+    }
 
       const { data: saleRes } = await axiosInstance.get('/sales/history');
-      // Saari returnable sales nikalo is barcode ki
       const pastSales = (saleRes.sales || []).filter(s => {
         const isMatch = s.barcode === data || (s.productId && s.productId._id === foundProduct._id);
         const maxAllowed = Number(s.quantity || 0) - Number(s.returnedQuantity || 0);
@@ -66,29 +63,28 @@ export default function ReturnStockScreen({ navigation }) {
 
       setLoading(false);
 
-      if (pastSales.length === 0) {
-        Alert.alert(
-          'No Active Sales', 
-          `No returnable items found for "${foundProduct.productName}". All units might have already been returned.`,
-          [
-            { text: 'Scan Again', onPress: () => setScanner(true) },
-            { text: 'Dashboard', style: 'cancel', onPress: () => navigation.goBack() }
-          ]
-        );
-        return;
-      }
+     if (pastSales.length === 0) {
+      Alert.alert(
+        t('No Active Sales'), 
+        `${t('No returnable items found for')} "${foundProduct.productName}". ${t('All units might have already been returned.')}`,
+        [
+          { text: t('Scan Again'), onPress: () => setScanner(true) },
+          { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+        ]
+      );
+      return;
+    }
 
       setTargetProduct(foundProduct);
       setScannedBarcode(data);
       setAvailableInvoices(pastSales);
 
-      // By default sabse pehli/latest invoice select kar lo
       selectActiveInvoice(pastSales[0], foundProduct, data);
     } catch (err) {
-      setLoading(false);
-      Alert.alert('Error', 'Failed to fetch sales history for verification.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+     setLoading(false);
+    Alert.alert(t('error'), t('Failed to fetch sales history for verification.'), [
+      { text: t('confirm') || 'OK', onPress: () => navigation.goBack() }
+    ]);
     }
   };
 
@@ -108,10 +104,9 @@ export default function ReturnStockScreen({ navigation }) {
     if (!returnItemData) return;
 
     if (returnQty <= 0 || returnQty > returnItemData.maxAllowed) {
-      Alert.alert('Error', `Please enter valid quantity (Max allowed: ${returnItemData.maxAllowed})`);
+      Alert.alert(t('error'), `${t('Please enter valid quantity (Max allowed:')} ${returnItemData.maxAllowed})`);
       return;
     }
-
     setSubmitting(true);
     const res = await processReturn(
       returnItemData.barcode,
@@ -121,16 +116,16 @@ export default function ReturnStockScreen({ navigation }) {
     setSubmitting(false);
 
     if (res.success) {
-      Alert.alert(
-        'Return Processed ✅',
-        `Restocked: ${returnQty} unit(s)\nRefund to Customer: ₹${res.refundAmount?.toFixed(2)}\nCurrent Stock: ${res.currentStock} pcs`,
+     Alert.alert(
+        t('Return Processed ✅'),
+        `${t('Restocked:')} ${returnQty} ${t('unit(s)')}\n${t('Refund to Customer:')} ₹${res.refundAmount?.toFixed(2)}\n${t('Current Stock:')} ${res.currentStock} ${t('pcs')}`,
         [
-          { text: 'Return Another', onPress: () => { setReturnItemData(null); setScanner(true); } },
-          { text: 'Back to Dashboard', onPress: () => navigation.goBack() }
+          { text: t('Return Another'), onPress: () => { setReturnItemData(null); setScanner(true); } },
+          { text: t('Back to Dashboard'), onPress: () => navigation.goBack() }
         ]
       );
     } else {
-      Alert.alert('Error', res.message || 'Failed to process return.');
+     Alert.alert(t('error'), res.message || t('Failed to process return.'));
     }
   };
 
@@ -158,7 +153,7 @@ export default function ReturnStockScreen({ navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#f59e0b" />
-        <Text style={[styles.infoText, { marginTop: 12 }]}>Verifying sale history...</Text>
+       <Text style={[styles.infoText, { marginTop: 12 }]}>{t('Verifying sale history...')}</Text>
       </View>
     );
   }
@@ -170,18 +165,17 @@ export default function ReturnStockScreen({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <BackButton onPress={() => navigation.goBack()} />
-      <Text style={styles.header}>वापसी पोर्टल (Return Portal)</Text>
+      <Text style={styles.header}>{t('Return Portal')}</Text>
 
       <View style={styles.returnCard}>
         <View style={styles.cardHeader}>
-          {/* Invoice Dropdown Pill Button */}
           <TouchableOpacity 
             style={styles.invoiceDropdownPill}
             onPress={() => {
               if (availableInvoices.length > 1) {
                 setInvoiceDropdownVisible(true);
               } else {
-                Alert.alert('Info', 'Only 1 active invoice available for this item.');
+                Alert.alert(t('error'), t('Only 1 active invoice available for this item.'));
               }
             }}
             activeOpacity={0.8}
@@ -204,53 +198,53 @@ export default function ReturnStockScreen({ navigation }) {
           )}
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.productTitle}>{returnItemData.product.productName}</Text>
-            <Text style={styles.categoryText}>Category: {returnItemData.product.category || 'General'}</Text>
-            <Text style={styles.barcodeText}>Barcode: #{returnItemData.barcode}</Text>
+            <Text style={styles.categoryText}>{t('Category:')} {returnItemData.product.category || 'General'}</Text>
+            <Text style={styles.barcodeText}>{t('Barcode:')} #{returnItemData.barcode}</Text>
           </View>
         </View>
 
         <View style={styles.detailsBox}>
-          <Text style={styles.boxHeading}>सत्यापन (Verification)</Text>
+          <Text style={styles.boxHeading}>{t('Verification')}</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>ग्राहक (Customer):</Text>
-            <Text style={styles.infoValueHighlight}>{returnItemData.sale.customerName || 'Walk-in Customer'}</Text>
+            <Text style={styles.infoLabel}>{t('Customer:')}</Text>
+            <Text style={styles.infoValueHighlight}>{returnItemData.sale.customerName || t('Walk-in Customer')}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Mobile:</Text>
+            <Text style={styles.infoLabel}>{t('Mobile:')}</Text>
             <Text style={styles.infoVal}>{returnItemData.sale.customerPhone || 'N/A'}</Text>
           </View>
           {returnItemData.sale.customerAddress && returnItemData.sale.customerAddress !== 'N/A' ? (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Address:</Text>
+              <Text style={styles.infoLabel}>{t('Address:')}</Text>
               <Text style={styles.infoVal} numberOfLines={1}>{returnItemData.sale.customerAddress}</Text>
             </View>
           ) : null}
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Billed By:</Text>
+            <Text style={styles.infoLabel}>{t('Billed By:')}</Text>
             <Text style={styles.infoVal}>{returnItemData.sale.soldByName || 'Staff'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sale Date:</Text>
+            <Text style={styles.infoLabel}>{t('Sale Date:')}</Text>
             <Text style={styles.infoVal}>{new Date(returnItemData.sale.createdAt).toLocaleDateString('en-IN')}</Text>
           </View>
         </View>
 
         <View style={styles.statsRow}>
           <View style={styles.statPill}>
-            <Text style={styles.statLabel}>खरीदा (Bought)</Text>
-            <Text style={styles.statVal}>{returnItemData.sale.quantity} पीस</Text>
+            <Text style={styles.statLabel}>{t('Bought')}</Text>
+            <Text style={styles.statVal}>{returnItemData.sale.quantity} {t('pcs')}</Text>
           </View>
           <View style={styles.statPill}>
-            <Text style={styles.statLabel}>पहले ही वापस (Returned)</Text>
-            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0} पीस</Text>
+            <Text style={styles.statLabel}>{t('Already Returned')}</Text>
+            <Text style={[styles.statVal, { color: '#f59e0b' }]}>{returnItemData.sale.returnedQuantity || 0} {t('pcs')}</Text>
           </View>
           <View style={[styles.statPill, { borderColor: '#10b981' }]}>
-            <Text style={styles.statLabel}>अधिकतम वापसी (Max)</Text>
-            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed} पीस</Text>
+            <Text style={styles.statLabel}>{t('Max Returnable')}</Text>
+            <Text style={[styles.statVal, { color: '#10b981' }]}>{returnItemData.maxAllowed} {t('pcs')}</Text>
           </View>
         </View>
 
-        <Text style={styles.selectorLabel}>वापसी मात्रा (Return Qty):</Text>
+        <Text style={styles.selectorLabel}>{t('Return Qty:')}</Text>
         <View style={styles.qtyControlRow}>
           <TouchableOpacity 
             style={styles.qtyBtn}
@@ -272,7 +266,7 @@ export default function ReturnStockScreen({ navigation }) {
         </View>
 
         <View style={styles.refundSummaryBox}>
-          <Text style={styles.refundLabel}>कुल रिफंड (Total Refund):</Text>
+          <Text style={styles.refundLabel}>{t('Total Refund:')}</Text>
           <Text style={styles.refundAmount}>₹{(returnQty * returnItemData.sale.price).toFixed(2)}</Text>
         </View>
 
@@ -285,7 +279,7 @@ export default function ReturnStockScreen({ navigation }) {
           {submitting ? (
             <ActivityIndicator color="#0f172a" size="small" />
           ) : (
-            <Text style={styles.confirmBtnText}>✓ पुष्टि करें (Confirm Return)</Text>
+            <Text style={styles.confirmBtnText}>✓ {t('Confirm Return')}</Text>
           )}
         </TouchableOpacity>
 
@@ -293,16 +287,15 @@ export default function ReturnStockScreen({ navigation }) {
           style={styles.scanAnotherBtn}
           onPress={() => { setReturnItemData(null); setScanner(true); }}
         >
-          <Text style={styles.scanAnotherText}>दूसरा स्कैन (Scan Another)</Text>
+          <Text style={styles.scanAnotherText}>{t('Scan Another')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Invoice Switcher Modal */}
       <Modal visible={invoiceDropdownVisible} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>📄 Select Invoice Number</Text>
-            <Text style={styles.modalSubTitle}>Multiple invoices found for this barcode. Choose customer bill:</Text>
+            <Text style={styles.modalTitle}>📄 {t('Select Invoice Number')}</Text>
+            <Text style={styles.modalSubTitle}>{t('Multiple invoices found for this barcode. Choose customer bill:')}</Text>
 
             <FlatList
               data={availableInvoices}
@@ -324,8 +317,8 @@ export default function ReturnStockScreen({ navigation }) {
                       <Text style={styles.selectInvoiceNo}>#{item.invoiceNo}</Text>
                       <Text style={styles.selectDate}>{new Date(item.createdAt).toLocaleDateString('en-IN')}</Text>
                     </View>
-                    <Text style={styles.selectCustomer}>👤 {item.customerName || 'Walk-in'} ({item.customerPhone || 'N/A'})</Text>
-                    <Text style={styles.selectQty}>Returnable: <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{maxRet} pcs</Text></Text>
+                    <Text style={styles.selectCustomer}>👤 {item.customerName || t('Walk-in')} ({item.customerPhone || 'N/A'})</Text>
+                    <Text style={styles.selectQty}>{t('Returnable:')} <Text style={{ color: '#10b981', fontWeight: 'bold' }}>{maxRet} {t('pcs')}</Text></Text>
                   </TouchableOpacity>
                 );
               }}
@@ -335,7 +328,7 @@ export default function ReturnStockScreen({ navigation }) {
               style={styles.modalCloseBtn}
               onPress={() => setInvoiceDropdownVisible(false)}
             >
-              <Text style={styles.modalCloseText}>Close</Text>
+              <Text style={styles.modalCloseText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
