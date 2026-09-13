@@ -350,3 +350,28 @@ exports.syncOfflineSales = async (req, res, next) => {
     next(error);
   }
 };
+exports.getReturnableSales = async (req, res, next) => {
+  try {
+    const { barcode } = req.query;
+    const storeId = req.user.storeId;
+
+    if (!barcode) {
+      return res.status(400).json({ success: false, message: "Barcode is required." });
+    }
+
+    // Yeh query active + archived (deleted from UI) dono records ko check karegi
+    const sales = await SoldItem.find({
+      storeId,
+      barcode
+    }).sort({ createdAt: -1 });
+
+    const returnableSales = sales.filter(s => {
+      const maxAllowed = Number(s.quantity || 0) - Number(s.returnedQuantity || 0);
+      return maxAllowed > 0;
+    });
+
+    res.json({ success: true, sales: returnableSales });
+  } catch (error) {
+    next(error);
+  }
+};

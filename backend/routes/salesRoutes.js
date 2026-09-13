@@ -7,14 +7,16 @@ const {
   archiveSales,
   exportSalesRange,
   permanentDeleteRange,
-  syncOfflineSales 
+  syncOfflineSales,
+  getReturnableSales 
 } = require('../controllers/salesController');
 const { protect } = require('../middleware/authMiddleware');
 const { checkSubscriptionAndQuota } = require('../middleware/checkLimit');
 
 router.post('/checkout', protect, checkSubscriptionAndQuota, checkout);
-router.post('/sync-offline', protect, syncOfflineSales); // <-- Aur yahan route add kar le
+router.post('/sync-offline', protect, syncOfflineSales);
 router.get('/history', protect, getSalesHistory);
+router.get('/returnable-lookup', protect, getReturnableSales);
 router.post('/return', protect, processReturn);
 
 router.post('/history/archive', protect, archiveSales);

@@ -46,34 +46,31 @@ export default function ReturnStockScreen({ navigation }) {
       const foundProduct = (prodRes.products || []).find(p => p.barcode === data);
 
       if (!foundProduct) {
-      setLoading(false);
-      Alert.alert(t('error'), t('Product not found in store database.'), [
-        { text: t('Scan Again'), onPress: () => setScanner(true) },
-        { text: t('back'), style: 'cancel', onPress: () => navigation.goBack() }
-      ]);
-      return;
-    }
-
-      const { data: saleRes } = await axiosInstance.get('/sales/history');
-      const pastSales = (saleRes.sales || []).filter(s => {
-        const isMatch = s.barcode === data || (s.productId && s.productId._id === foundProduct._id);
-        const maxAllowed = Number(s.quantity || 0) - Number(s.returnedQuantity || 0);
-        return isMatch && maxAllowed > 0;
-      });
-
-      setLoading(false);
-
-     if (pastSales.length === 0) {
-      Alert.alert(
-        t('No Active Sales'), 
-        `${t('No returnable items found for')} "${foundProduct.productName}". ${t('All units might have already been returned.')}`,
-        [
+        setLoading(false);
+        Alert.alert(t('error'), t('Product not found in store database.'), [
           { text: t('Scan Again'), onPress: () => setScanner(true) },
-          { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
-        ]
-      );
-      return;
-    }
+          { text: t('back'), style: 'cancel', onPress: () => navigation.goBack() }
+        ]);
+        return;
+      }
+
+      // YAHAN BADLAAV KIYA HAI: Purane history ke bajaye naya returnable lookup API call hoga jo archived items bhi check karega
+      const { data: saleRes } = await axiosInstance.get(`/sales/returnable-lookup?barcode=${data}`);
+      const pastSales = saleRes.sales || [];
+
+      setLoading(false);
+
+      if (pastSales.length === 0) {
+        Alert.alert(
+          t('No Active Sales'), 
+          `${t('No returnable items found for')} "${foundProduct.productName}". ${t('All units might have already been returned.')}`,
+          [
+            { text: t('Scan Again'), onPress: () => setScanner(true) },
+            { text: t('Back to Dashboard'), style: 'cancel', onPress: () => navigation.goBack() }
+          ]
+        );
+        return;
+      }
 
       setTargetProduct(foundProduct);
       setScannedBarcode(data);
@@ -81,10 +78,10 @@ export default function ReturnStockScreen({ navigation }) {
 
       selectActiveInvoice(pastSales[0], foundProduct, data);
     } catch (err) {
-     setLoading(false);
-    Alert.alert(t('error'), t('Failed to fetch sales history for verification.'), [
-      { text: t('confirm') || 'OK', onPress: () => navigation.goBack() }
-    ]);
+      setLoading(false);
+      Alert.alert(t('error'), t('Failed to fetch sales history for verification.'), [
+        { text: t('confirm') || 'OK', onPress: () => navigation.goBack() }
+      ]);
     }
   };
 
