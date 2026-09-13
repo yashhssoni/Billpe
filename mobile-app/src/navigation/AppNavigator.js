@@ -12,19 +12,19 @@ import AdminStack from './AdminStack';
 import EmployeeStack from './EmployeeStack';
 
 // --- Demo Mode Screens Import ---
-import DemoAdminDashboard from '../screens/demo/DemoAdminDashboard';
-import DemoEmployeeScreen from '../screens/demo/DemoEmployeeScreen';
-import DemoAdminScanner from '../screens/demo/DemoAdminScanner';
-import DemoAddEmployeeScreen from '../screens/demo/DemoAddEmployeeScreen';
-import DemoBarcodeGenerator from '../screens/demo/DemoBarcodeGenerator';
-import DemoManageDatabase from '../screens/demo/DemoManageDatabase';
-import DemoSoldItemsScreen from '../screens/demo/DemoSoldItemsScreen';
-import DemoSubscriptionScreen from '../screens/demo/DemoSubscriptionScreen';
-import DemoSettingsHubScreen from '../screens/demo/DemoSettingsHubScreen';
-import DemoSupportScreen from '../screens/demo/DemoSupportScreen';
-import DemoReviewScreen from '../screens/demo/DemoReviewScreen';
-import DemoFaqScreen from '../screens/demo/DemoFaqScreen';
-import DemoReturnStockScreen from '../screens/demo/DemoReturnStockScreen';
+import DemoAdminDashboard from '../demo/DemoAdminDashboard';
+import DemoEmployeeScreen from '../demo/DemoEmployeeScreen';
+import DemoAdminScanner from '../demo/DemoAdminScanner';
+import DemoAddEmployeeScreen from '../demo/DemoAddEmployeeScreen';
+import DemoBarcodeGenerator from '../demo/DemoBarcodeGenerator';
+import DemoManageDatabase from '../demo/DemoManageDatabase';
+import DemoSoldItemsScreen from '../demo/DemoSoldItemsScreen';
+import DemoSubscriptionScreen from '../demo/DemoSubscriptionScreen';
+import DemoSettingsHubScreen from '../demo/DemoSettingsHubScreen';
+import DemoSupportScreen from '../demo/DemoSupportScreen';
+import DemoReviewScreen from '../demo/DemoReviewScreen';
+import DemoFaqScreen from '../demo/DemoFaqScreen';
+import DemoReturnStockScreen from '../demo/DemoReturnStockScreen';
 
 const Stack = createNativeStackNavigator();
 
