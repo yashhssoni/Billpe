@@ -291,6 +291,53 @@ export const translations = {
     faqA3: 'Print dialog opens automatically on bill generation. Connect printer once.',
     faqQ4: 'What if scanned item is sold?',
     faqA4: 'App shows past sale details and option to Restock.',
+    "faqQ5": "How to return an item if history was deleted?",
+  "faqA5": "Go to Return Portal -> Scan barcode -> System auto-detects remaining quantity and un-archives the record.",
+  
+  "faqQ6": "How to archive or delete a sale from history?",
+  "faqA6": "Go to Sold Items -> Tap Select Entry -> Choose records -> Tap Delete icon to hide them safely.",
+  
+  "faqQ7": "How to permanently delete old sales data?",
+  "faqA7": "Go to Sold Items -> Date Range -> Select dates -> Tap Permanent Delete Range.",
+  
+  "faqQ8": "How to download sales backup report?",
+  "faqA8": "Go to Sold Items -> Date Range -> Select dates -> Tap Download / Print Backup PDF.",
+  
+  "faqQ9": "How to handle items with similar barcodes?",
+  "faqA9": "Go to Checkout -> Scan item -> Select exact matching invoice from dropdown if multiple bills exist.",
+  
+  "faqQ10": "How to sync offline sales when online?",
+  "faqA10": "Connect to internet -> App automatically syncs pending offline checkouts to the database.",
+
+  "faqQ11": "How to process split payments (Cash + Online)?",
+  "faqA11": "Go to Checkout -> Select Split mode -> Enter cash amount and online amount -> Complete billing.",
+
+  "faqQ12": "How to manage database products and prices?",
+  "faqA12": "Go to Admin Dashboard -> Manage Database -> Tap product -> Modify price or stock -> Save.",
+
+  "faqQ13": "How to create custom product barcodes?",
+  "faqA13": "Go to Admin Dashboard -> Barcode Generator -> Enter product info -> Generate and print.",
+
+  "faqQ14": "How to add and manage employee staff accounts?",
+  "faqA14": "Go to Admin Dashboard -> Add Employee -> Enter staff credentials -> Assign roles.",
+
+  "faqQ15": "What happens to stock count after a checkout?",
+  "faqA15": "System instantly deducts sold quantities from live stock and flags zero-stock items as sold out.",
+
+  "faqQ16": "Can I restore an archived sale entry manually?",
+  "faqA16": "Manual restore is not needed; processing a return on any archived sale automatically un-archives it.",
+
+  "faqQ17": "Why is permanent delete blocked for certain dates?",
+  "faqA17": "System blocks permanent deletion if any items in that date range have pending returnable quantities.",
+
+  "faqQ18": "How to view sales summary for a specific date?",
+  "faqA18": "Go to Sold Items -> Date Range -> Select preset (Today / Last 7 Days) or custom dates to filter.",
+
+  "faqQ19": "Does BillPe support offline bill generation?",
+  "faqA19": "Yes, continue billing offline securely; local storage saves bills until network restores for syncing.",
+
+  "faqQ20": "How to share the exported PDF report via WhatsApp?",
+  "faqA20": "Go to Sold Items -> Date Range -> Download/Print PDF -> Use system share menu to send via WhatsApp.",
 
     reviewWallTitle: 'Merchant Reviews',
     reviewWallSubtitle: 'See how BillPe empowers stores.',
@@ -996,6 +1043,53 @@ subFeature2Desc: 'कम स्टॉक अलर्ट और स्वचा�
     faqA3: 'बिल बनते ही प्रिंट विंडो खुलती है। प्रिंटर कनेक्ट करें।',
     faqQ4: 'बिका हुआ सामान स्कैन हो तो क्या करें?',
     faqA4: 'ऐप पुराना हिसाब दिखाएगा और स्टॉक में वापस जोड़ने का विकल्प देगा।',
+    "faqQ5": "यदि बिक्री का इतिहास हटा दिया गया हो तो उत्पाद वापस (Return) कैसे करें?",
+  "faqA5": "रिटर्न पोर्टल पर जाएं -> बारकोड स्कैन करें -> सिस्टम बची हुई मात्रा खुद पहचान कर रिकॉर्ड को वापस अन-आर्काइव कर देता है।",
+  
+  "faqQ6": "इतिहास से बिक्री के रिकॉर्ड को आर्काइव या छिपाएं कैसे?",
+  "faqA6": "सोल्ड आइटम्स पर जाएं -> सेलेक्ट एंट्री दबाएं -> रिकॉर्ड चुनें -> उन्हें छिपाने के लिए डिलीट आइकॉन दबाएं।",
+  
+  "faqQ7": "पुराना बिक्री डेटा हमेशा के लिए (Permanently) डिलीट कैसे करें?",
+  "faqA7": "सोल्ड आइटम्स पर जाएं -> डेट रेंज चुनें -> तारीखें सेट करें -> परमानेंट डिलीट रेंज पर क्लिक करें।",
+  
+  "faqQ8": "बिक्री की बैकअप रिपोर्ट कैसे डाउनलोड करें?",
+  "faqA8": "सोल्ड आइटम्स पर जाएं -> डेट रेंज चुनें -> तारीखें सेट करें -> डाउनलोड / प्रिंट बैकअप पर क्लिक करें।",
+  
+  "faqQ9": "मिलते-जुलते या एक जैसे बारकोड वाले उत्पादों को कैसे संभालें?",
+  "faqA9": "चेकआउट पर जाएं -> उत्पाद स्कैन करें -> यदि एक से अधिक बिल हैं तो ड्रॉपडाउन से सही इनवॉइस चुनें।",
+  
+  "faqQ10": "इंटरनेट आने पर ऑफ़लाइन बिक्री का डेटा सिंक कैसे करें?",
+  "faqA10": "इंटरनेट से कनेक्ट करें -> ऐप ऑफ़लाइन बनाए गए बिलों को अपने आप डेटाबेस में सिंक कर लेता है।",
+
+  "faqQ11": "नकद और ऑनलाइन (Split Payments) भुगतान को कैसे दर्ज करें?",
+  "faqA11": "चेकआउट पर जाएं -> स्प्लिट मोड चुनें -> नकद राशि और ऑनलाइन राशि अलग-अलग दर्ज करें -> बिल पूरा करें।",
+
+  "faqQ12": "डेटाबेस में उत्पादों और कीमतों को कैसे प्रबंधित करें?",
+  "faqA12": "एडमिन डैशबोर्ड पर जाएं -> मैनेज डेटाबेस -> उत्पाद पर क्लिक करें -> कीमत या स्टॉक बदलकर सेव करें।",
+
+  "faqQ13": "कस्टम बारकोड कैसे तैयार करें?",
+  "faqA13": "एडमिन डैशबोर्ड पर जाएं -> बारकोड जेनरेटर -> उत्पाद की जानकारी भरें -> जनरेट करके प्रिंट करें।",
+
+  "faqQ14": "कर्मचारी (Staff) के खाते कैसे जोड़ें और प्रबंधित करें?",
+  "faqA14": "एडमिन डैशबोर्ड पर जाएं -> ऐड एम्प्लॉयी -> स्टाफ के लॉगिन विवरण भरें -> अधिकार (Role) दें।",
+
+  "faqQ15": "बिल बनने के बाद स्टॉक की गिनती पर क्या असर पड़ता है?",
+  "faqA15": "सिस्टम तुरंत बेची गई मात्रा को लाइव स्टॉक से घटा देता है और शून्य स्टॉक वाले उत्पादों को सोल्ड आउट कर देता है।",
+
+  "faqQ16": "क्या छिपे हुए (Archived) बिक्री रिकॉर्ड को वापस लाया जा सकता है?",
+  "faqA16": "इसे मैन्युअल रूप से करने की जरूरत नहीं है; उस रिकॉर्ड पर जैसे ही रिटर्न प्रोसेस होगा, वह अपने आप वापस दिखने लगेगा।",
+
+  "faqQ17": "कुछ तारीखों के लिए परमानेंट डिलीट ब्लॉक क्यों हो जाता है?",
+  "faqA17": "यदि उस समय के दौरान किसी उत्पाद का रिटर्न आना बाकी है, तो सुरक्षा के लिए सिस्टम डिलीट करने से रोक देता है।",
+
+  "faqQ18": "किसी खास तारीख की बिक्री का सारांश कैसे देखें?",
+  "faqA18": "सोल्ड आइटम्स पर जाएं -> डेट रेंज -> निर्धारित विकल्प (आज / पिछले 7 दिन) या अपनी पसंद की तारीख चुनें।",
+
+  "faqQ19": "क्या बिना इंटरनेट के ऑफ़लाइन बिल बनाए जा सकते हैं?",
+  "faqA19": "हाँ, ऑफ़लाइन बिलिंग पूरी तरह सुरक्षित है; इंटरनेट जुड़ते ही सारा डेटा अपने आप सर्वर पर चला जाता है।",
+
+  "faqQ20": "डाउनलोड की गई पीडीएफ रिपोर्ट को व्हाट्सएप पर कैसे भेजें?",
+  "faqA20": "सोल्ड आइटम्स -> डेट रेंज -> पीडीएफ डाउनलोड करें -> फोन के शेयर विकल्प से सीधे व्हाट्सएप पर भेजें।",
 
     reviewWallTitle: 'दुकानदारों की समीक्षाएं',
     reviewWallSubtitle: 'देखें BillPe कैसे मदद कर रहा है।',
