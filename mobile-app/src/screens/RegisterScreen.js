@@ -89,8 +89,17 @@ export default function RegisterScreen({ navigation }) {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scroll} 
+        showsVerticalScrollIndicator={false} 
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
         <View style={styles.card}>
           <Text style={styles.title}>{t('createAccount')}</Text>
           <Text style={styles.subtitle}>{t('registerSubtitle')}</Text>
@@ -99,6 +108,7 @@ export default function RegisterScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.tab, role === 'admin' && styles.activeTab]}
               onPress={() => setRole('admin')}
+              activeOpacity={0.8}
             >
               <Text style={[styles.tabText, role === 'admin' && styles.activeTabText]}>{t('roleAdmin')}</Text>
             </TouchableOpacity>
@@ -106,6 +116,7 @@ export default function RegisterScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.tab, role === 'employee' && styles.activeTab]}
               onPress={() => setRole('employee')}
+              activeOpacity={0.8}
             >
               <Text style={[styles.tabText, role === 'employee' && styles.activeTabText]}>{t('roleEmployee')}</Text>
             </TouchableOpacity>
@@ -174,6 +185,7 @@ export default function RegisterScreen({ navigation }) {
             style={styles.googleBtn}
             onPress={handleGoogleSignIn}
             disabled={fetchingGoogleUser}
+            activeOpacity={0.8}
           >
             {fetchingGoogleUser ? (
               <ActivityIndicator color="#fff" />
@@ -203,7 +215,7 @@ export default function RegisterScreen({ navigation }) {
             />
           )}
 
-          <TouchableOpacity onPress={handleSendOTP} disabled={loading} style={styles.btn}>
+          <TouchableOpacity onPress={handleSendOTP} disabled={loading} style={styles.btn} activeOpacity={0.8}>
             {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndRegisterBtn')}</Text>}
           </TouchableOpacity>
 
@@ -215,7 +227,7 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.demoTriggerText}>{t('🚀 Try Demo Mode (No Login Required)')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkContainer}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkContainer} activeOpacity={0.7}>
             <Text style={styles.linkText}>{t('alreadyHaveAccount')} <Text style={styles.linkHighlight}>{t('loginHighlight')}</Text></Text>
           </TouchableOpacity>
         </View>
@@ -226,58 +238,58 @@ export default function RegisterScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
-  scroll: { padding: 24, justifyContent: 'center', flexGrow: 1 },
-  card: { backgroundColor: '#1e293b', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#334155' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#94a3b8', marginBottom: 20 },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 4, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#334155' },
-  tab: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  scroll: { padding: 16, justifyContent: 'center', flexGrow: 1 },
+  card: { backgroundColor: '#1e293b', padding: 18, borderRadius: 20, borderWidth: 1, borderColor: '#334155' },
+  title: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginBottom: 2 },
+  subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 14 },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 3, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
+  tab: { flex: 1, paddingVertical: 10, borderRadius: 7, alignItems: 'center' },
   activeTab: { backgroundColor: '#10b981' },
-  tabText: { fontWeight: 'bold', color: '#94a3b8' },
+  tabText: { fontWeight: 'bold', color: '#94a3b8', fontSize: 13 },
   activeTabText: { color: '#0f172a' },
-  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, marginBottom: 12, fontSize: 15 },
+  input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 10, marginBottom: 10, fontSize: 14 },
   mandatoryInput: { borderWidth: 1.5, borderColor: '#38bdf8' },
   optionalInput: { borderWidth: 1, borderColor: '#334155' },
   btn: { 
     backgroundColor: '#10b981', 
     paddingVertical: 11, 
-    borderRadius: 12, 
+    borderRadius: 10, 
     alignItems: 'center', 
-    marginTop: 8 
+    marginTop: 6 
   },
   btnText: { 
     color: '#0f172a', 
     fontWeight: 'bold', 
-    fontSize: 16 
+    fontSize: 15 
   },
   demoTriggerBtn: {
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     borderWidth: 1.5,
     borderColor: '#f59e0b',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 11,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 12
+    marginTop: 10
   },
   demoTriggerText: {
     color: '#f59e0b',
     fontWeight: 'bold',
-    fontSize: 14
+    fontSize: 13
   },
-  linkContainer: { marginTop: 16, alignItems: 'center' },
-  linkText: { color: '#94a3b8', fontSize: 14 },
+  linkContainer: { marginTop: 14, alignItems: 'center' },
+  linkText: { color: '#94a3b8', fontSize: 13 },
   linkHighlight: { color: '#10b981', fontWeight: 'bold' },
   googleBtn: { 
     backgroundColor: '#2563eb', 
-    paddingHorizontal: 16, 
-    paddingVertical: 10, 
-    borderRadius: 12, 
+    paddingHorizontal: 14, 
+    paddingVertical: 11, 
+    borderRadius: 10, 
     alignItems: 'center', 
-    marginBottom: 12 
+    marginBottom: 10 
   },
   googleBtnText: { 
     color: '#fff', 
     fontWeight: 'bold', 
-    fontSize: 14 
+    fontSize: 13 
   },
 });
