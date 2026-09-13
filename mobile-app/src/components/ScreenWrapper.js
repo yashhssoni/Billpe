@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, StatusBar, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, ScrollView, StatusBar, Platform } from 'react-native';
 
 export default function ScreenWrapper({ 
   children, 
@@ -10,11 +10,7 @@ export default function ScreenWrapper({
   const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
   return (
-    <KeyboardAvoidingView 
-      style={[styles.root, style]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
+    <View style={[styles.root, style]}>
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" translucent={true} />
       
       {scrollable ? (
@@ -27,7 +23,6 @@ export default function ScreenWrapper({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={false}
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'} 
         >
           <View style={{ flex: 1, width: '100%' }}>
             {children}
@@ -38,7 +33,7 @@ export default function ScreenWrapper({
           {children}
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
