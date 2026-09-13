@@ -13,7 +13,7 @@ export default function DemoSubscriptionScreen({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel') || 'DEMO MODE'} | {t('trialStoreTitle') || 'Store Preview'}</Text>
+        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel') || 'DEMO MODE'} </Text>
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -22,14 +22,14 @@ export default function DemoSubscriptionScreen({ navigation }) {
       </View>
       
       <View style={styles.storeHeaderBox}>
-        <Text style={styles.storeNameText}>BillPe Demo Store</Text>
-        <Text style={styles.storeSubText}>📞 +91 9876543210 | 📍 Sarafa Market, Bhopal</Text>
+        <Text style={styles.storeNameText}>{t('demoStoreName')}</Text>
+        <Text style={styles.storeSubText}>📞 +91 9876543210 | 📍 {t('demoMarketLocation')}, Bhopal</Text>
       </View>
 
       <View style={styles.cardBox}>
-        <Text style={styles.success}>✨ DEMO TRIAL ACTIVE</Text>
-        <Text style={styles.dateText}>Status: Fully Unlocked for Store Testing</Text>
-        <Text style={styles.planPrice}>Monthly Plan: ₹600 / month</Text>
+        <Text style={styles.success}>✨ {t('demoTrialActiveText')}</Text>
+        <Text style={styles.dateText}>{t('statusFullyUnlockedText')}</Text>
+        <Text style={styles.planPrice}>{t('monthlyPlanPriceText') || 'Monthly Plan: ₹600 / month'}</Text>
       </View>
 
       <TouchableOpacity 
@@ -37,21 +37,21 @@ export default function DemoSubscriptionScreen({ navigation }) {
         onPress={() => navigation.replace('Register')}
         activeOpacity={0.8}
       >
-        <Text style={styles.registerBtnText}>🚀 Register Your Store Now (₹600/mo)</Text>
+        <Text style={styles.registerBtnText}>{t('registerStoreNowBtn') || '🚀 Register Your Store Now (₹600/mo)'}</Text>
       </TouchableOpacity>
 
       <View style={styles.historyContainer}>
-        <Text style={styles.historyHeader}>📜 Subscription Features</Text>
+        <Text style={styles.historyHeader}>📜 {t('subscriptionFeaturesTitle') || 'Subscription Features'}</Text>
         <View style={styles.historyItem}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.historyPlan}>Unlimited Billing & Thermal Printing</Text>
-            <Text style={styles.historyDate}>Multi-device staff sync included</Text>
+            <Text style={styles.historyPlan}>{t('subFeature1Title') || 'Unlimited Billing & Thermal Printing'}</Text>
+            <Text style={styles.historyDate}>{t('subFeature1Desc') || 'Multi-device staff sync included'}</Text>
           </View>
         </View>
         <View style={styles.historyItem}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.historyPlan}>Advanced Barcode & Stock Management</Text>
-            <Text style={styles.historyDate}>Low stock alerts & automated reports</Text>
+            <Text style={styles.historyPlan}>{t('subFeature2Title') || 'Advanced Barcode & Stock Management'}</Text>
+            <Text style={styles.historyDate}>{t('subFeature2Desc') || 'Low stock alerts & automated reports'}</Text>
           </View>
         </View>
       </View>

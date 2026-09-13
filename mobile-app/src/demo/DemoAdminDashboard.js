@@ -64,7 +64,7 @@ export default function DemoAdminDashboard({ navigation }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.demoBanner}>
-          <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel') || 'DEMO MODE'} | {t('exploreAllFeaturesText') || 'Explore all features freely'}</Text>
+          <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel') || 'DEMO MODE'}</Text>
         </View>
 
         <View style={styles.header}>

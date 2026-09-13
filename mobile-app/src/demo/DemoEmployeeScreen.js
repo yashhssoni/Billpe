@@ -336,6 +336,22 @@ export default function DemoEmployeeScreen({ navigation, route }) {
         </View>
       </View>
 
+      {/* 1. Upar Sell/Scan karne ki button */}
+      {!currentScanned && (
+        <TouchableOpacity style={styles.scanBtn} onPress={() => setScanner(true)}>
+          <Text style={styles.scanBtnText}>📸 {t('scanAddStockCard')} (Demo Scan)</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* 2. Uske neeche Return Portal wali button */}
+      <TouchableOpacity 
+        style={styles.returnPortalBtn} 
+        onPress={() => navigation.navigate('DemoReturnStockScreen')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.returnPortalBtnText}>🔄 {t('Open Return Portal') || 'Open Return / Exchange Portal'}</Text>
+      </TouchableOpacity>
+
       {currentScanned ? (
         <ScrollView contentContainerStyle={styles.billingContainer} showsVerticalScrollIndicator={false}>
           <View style={styles.productHeaderRow}>
@@ -401,10 +417,6 @@ export default function DemoEmployeeScreen({ navigation, route }) {
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           {loading && <ActivityIndicator size="small" color="#10b981" style={{ marginBottom: 10 }} />}
-
-          <TouchableOpacity style={styles.scanBtn} onPress={() => setScanner(true)}>
-            <Text style={styles.scanBtnText}>📸 {t('scanAddStockCard')} (Demo Scan)</Text>
-          </TouchableOpacity>
 
           <View style={styles.cardBox}>
             <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
@@ -584,7 +596,7 @@ const styles = StyleSheet.create({
     borderColor: '#38bdf8',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    marginBottom: 14,
+    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'space-around'
   },
@@ -594,6 +606,18 @@ const styles = StyleSheet.create({
   todayStatValReturn: { color: '#f59e0b', fontSize: 15, fontWeight: 'bold' },
   todayStatValNet: { color: '#10b981', fontSize: 15, fontWeight: 'bold' },
   todayStatDivider: { width: 1.5, height: 32, backgroundColor: '#334155' },
+  scanBtn: { backgroundColor: '#10b981', padding: 13, borderRadius: 12, alignItems: 'center', marginBottom: 8 },
+  scanBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },
+  returnPortalBtn: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 14
+  },
+  returnPortalBtnText: { color: '#f59e0b', fontWeight: 'bold', fontSize: 13 },
   paymentToggleRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   payModeBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155', backgroundColor: '#0f172a', alignItems: 'center' },
   payModeBtnActive: { backgroundColor: '#10b981', borderColor: '#10b981' },
@@ -607,8 +631,6 @@ const styles = StyleSheet.create({
   subText: { color: '#cbd5e1', fontSize: 12 },
   stockBadge: { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 1, borderColor: '#10b981', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   stockBadgeText: { color: '#10b981', fontWeight: 'bold', fontSize: 11 },
-  scanBtn: { backgroundColor: '#10b981', padding: 15, borderRadius: 12, alignItems: 'center', marginBottom: 10 },
-  scanBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 },
   logoutText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
   qtyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },

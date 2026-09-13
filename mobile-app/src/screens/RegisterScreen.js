@@ -238,8 +238,18 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, marginBottom: 12, fontSize: 15 },
   mandatoryInput: { borderWidth: 1.5, borderColor: '#38bdf8' },
   optionalInput: { borderWidth: 1, borderColor: '#334155' },
-  btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
-  btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  btn: { 
+    backgroundColor: '#10b981', 
+    paddingVertical: 11, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginTop: 8 
+  },
+  btnText: { 
+    color: '#0f172a', 
+    fontWeight: 'bold', 
+    fontSize: 16 
+  },
   demoTriggerBtn: {
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     borderWidth: 1.5,
@@ -257,6 +267,17 @@ const styles = StyleSheet.create({
   linkContainer: { marginTop: 16, alignItems: 'center' },
   linkText: { color: '#94a3b8', fontSize: 14 },
   linkHighlight: { color: '#10b981', fontWeight: 'bold' },
-  googleBtn: { backgroundColor: '#2563eb', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginBottom: 12 },
-  googleBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  googleBtn: { 
+    backgroundColor: '#2563eb', 
+    paddingHorizontal: 16, 
+    paddingVertical: 10, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    marginBottom: 12 
+  },
+  googleBtnText: { 
+    color: '#fff', 
+    fontWeight: 'bold', 
+    fontSize: 14 
+  },
 });

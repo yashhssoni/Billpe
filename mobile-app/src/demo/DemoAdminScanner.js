@@ -344,9 +344,6 @@ export default function DemoAdminScanner({ navigation }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
-      <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('scanAddStockCard')}</Text>
-      </View>
 
       {scanner ? (
         <View style={StyleSheet.absoluteFill}>
@@ -552,8 +549,6 @@ export default function DemoAdminScanner({ navigation }) {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#0f172a' },
   title: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 16, textAlign: 'center', letterSpacing: -0.5 },
-  demoBanner: { backgroundColor: '#f59e0b', padding: 8, alignItems: 'center', zIndex: 20 },
-  demoBannerText: { color: '#0f172a', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
   uniformCameraOverlay: { position: 'absolute', top: 50, left: 20, right: 20, zIndex: 10 },
   sectionCard: { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
   sectionHeading: { fontSize: 13, fontWeight: '900', color: '#38bdf8', textTransform: 'uppercase', marginBottom: 14 },
