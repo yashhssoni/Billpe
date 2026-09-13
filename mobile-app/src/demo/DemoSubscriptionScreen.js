@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguageContext } from '../context/LanguageContext';
@@ -7,36 +7,13 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import BackButton from '../components/BackButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-const DEMO_SUBSCRIPTION_LIMIT_KEY = 'billpe_demo_sub_action_count';
-
 export default function DemoSubscriptionScreen({ navigation }) {
   const { t } = useContext(LanguageContext);
-  const [actionsLeft, setActionsLeft] = useState(5);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadDemoLimit();
-    }, [])
-  );
-
-  const loadDemoLimit = async () => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_SUBSCRIPTION_LIMIT_KEY);
-      if (savedCount !== null) {
-        const remaining = 5 - parseInt(savedCount, 10);
-        setActionsLeft(remaining > 0 ? remaining : 0);
-      } else {
-        setActionsLeft(5);
-      }
-    } catch (e) {
-      console.log('Error loading limit:', e);
-    }
-  };
 
   return (
     <ScreenWrapper scrollable={true}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel') || 'DEMO MODE'} | {t('trialStoreTitle') || 'Store Preview'}</Text>
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -45,26 +22,36 @@ export default function DemoSubscriptionScreen({ navigation }) {
       </View>
       
       <View style={styles.storeHeaderBox}>
-        <Text style={styles.storeNameText}>{t('demoStoreName')}</Text>
-        <Text style={styles.storeSubText}>📞 +91 9876543210 | 📍 {t('demoMarketLocation')}</Text>
+        <Text style={styles.storeNameText}>BillPe Demo Store</Text>
+        <Text style={styles.storeSubText}>📞 +91 9876543210 | 📍 Sarafa Market, Bhopal</Text>
       </View>
 
       <View style={styles.cardBox}>
-        <Text style={styles.success}>✨ {t('demoTrialActiveText')}</Text>
-        <Text style={styles.dateText}>{t('statusFullyUnlockedText')}</Text>
-        <Text style={styles.dateText}>{t('actionsRemainingText')}: {actionsLeft} / 5</Text>
+        <Text style={styles.success}>✨ DEMO TRIAL ACTIVE</Text>
+        <Text style={styles.dateText}>Status: Fully Unlocked for Store Testing</Text>
+        <Text style={styles.planPrice}>Monthly Plan: ₹600 / month</Text>
       </View>
 
+      <TouchableOpacity 
+        style={styles.registerBtn} 
+        onPress={() => navigation.replace('Register')}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.registerBtnText}>🚀 Register Your Store Now (₹600/mo)</Text>
+      </TouchableOpacity>
+
       <View style={styles.historyContainer}>
-        <Text style={styles.historyHeader}>📜 {t('subscriptionHistoryTitle')}</Text>
+        <Text style={styles.historyHeader}>📜 Subscription Features</Text>
         <View style={styles.historyItem}>
-          <View>
-            <Text style={styles.historyPlan}>{t('demoTrialPlanFree')}</Text>
-            <Text style={styles.historyDate}>{t('activatedTodayText')}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.historyPlan}>Unlimited Billing & Thermal Printing</Text>
+            <Text style={styles.historyDate}>Multi-device staff sync included</Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.historyStatus, { color: '#10b981' }]}>{t('activeStatusText')}</Text>
-            <Text style={styles.historyExpiry}>{t('validForActionsText')}</Text>
+        </View>
+        <View style={styles.historyItem}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.historyPlan}>Advanced Barcode & Stock Management</Text>
+            <Text style={styles.historyDate}>Low stock alerts & automated reports</Text>
           </View>
         </View>
       </View>
@@ -78,14 +65,15 @@ const styles = StyleSheet.create({
   storeHeaderBox: { backgroundColor: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
   storeNameText: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 4 },
   storeSubText: { fontSize: 13, color: '#94a3b8', textAlign: 'center' },
-  cardBox: { backgroundColor: '#1e293b', padding: 16, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: '#10b981' },
+  cardBox: { backgroundColor: '#1e293b', padding: 18, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#10b981', alignItems: 'center' },
   success: { color: '#10b981', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  dateText: { color: '#cbd5e1', fontSize: 14, textAlign: 'center', marginBottom: 4 },
+  dateText: { color: '#cbd5e1', fontSize: 14, textAlign: 'center', marginBottom: 6 },
+  planPrice: { color: '#38bdf8', fontSize: 16, fontWeight: 'bold', marginTop: 4 },
+  registerBtn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginBottom: 20, elevation: 4 },
+  registerBtnText: { color: '#0f172a', fontWeight: '900', fontSize: 15 },
   historyContainer: { marginTop: 10, marginBottom: 30 },
   historyHeader: { fontSize: 16, fontWeight: 'bold', color: '#fff', marginBottom: 12 },
-  historyItem: { backgroundColor: '#1e293b', padding: 14, borderRadius: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
+  historyItem: { backgroundColor: '#1e293b', padding: 14, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
   historyPlan: { color: '#fff', fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
-  historyDate: { color: '#94a3b8', fontSize: 12 },
-  historyStatus: { fontWeight: 'bold', fontSize: 12, marginBottom: 2 },
-  historyExpiry: { color: '#94a3b8', fontSize: 11 }
+  historyDate: { color: '#94a3b8', fontSize: 12 }
 });

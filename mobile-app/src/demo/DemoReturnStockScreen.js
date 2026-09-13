@@ -1,4 +1,4 @@
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { 
   View, Text, StyleSheet, Alert, TouchableOpacity, 
   ActivityIndicator, ScrollView, Image, SafeAreaView, Platform, Modal, FlatList
@@ -20,7 +20,6 @@ export default function DemoReturnStockScreen({ navigation }) {
   const [scanner, setScanner] = useState(true);
   const [loading, setLoading] = useState(false);
   const [availableInvoices, setAvailableInvoices] = useState([]);
-  const [invoiceDropdownVisible, setInvoiceDropdownVisible] = useState(false);
   const [targetProduct, setTargetProduct] = useState(null);
   const [scannedBarcode, setScannedBarcode] = useState('');
 
@@ -56,9 +55,12 @@ export default function DemoReturnStockScreen({ navigation }) {
 
       if (currentCount >= 5) {
         Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने रिटर्न के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
+          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
+          t('demoLimitReachedMsg') || "आपने रिटर्न के 5 फ्री एक्शन्स पूरे कर लिए हैं।",
+          [
+            { text: t('cancel') || "Cancel", style: 'cancel' },
+            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
+          ]
         );
         return;
       }

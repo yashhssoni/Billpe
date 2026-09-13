@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView, Platform 
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LanguageContext } from '../context/LanguageContext';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -95,9 +94,12 @@ export default function DemoManageDatabase({ navigation }) {
 
       if (currentCount >= 5) {
         Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने डेटाबेस के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
+          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
+          t('demoLimitReachedMsg') || "आपने डेटाबेस एडिट/डिलीट के 5 फ्री एक्शन्स पूरे कर लिए हैं।",
+          [
+            { text: t('cancel') || "Cancel", style: 'cancel' },
+            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
+          ]
         );
         return;
       }
@@ -243,7 +245,7 @@ export default function DemoManageDatabase({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 DEMO MODE | Actions Left / शेष एक्शन: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -313,11 +315,11 @@ export default function DemoManageDatabase({ navigation }) {
                       currentStock <= 0 ? styles.outOfStockTag : (currentStock === 1 ? styles.uniqueTag : styles.bulkTag)
                     ]}>
                       <Text style={[
-  styles.stockTagText, 
-  currentStock <= 0 ? styles.outOfStockText : (currentStock === 1 ? styles.uniqueTagText : styles.bulkTagText)
-]}>
-  {currentStock <= 0 ? t('soldOutBadgeText') : `${currentStock} ${t('pcsInStockText')}`}
-</Text>
+                        styles.stockTagText, 
+                        currentStock <= 0 ? styles.outOfStockText : (currentStock === 1 ? styles.uniqueTagText : styles.bulkTagText)
+                      ]}>
+                        {currentStock <= 0 ? t('soldOutBadgeText') : `${currentStock} ${t('pcsInStockText')}`}
+                      </Text>
                     </View>
                   </View>
 

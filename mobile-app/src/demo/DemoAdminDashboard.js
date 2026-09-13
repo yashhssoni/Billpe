@@ -1,15 +1,12 @@
-import React, { useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useContext } from 'react';
 import { 
   View, Text, TouchableOpacity, ScrollView, StyleSheet, 
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, 
   Platform 
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-
-const DEMO_DASHBOARD_LIMIT_KEY = 'billpe_demo_dashboard_action_count';
 
 export default function DemoAdminDashboard({ navigation }) {
   const { logout } = useContext(AuthContext);
@@ -19,7 +16,6 @@ export default function DemoAdminDashboard({ navigation }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
-  const [actionsLeft, setActionsLeft] = useState(5);
   const scrollViewRef = useRef(null);
 
   const menuItems = [
@@ -31,55 +27,8 @@ export default function DemoAdminDashboard({ navigation }) {
     { title: t('subscriptionCard'), icon: '💳', screen: 'DemoSubscriptionScreen' },
   ];
 
-  useEffect(() => {
-    loadDemoLimit();
-  }, []);
-
-  const loadDemoLimit = async () => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_DASHBOARD_LIMIT_KEY);
-      if (savedCount !== null) {
-        const remaining = 5 - parseInt(savedCount, 10);
-        setActionsLeft(remaining > 0 ? remaining : 0);
-      } else {
-        setActionsLeft(5);
-      }
-    } catch (e) {
-      console.log('Error loading demo limit:', e);
-    }
-  };
-
-  const handleDemoActionWrapper = async (callback) => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_DASHBOARD_LIMIT_KEY);
-      const currentCount = savedCount ? parseInt(savedCount, 10) : 0;
-
-      if (currentCount >= 5) {
-        Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
-        );
-        return;
-      }
-
-      const nextCount = currentCount + 1;
-      await AsyncStorage.setItem(DEMO_DASHBOARD_LIMIT_KEY, nextCount.toString());
-      
-      const remaining = 5 - nextCount;
-      setActionsLeft(remaining > 0 ? remaining : 0);
-
-      callback();
-    } catch (e) {
-      console.log('Error updating demo limit:', e);
-      callback();
-    }
-  };
-
   const handleMenuPress = (screenName) => {
-    handleDemoActionWrapper(() => {
-      navigation.navigate(screenName);
-    });
+    navigation.navigate(screenName);
   };
 
   const handleSubmitReview = async () => {
@@ -88,14 +37,12 @@ export default function DemoAdminDashboard({ navigation }) {
       return;
     }
 
-    handleDemoActionWrapper(() => {
-      setSubmittingReview(true);
-      setTimeout(() => {
-        setSubmittingReview(false);
-        Alert.alert('🎉 ' + t('success'), t('feedbackSubmittedSuccess'));
-        setHasReviewed(true);
-      }, 500);
-    });
+    setSubmittingReview(true);
+    setTimeout(() => {
+      setSubmittingReview(false);
+      Alert.alert('🎉 ' + t('success'), t('feedbackSubmittedSuccess'));
+      setHasReviewed(true);
+    }, 500);
   };
 
   const handleInputFocus = () => {
@@ -117,7 +64,7 @@ export default function DemoAdminDashboard({ navigation }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.demoBanner}>
-          <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+          <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel') || 'DEMO MODE'} | {t('exploreAllFeaturesText') || 'Explore all features freely'}</Text>
         </View>
 
         <View style={styles.header}>
@@ -138,7 +85,7 @@ export default function DemoAdminDashboard({ navigation }) {
             </View>
 
             <TouchableOpacity 
-              onPress={() => handleDemoActionWrapper(() => navigation.navigate('DemoEmployeeScreen', { isAdminSwitch: true }))}
+              onPress={() => navigation.navigate('DemoEmployeeScreen', { isAdminSwitch: true })}
               style={styles.topBillingBtn}
               activeOpacity={0.8}
             >
@@ -169,7 +116,7 @@ export default function DemoAdminDashboard({ navigation }) {
         </View>
 
         <TouchableOpacity
-          onPress={() => handleDemoActionWrapper(() => navigation.navigate('DemoSettingsHubScreen'))}
+          onPress={() => navigation.navigate('DemoSettingsHubScreen')}
           style={styles.fullWidthCard}
           activeOpacity={0.7}
         >

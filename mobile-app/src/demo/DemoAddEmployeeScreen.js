@@ -7,7 +7,6 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import BackButton from '../components/BackButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-const DEMO_EMP_LIMIT_KEY = 'billpe_demo_emp_action_count';
 const DEMO_EMPLOYEES_KEY = 'billpe_demo_local_employees';
 
 export default function DemoAddEmployeeScreen({ navigation }) {
@@ -21,7 +20,6 @@ export default function DemoAddEmployeeScreen({ navigation }) {
   ]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [actionsLeft, setActionsLeft] = useState(5);
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingEmp, setEditingEmp] = useState(null);
@@ -29,51 +27,9 @@ export default function DemoAddEmployeeScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      loadDemoLimit();
       fetchDemoEmployees();
     }, [])
   );
-
-  const loadDemoLimit = async () => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_EMP_LIMIT_KEY);
-      if (savedCount !== null) {
-        const remaining = 5 - parseInt(savedCount, 10);
-        setActionsLeft(remaining > 0 ? remaining : 0);
-      } else {
-        setActionsLeft(5);
-      }
-    } catch (e) {
-      console.log('Error loading limit:', e);
-    }
-  };
-
-  const handleDemoActionWrapper = async (callback) => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_EMP_LIMIT_KEY);
-      const currentCount = savedCount ? parseInt(savedCount, 10) : 0;
-
-      if (currentCount >= 5) {
-        Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने कर्मचारी प्रबंधन के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
-        );
-        return;
-      }
-
-      const nextCount = currentCount + 1;
-      await AsyncStorage.setItem(DEMO_EMP_LIMIT_KEY, nextCount.toString());
-      
-      const remaining = 5 - nextCount;
-      setActionsLeft(remaining > 0 ? remaining : 0);
-
-      callback();
-    } catch (e) {
-      console.log('Error updating limit:', e);
-      callback();
-    }
-  };
 
   const fetchDemoEmployees = async () => {
     try {
@@ -94,31 +50,29 @@ export default function DemoAddEmployeeScreen({ navigation }) {
       return;
     }
 
-    handleDemoActionWrapper(async () => {
-      setLoading(true);
-      try {
-        const newEmp = {
-          _id: 'emp_' + Date.now(),
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim()
-        };
+    setLoading(true);
+    try {
+      const newEmp = {
+        _id: 'emp_' + Date.now(),
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim()
+      };
 
-        const updatedList = [newEmp, ...employees];
-        setEmployees(updatedList);
-        await AsyncStorage.setItem(DEMO_EMPLOYEES_KEY, JSON.stringify(updatedList));
+      const updatedList = [newEmp, ...employees];
+      setEmployees(updatedList);
+      await AsyncStorage.setItem(DEMO_EMPLOYEES_KEY, JSON.stringify(updatedList));
 
-        setLoading(false);
-        Alert.alert(t('success'), `${t('empCreatedSuccess')} (Demo)`);
-        setName('');
-        setEmail('');
-        setPassword('');
-        setPhone('');
-      } catch (err) {
-        setLoading(false);
-        Alert.alert(t('error'), t('Failed to add employee.'));
-      }
-    });
+      setLoading(false);
+      Alert.alert(t('success'), `${t('empCreatedSuccess')} (Demo)`);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setPhone('');
+    } catch (err) {
+      setLoading(false);
+      Alert.alert(t('error'), t('Failed to add employee.'));
+    }
   };
 
   const handleOpenEdit = (emp) => {
@@ -137,37 +91,35 @@ export default function DemoAddEmployeeScreen({ navigation }) {
       return;
     }
 
-    handleDemoActionWrapper(async () => {
-      setUpdating(true);
-      try {
-        const updatedList = employees.map(e => {
-          if (e._id === editingEmp.id) {
-            return {
-              ...e,
-              name: editingEmp.name.trim(),
-              email: editingEmp.email.trim().toLowerCase(),
-              phone: editingEmp.phone.trim()
-            };
-          }
-          return e;
-        });
+    setUpdating(true);
+    try {
+      const updatedList = employees.map(e => {
+        if (e._id === editingEmp.id) {
+          return {
+            ...e,
+            name: editingEmp.name.trim(),
+            email: editingEmp.email.trim().toLowerCase(),
+            phone: editingEmp.phone.trim()
+          };
+        }
+        return e;
+      });
 
-        setEmployees(updatedList);
-        await AsyncStorage.setItem(DEMO_EMPLOYEES_KEY, JSON.stringify(updatedList));
+      setEmployees(updatedList);
+      await AsyncStorage.setItem(DEMO_EMPLOYEES_KEY, JSON.stringify(updatedList));
 
-        setUpdating(false);
-        Alert.alert(t('success'), `${t('employeeUpdatedSuccess') || 'Employee updated successfully!'} (Demo)`);
-        setEditModalVisible(false);
-      } catch (err) {
-        setUpdating(false);
-        Alert.alert(t('error'), t('Failed to update employee.'));
-      }
-    });
+      setUpdating(false);
+      Alert.alert(t('success'), `${t('employeeUpdatedSuccess') || 'Employee updated successfully!'} (Demo)`);
+      setEditModalVisible(false);
+    } catch (err) {
+      setUpdating(false);
+      Alert.alert(t('error'), t('Failed to update employee.'));
+    }
   };
 
   const handleDeleteEmployee = (id, empName) => {
     Alert.alert(
-      t('confirmDeleteTitle') || 'Confirm Delete / डिलीट कन्फर्म करें',
+      t('confirmDeleteTitle') || 'Confirm Delete',
       `${t('areYouSureRemove') || 'Are you sure you want to remove'} ${empName}? (Demo)`,
       [
         { text: t('cancel'), style: 'cancel' },
@@ -175,16 +127,14 @@ export default function DemoAddEmployeeScreen({ navigation }) {
           text: t('delete'),
           style: 'destructive',
           onPress: async () => {
-            handleDemoActionWrapper(async () => {
-              try {
-                const filtered = employees.filter(e => e._id !== id);
-                setEmployees(filtered);
-                await AsyncStorage.setItem(DEMO_EMPLOYEES_KEY, JSON.stringify(filtered));
-                Alert.alert(t('success'), t('Employee removed successfully.'));
-              } catch (err) {
-                Alert.alert(t('error'), t('Failed to delete employee.'));
-              }
-            });
+            try {
+              const filtered = employees.filter(e => e._id !== id);
+              setEmployees(filtered);
+              await AsyncStorage.setItem(DEMO_EMPLOYEES_KEY, JSON.stringify(filtered));
+              Alert.alert(t('success'), t('Employee removed successfully.'));
+            } catch (err) {
+              Alert.alert(t('error'), t('Failed to delete employee.'));
+            }
           }
         }
       ]
@@ -194,7 +144,7 @@ export default function DemoAddEmployeeScreen({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('storeStaffTitle')}</Text>
       </View>
 
       <View style={styles.topBarRow}>

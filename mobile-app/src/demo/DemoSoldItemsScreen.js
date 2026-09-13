@@ -95,9 +95,12 @@ export default function DemoSoldItemsScreen({ navigation }) {
 
       if (currentCount >= 5) {
         Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने सोल्ड आइटम्स के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
+          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
+          t('demoLimitReachedMsg') || "आपने सोल्ड आइटम्स हटाने के 5 फ्री एक्शन्स पूरे कर लिए हैं।",
+          [
+            { text: t('cancel') || "Cancel", style: 'cancel' },
+            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
+          ]
         );
         return;
       }
@@ -207,60 +210,58 @@ export default function DemoSoldItemsScreen({ navigation }) {
   const handleDownloadBackup = async () => {
     if (!validateDates()) return;
 
-    handleDemoActionWrapper(async () => {
-      setActionLoading(true);
-      try {
-        const grandTotal = sales.reduce((acc, curr) => acc + (Number(curr.price || 0) * Number(curr.quantity || 1)), 0);
+    setActionLoading(true);
+    try {
+      const grandTotal = sales.reduce((acc, curr) => acc + (Number(curr.price || 0) * Number(curr.quantity || 1)), 0);
 
-        const rows = sales.map((item, idx) => `
-          <tr>
-            <td style="text-align: center;">${idx + 1}</td>
-            <td>${new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
-            <td>${item.invoiceNo}</td>
-            <td><strong>${item.productName}</strong></td>
-            <td style="text-align: center;">${item.quantity}</td>
-            <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
-            <td style="text-align: right;"><strong>₹${(item.price * item.quantity).toFixed(2)}</strong></td>
-            <td>${item.paymentMode}</td>
-            <td>${item.soldByName}</td>
-          </tr>
-        `).join('');
+      const rows = sales.map((item, idx) => `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td>${new Date(item.createdAt).toLocaleDateString('en-IN')}</td>
+          <td>${item.invoiceNo}</td>
+          <td><strong>${item.productName}</strong></td>
+          <td style="text-align: center;">${item.quantity}</td>
+          <td style="text-align: right;">₹${item.price.toFixed(2)}</td>
+          <td style="text-align: right;"><strong>₹${(item.price * item.quantity).toFixed(2)}</strong></td>
+          <td>${item.paymentMode}</td>
+          <td>${item.soldByName}</td>
+        </tr>
+      `).join('');
 
-        const html = `
-          <html>
-            <body style="font-family: sans-serif; padding: 15px;">
-              <h2 style="text-align: center;">BILLPE DEMO STORE</h2>
-              <h3 style="text-align: center;">Sales & Return Report (Demo)</h3>
-              <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px;">
-                <thead>
-                  <tr style="background: #eee;">
-                    <th style="border: 1px solid #ccc; padding: 6px;">Sr</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Date</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Invoice</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Product</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Qty</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Rate</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Total</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Mode</th>
-                    <th style="border: 1px solid #ccc; padding: 6px;">Staff</th>
-                  </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-              <div style="margin-top: 15px; font-size: 13px; text-align: right;">
-                <strong>Grand Total: ₹${grandTotal.toFixed(2)}</strong>
-              </div>
-            </body>
-          </html>
-        `;
+      const html = `
+        <html>
+          <body style="font-family: sans-serif; padding: 15px;">
+            <h2 style="text-align: center;">BILLPE DEMO STORE</h2>
+            <h3 style="text-align: center;">Sales & Return Report (Demo)</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px;">
+              <thead>
+                <tr style="background: #eee;">
+                  <th style="border: 1px solid #ccc; padding: 6px;">Sr</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Date</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Invoice</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Product</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Qty</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Rate</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Total</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Mode</th>
+                  <th style="border: 1px solid #ccc; padding: 6px;">Staff</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+            <div style="margin-top: 15px; font-size: 13px; text-align: right;">
+              <strong>Grand Total: ₹${grandTotal.toFixed(2)}</strong>
+            </div>
+          </body>
+        </html>
+      `;
 
-        setActionLoading(false);
-        await Print.printAsync({ html });
-      } catch (err) {
-        setActionLoading(false);
-        Alert.alert(t('error'), t('Failed to export backup sheet.'));
-      }
-    });
+      setActionLoading(false);
+      await Print.printAsync({ html });
+    } catch (err) {
+      setActionLoading(false);
+      Alert.alert(t('error'), t('Failed to export backup sheet.'));
+    }
   };
 
   const groupedSales = useMemo(() => {

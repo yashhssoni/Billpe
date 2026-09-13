@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, Button, TextInput, Alert, 
   TouchableOpacity, ActivityIndicator, ScrollView, Modal, SafeAreaView 
@@ -81,9 +81,12 @@ export default function DemoEmployeeScreen({ navigation, route }) {
 
       if (currentCount >= 5) {
         Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने बिलिंग के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
+          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
+          t('demoLimitReachedMsg') || "आपने बिलिंग के 5 फ्री एक्शन्स पूरे कर लिए हैं।",
+          [
+            { text: t('cancel') || "Cancel", style: 'cancel' },
+            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
+          ]
         );
         return;
       }
@@ -288,7 +291,7 @@ export default function DemoEmployeeScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
       </View>
 
       {isAdminSwitch && (
@@ -305,7 +308,7 @@ export default function DemoEmployeeScreen({ navigation, route }) {
       )}
 
       <View style={styles.topBar}>
-        <Text style={styles.header}>{t('Employee Portal')} (Demo)</Text>
+        <Text style={styles.header}>{t('Employee Portal')}</Text>
         <View style={styles.headerActions}>
           <LanguageSwitcher />
           <TouchableOpacity onPress={() => navigation.replace('Register')} style={styles.logoutBtn}>

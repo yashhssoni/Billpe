@@ -13,7 +13,6 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import BackButton from '../components/BackButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-const DEMO_SCANNER_LIMIT_KEY = 'billpe_demo_scanner_action_count';
 const DEMO_PRODUCTS_KEY = 'billpe_demo_local_products';
 
 const DEFAULT_POPULAR_CATEGORIES = [
@@ -39,7 +38,6 @@ export default function DemoAdminScanner({ navigation }) {
   const [focusedField, setFocusedField] = useState(null);
   const [categoryDropdownVisible, setCategoryDropdownVisible] = useState(false);
   const [dynamicCategories, setDynamicCategories] = useState(DEFAULT_POPULAR_CATEGORIES);
-  const [actionsLeft, setActionsLeft] = useState(5);
 
   const [modalState, setModalState] = useState({
     visible: false,
@@ -64,50 +62,8 @@ export default function DemoAdminScanner({ navigation }) {
   const [p, setP] = useState(initialFormState);
 
   useEffect(() => {
-    loadDemoLimit();
     loadExistingLocalCategories();
   }, []);
-
-  const loadDemoLimit = async () => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_SCANNER_LIMIT_KEY);
-      if (savedCount !== null) {
-        const remaining = 5 - parseInt(savedCount, 10);
-        setActionsLeft(remaining > 0 ? remaining : 0);
-      } else {
-        setActionsLeft(5);
-      }
-    } catch (e) {
-      console.log('Error loading demo limit:', e);
-    }
-  };
-
-  const handleDemoActionWrapper = async (callback) => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_SCANNER_LIMIT_KEY);
-      const currentCount = savedCount ? parseInt(savedCount, 10) : 0;
-
-      if (currentCount >= 5) {
-        Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने स्टॉक एंट्री के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
-        );
-        return;
-      }
-
-      const nextCount = currentCount + 1;
-      await AsyncStorage.setItem(DEMO_SCANNER_LIMIT_KEY, nextCount.toString());
-      
-      const remaining = 5 - nextCount;
-      setActionsLeft(remaining > 0 ? remaining : 0);
-
-      callback();
-    } catch (e) {
-      console.log('Error updating demo limit:', e);
-      callback();
-    }
-  };
 
   const loadExistingLocalCategories = async () => {
     try {
@@ -262,51 +218,49 @@ export default function DemoAdminScanner({ navigation }) {
 
     const finalCategory = p.category.trim() || 'General';
 
-    handleDemoActionWrapper(async () => {
-      setLoading(true);
-      try {
-        const newProduct = {
-          _id: 'demo_prod_' + Date.now(),
-          productName: p.name.trim(),
-          barcode: p.barcodeId || 'BARCODE_' + Date.now().toString().slice(-4),
-          price: lowestVal,
-          lowestRate: lowestVal,
-          highestRate: highestVal,
-          stock: stockVal,
-          category: finalCategory,
-          color: p.color.trim(),
-          description: p.description.trim(),
-          imageUri: p.imageUri
-        };
+    setLoading(true);
+    try {
+      const newProduct = {
+        _id: 'demo_prod_' + Date.now(),
+        productName: p.name.trim(),
+        barcode: p.barcodeId || 'BARCODE_' + Date.now().toString().slice(-4),
+        price: lowestVal,
+        lowestRate: lowestVal,
+        highestRate: highestVal,
+        stock: stockVal,
+        category: finalCategory,
+        color: p.color.trim(),
+        description: p.description.trim(),
+        imageUri: p.imageUri
+      };
 
-        const localData = await AsyncStorage.getItem(DEMO_PRODUCTS_KEY);
-        const products = localData ? JSON.parse(localData) : [];
-        products.unshift(newProduct);
-        await AsyncStorage.setItem(DEMO_PRODUCTS_KEY, JSON.stringify(products));
+      const localData = await AsyncStorage.getItem(DEMO_PRODUCTS_KEY);
+      const products = localData ? JSON.parse(localData) : [];
+      products.unshift(newProduct);
+      await AsyncStorage.setItem(DEMO_PRODUCTS_KEY, JSON.stringify(products));
 
-        setLoading(false);
-        setDynamicCategories(prev => {
-          if (!prev.some(cat => cat.toLowerCase() === finalCategory.toLowerCase())) {
-            return [...prev, finalCategory];
+      setLoading(false);
+      setDynamicCategories(prev => {
+        if (!prev.some(cat => cat.toLowerCase() === finalCategory.toLowerCase())) {
+          return [...prev, finalCategory];
+        }
+        return prev;
+      });
+
+      Alert.alert(t('success'), t('Product saved successfully! (Demo)'), [
+        { 
+          text: t('scanNextItem'), 
+          onPress: () => {
+            setP(initialFormState);
+            setScanner(true);
           }
-          return prev;
-        });
-
-        Alert.alert(t('success'), t('Product saved successfully! (Demo)'), [
-          { 
-            text: t('scanNextItem'), 
-            onPress: () => {
-              setP(initialFormState);
-              setScanner(true);
-            }
-          },
-          { text: t('dashboardBtn'), onPress: () => navigation.goBack() }
-        ]);
-      } catch (err) {
-        setLoading(false);
-        Alert.alert(t('error'), t('Failed to save product.'));
-      }
-    });
+        },
+        { text: t('dashboardBtn'), onPress: () => navigation.goBack() }
+      ]);
+    } catch (err) {
+      setLoading(false);
+      Alert.alert(t('error'), t('Failed to save product.'));
+    }
   };
 
   const getRequiredInputStyle = (fieldName, value) => {
@@ -391,7 +345,7 @@ export default function DemoAdminScanner({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('scanAddStockCard')}</Text>
       </View>
 
       {scanner ? (

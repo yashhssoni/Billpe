@@ -8,14 +8,15 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import BackButton from '../components/BackButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-const DEMO_BARCODE_LIMIT_KEY = 'billpe_demo_barcode_action_count';
+const DEMO_BARCODE_LIMIT_KEY = 'billpe_demo_barcode_generated_count';
 
 export default function DemoBarcodeGenerator({ navigation }) {
   const { t } = useContext(LanguageContext);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState('unique'); 
+  const [countInput, setCountInput] = useState('5');
   const [customBarcode, setCustomBarcode] = useState('');
-  const [actionsLeft, setActionsLeft] = useState(5);
+  const [barcodesLeft, setBarcodesLeft] = useState(5);
 
   useFocusEffect(
     useCallback(() => {
@@ -26,41 +27,11 @@ export default function DemoBarcodeGenerator({ navigation }) {
   const loadDemoLimit = async () => {
     try {
       const savedCount = await AsyncStorage.getItem(DEMO_BARCODE_LIMIT_KEY);
-      if (savedCount !== null) {
-        const remaining = 5 - parseInt(savedCount, 10);
-        setActionsLeft(remaining > 0 ? remaining : 0);
-      } else {
-        setActionsLeft(5);
-      }
+      const used = savedCount ? parseInt(savedCount, 10) : 0;
+      const remaining = 5 - used;
+      setBarcodesLeft(remaining > 0 ? remaining : 0);
     } catch (e) {
       console.log('Error loading limit:', e);
-    }
-  };
-
-  const handleDemoActionWrapper = async (callback) => {
-    try {
-      const savedCount = await AsyncStorage.getItem(DEMO_BARCODE_LIMIT_KEY);
-      const currentCount = savedCount ? parseInt(savedCount, 10) : 0;
-
-      if (currentCount >= 5) {
-        Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached / डेमो लिमिट समाप्त",
-          t('demoLimitReachedMsg') || "आपने बारकोड जनरेटर के 5 फ्री एक्शन्स पूरे कर लिए हैं। / You have used 5 free actions.",
-          [{ text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }]
-        );
-        return;
-      }
-
-      const nextCount = currentCount + 1;
-      await AsyncStorage.setItem(DEMO_BARCODE_LIMIT_KEY, nextCount.toString());
-      
-      const remaining = 5 - nextCount;
-      setActionsLeft(remaining > 0 ? remaining : 0);
-
-      callback();
-    } catch (e) {
-      console.log('Error updating limit:', e);
-      callback();
     }
   };
 
@@ -145,52 +116,83 @@ export default function DemoBarcodeGenerator({ navigation }) {
   };
 
   const handleGeneratePrint = async () => {
-    handleDemoActionWrapper(async () => {
-      let ids = [];
+    try {
+      const savedCount = await AsyncStorage.getItem(DEMO_BARCODE_LIMIT_KEY);
+      const used = savedCount ? parseInt(savedCount, 10) : 0;
 
+      if (used >= 5) {
+        Alert.alert(
+          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
+          t('demoLimitReachedMsg') || "आपने बारकोड जनरेशन की 5 की सीमा पूरी कर ली है।",
+          [
+            { text: t('cancel') || "Cancel", style: 'cancel' },
+            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
+          ]
+        );
+        return;
+      }
+
+      const requestedCount = mode === 'unique' ? (parseInt(countInput, 10) || 1) : 5;
+      const allowedCount = Math.min(requestedCount, 5 - used);
+
+      if (allowedCount <= 0) {
+        Alert.alert(
+          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
+          t('demoLimitReachedMsg') || "आपने 5 बारकोड की सीमा पूरी कर ली है।",
+          [
+            { text: t('cancel') || "Cancel", style: 'cancel' },
+            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
+          ]
+        );
+        return;
+      }
+
+      let ids = [];
       if (mode === 'unique') {
-        ids = generateUniqueIds(5); // Strictly 5 unique barcodes
+        ids = generateUniqueIds(allowedCount);
       } else {
         const singleCode = customBarcode.trim() || '89012345';
-        ids = Array(5).fill(singleCode); // Strictly 5 similar copies
+        ids = Array(allowedCount).fill(singleCode);
       }
 
       setLoading(true);
-      try {
-        const boxesHtml = ids.map((id) => `<div class="box">${generateBarcodeSVG(id)}</div>`).join('');
+      const boxesHtml = ids.map((id) => `<div class="box">${generateBarcodeSVG(id)}</div>`).join('');
 
-        const html = `<html>
-          <head>
-            <style>
-              body { margin: 0; padding: 10px; font-family: sans-serif; }
-              .header { text-align: center; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
-              .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-              .box { border: 1px solid #000; padding: 6px; text-align: center; break-inside: avoid; }
-              .box svg { width: 100%; height: auto; }
-            </style>
-          </head>
-          <body>
-            <div class="header">BillPe Demo Barcode Stickers (5 Demo Samples)</div>
-            <div class="grid">${boxesHtml}</div>
-          </body>
-        </html>`;
+      const html = `<html>
+        <head>
+          <style>
+            body { margin: 0; padding: 10px; font-family: sans-serif; }
+            .header { text-align: center; margin-bottom: 10px; font-size: 14px; font-weight: bold; }
+            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .box { border: 1px solid #000; padding: 6px; text-align: center; break-inside: avoid; }
+            .box svg { width: 100%; height: auto; }
+          </style>
+        </head>
+        <body>
+          <div class="header">BillPe Demo Barcode Stickers (${allowedCount} Barcodes Generated)</div>
+          <div class="grid">${boxesHtml}</div>
+        </body>
+      </html>`;
 
-        setLoading(false);
-        await Print.printAsync({ html });
-      } catch (err) {
-        setLoading(false);
-        Alert.alert(t('error'), t('Failed to generate barcodes.'));
-      }
-    });
+      const nextUsed = used + allowedCount;
+      await AsyncStorage.setItem(DEMO_BARCODE_LIMIT_KEY, nextUsed.toString());
+      setBarcodesLeft(Math.max(0, 5 - nextUsed));
+
+      setLoading(false);
+      await Print.printAsync({ html });
+    } catch (err) {
+      setLoading(false);
+      Alert.alert(t('error'), t('Failed to generate barcodes.'));
+    }
   };
 
   return (
     <ScreenWrapper scrollable={true}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 DEMO MODE | Barcodes Left / शेष बारकोड: {barcodesLeft}/5</Text>
       </View>
 
-      <View style={styles.topBarRow}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <BackButton onPress={() => navigation.goBack()} />
         <LanguageSwitcher />
       </View>
@@ -202,48 +204,59 @@ export default function DemoBarcodeGenerator({ navigation }) {
         <View style={styles.quotaCard}>
           <Text style={styles.quotaTitle}>{t('subscriptionStatus')}</Text>
           <Text style={[styles.quotaCount, { color: '#10b981' }]}>
-            {t('subActiveUnlimited')} (Demo Trial - Max 5 Limit)
+            Demo Trial (Max 5 Barcodes Limit)
           </Text>
         </View>
 
         <View style={styles.modeToggleRow}>
           <TouchableOpacity 
-  style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
-  onPress={() => setMode('unique')}
-  activeOpacity={0.8}
->
-  <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>{t('uniqueBarcodesModeText')}</Text>
-</TouchableOpacity>
+            style={[styles.modeBtn, mode === 'unique' && styles.modeBtnActive]} 
+            onPress={() => setMode('unique')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, mode === 'unique' && styles.modeBtnTextActive]}>{t('uniqueBarcodesModeText')}</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity 
-  style={[styles.modeBtn, mode === 'copies' && styles.modeBtnActive]} 
-  onPress={() => setMode('copies')}
-  activeOpacity={0.8}
->
+            style={[styles.modeBtn, mode === 'copies' && styles.modeBtnActive]} 
+            onPress={() => setMode('copies')}
+            activeOpacity={0.8}
+          >
             <Text style={[styles.modeBtnText, mode === 'copies' && styles.modeBtnTextActive]}>{t('similarCopiesModeText')}</Text>
-</TouchableOpacity>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
           {mode === 'unique' ? (
-    <Text style={styles.infoLabel}>{t('uniqueBarcodesInfoText')}</Text>
-  ) : (
-    <>
-      <Text style={styles.label}>{t('barcodeIdBlankPromptText')}</Text>
-      <TextInput
-        style={styles.input}
-        value={customBarcode}
-        onChangeText={setCustomBarcode}
-        placeholder={t('customBarcodePlaceholderText')}
-        placeholderTextColor="#64748b"
-      />
-      <Text style={styles.infoLabel}>{t('similarCopiesInfoText')}</Text>
-    </>
-  )}
+            <>
+              <Text style={styles.label}>Number of Barcodes to Generate (Max {barcodesLeft}):</Text>
+              <TextInput
+                style={styles.input}
+                value={countInput}
+                onChangeText={setCountInput}
+                keyboardType="numeric"
+                placeholder="e.g. 3"
+                placeholderTextColor="#64748b"
+              />
+              <Text style={styles.infoLabel}>{t('uniqueBarcodesInfoText')}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>{t('barcodeIdBlankPromptText')}</Text>
+              <TextInput
+                style={styles.input}
+                value={customBarcode}
+                onChangeText={setCustomBarcode}
+                placeholder={t('customBarcodePlaceholderText')}
+                placeholderTextColor="#64748b"
+              />
+              <Text style={styles.infoLabel}>{t('similarCopiesInfoText')}</Text>
+            </>
+          )}
 
           <TouchableOpacity onPress={handleGeneratePrint} disabled={loading} style={styles.btn}>
-    {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('printDemoBarcodesBtnText')}</Text>}
-  </TouchableOpacity>
+            {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('printDemoBarcodesBtnText')}</Text>}
+          </TouchableOpacity>
         </View>
       </View>
     </ScreenWrapper>
@@ -253,7 +266,6 @@ export default function DemoBarcodeGenerator({ navigation }) {
 const styles = StyleSheet.create({
   demoBanner: { backgroundColor: '#f59e0b', padding: 8, borderRadius: 10, marginBottom: 12, alignItems: 'center' },
   demoBannerText: { color: '#0f172a', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
-  topBarRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   centerWrapper: { width: '100%', alignItems: 'center' },
   title: { fontSize: 26, fontWeight: 'bold', color: '#fff', marginBottom: 6, textAlign: 'center' },
   subtitle: { fontSize: 13, color: '#94a3b8', marginBottom: 16, textAlign: 'center', paddingHorizontal: 10 },
