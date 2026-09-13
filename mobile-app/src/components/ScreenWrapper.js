@@ -13,18 +13,23 @@ export default function ScreenWrapper({
     <KeyboardAvoidingView 
       style={[styles.root, style]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <StatusBar barStyle="light-content" backgroundColor="#0f172a" translucent={true} />
       
       {scrollable ? (
         <ScrollView 
-          contentContainerStyle={[styles.scrollContent, { paddingTop: statusBarHeight + 12 }, contentContainerStyle]}
-          contentContainerStyle={[styles.scrollContent, contentContainerStyle]} // Wait, let's keep paddingTop clean inside root or scrollContent
+          contentContainerStyle={[
+            styles.scrollContent, 
+            { paddingTop: statusBarHeight + 12 }, 
+            contentContainerStyle
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={false}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'} 
         >
-          <View style={{ paddingTop: statusBarHeight + 12, flex: 1, width: '100%' }}>
+          <View style={{ flex: 1, width: '100%' }}>
             {children}
           </View>
         </ScrollView>
@@ -41,15 +46,18 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#0f172a',
+    overflow: 'hidden', 
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
     flexGrow: 1,
+    backgroundColor: '#0f172a', 
   },
   staticContent: {
     flex: 1,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    backgroundColor: '#0f172a',
   }
 });
