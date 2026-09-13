@@ -1,0 +1,62 @@
+import React, { useState, useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { LanguageContext } from '../../context/LanguageContext';
+import ScreenWrapper from '../../components/ScreenWrapper';
+import BackButton from '../../components/BackButton';
+
+export default function DemoFaqScreen({ navigation }) {
+  const { t } = useContext(LanguageContext);
+  const [activeIdx, setActiveIdx] = useState(null);
+
+  const FAQ_ITEMS = [
+    { q: t('faqQ1'), a: t('faqA1') },
+    { q: t('faqQ2'), a: t('faqA2') },
+    { q: t('faqQ3'), a: t('faqA3') },
+    { q: t('faqQ4'), a: t('faqA4') }
+  ];
+
+  return (
+    <ScreenWrapper scrollable={true}>
+      {/* Demo Mode Live Banner */}
+      <View style={styles.demoBanner}>
+        <Text style={styles.demoBannerText}>🚀 {t('DEMO MODE')}</Text>
+      </View>
+
+      <BackButton onPress={() => navigation.goBack()} />
+
+      <Text style={styles.title}>{t('faqTitle')} (Demo)</Text>
+      <Text style={styles.subtitle}>{t('faqSubtitle')}</Text>
+
+      {FAQ_ITEMS.map((item, index) => {
+        const isOpen = activeIdx === index;
+        return (
+          <TouchableOpacity 
+            key={index} 
+            style={styles.card} 
+            onPress={() => setActiveIdx(isOpen ? null : index)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.qRow}>
+              <Text style={styles.qText}>{item.q}</Text>
+              <Text style={styles.icon}>{isOpen ? '−' : '+'}</Text>
+            </View>
+            {isOpen && <Text style={styles.aText}>{item.a}</Text>}
+          </TouchableOpacity>
+        );
+      })}
+    </ScreenWrapper>
+  );
+}
+
+const styles = StyleSheet.create({
+  demoBanner: { backgroundColor: '#f59e0b', padding: 8, borderRadius: 10, marginBottom: 16, alignItems: 'center' },
+  demoBannerText: { color: '#0f172a', fontWeight: '900', fontSize: 12, letterSpacing: 0.5 },
+
+  title: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
+  subtitle: { color: '#94a3b8', fontSize: 13, marginBottom: 20, marginTop: 4 },
+  card: { backgroundColor: '#1e293b', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 12 },
+  qRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  qText: { color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1, paddingRight: 8 },
+  icon: { color: '#10b981', fontSize: 22, fontWeight: 'bold' },
+  aText: { color: '#cbd5e1', fontSize: 13, marginTop: 10, lineHeight: 20, borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 8 }
+});

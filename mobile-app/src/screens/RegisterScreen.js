@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert,
-  KeyboardAvoidingView, Platform, ScrollView, StyleSheet
+import { 
+  View, Text, TextInput, TouchableOpacity, ActivityIndicator, 
+  Alert, KeyboardAvoidingView, Platform, StyleSheet, ScrollView 
 } from 'react-native';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import axiosInstance from '../api/axiosInstance';
@@ -111,7 +111,6 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          {/* Mandatory Field */}
           <TextInput
             style={[styles.input, styles.mandatoryInput]}
             placeholder={role === 'admin' ? t('ownerNameAdmin') : t('ownerNameEmp')}
@@ -123,7 +122,6 @@ export default function RegisterScreen({ navigation }) {
 
           {role === 'admin' && (
             <>
-              {/* Mandatory Field */}
               <TextInput
                 style={[styles.input, styles.mandatoryInput]}
                 placeholder={t('storeNameReq')}
@@ -131,7 +129,6 @@ export default function RegisterScreen({ navigation }) {
                 value={form.storeName}
                 onChangeText={(val) => setForm({ ...form, storeName: val })}
               />
-              {/* Mandatory Field */}
               <TextInput
                 style={[styles.input, styles.mandatoryInput]}
                 placeholder={t('storeAddressReq')}
@@ -143,7 +140,6 @@ export default function RegisterScreen({ navigation }) {
           )}
 
           {role === 'employee' && (
-            /* Mandatory Field */
             <TextInput
               style={[styles.input, styles.mandatoryInput]}
               placeholder={t('storeIdReqEmp')}
@@ -153,7 +149,6 @@ export default function RegisterScreen({ navigation }) {
             />
           )}
 
-          {/* Mandatory Field */}
           <TextInput
             style={[styles.input, styles.mandatoryInput]}
             placeholder={t('phoneNumberReq')}
@@ -164,7 +159,6 @@ export default function RegisterScreen({ navigation }) {
             autoComplete="tel"
           />
 
-          {/* Mandatory Field */}
           <TextInput
             style={[styles.input, styles.mandatoryInput]}
             placeholder={t('emailAddressReq')}
@@ -188,7 +182,6 @@ export default function RegisterScreen({ navigation }) {
             )}
           </TouchableOpacity>
 
-          {/* Mandatory Field */}
           <TextInput
             style={[styles.input, styles.mandatoryInput]}
             placeholder={t('passwordReq')}
@@ -200,7 +193,6 @@ export default function RegisterScreen({ navigation }) {
             textContentType="newPassword"
           />
 
-          {/* Optional Field (GSTIN shifted right below password) */}
           {role === 'admin' && (
             <TextInput
               style={[styles.input, styles.optionalInput]}
@@ -213,6 +205,14 @@ export default function RegisterScreen({ navigation }) {
 
           <TouchableOpacity onPress={handleSendOTP} disabled={loading} style={styles.btn}>
             {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('verifyAndRegisterBtn')}</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.demoTriggerBtn} 
+            onPress={() => navigation.navigate('DemoAdminDashboard')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.demoTriggerText}>{t('🚀 Try Demo Mode (No Login Required)')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkContainer}>
@@ -236,10 +236,24 @@ const styles = StyleSheet.create({
   tabText: { fontWeight: 'bold', color: '#94a3b8' },
   activeTabText: { color: '#0f172a' },
   input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, marginBottom: 12, fontSize: 15 },
-  mandatoryInput: { borderWidth: 1.5, borderColor: '#38bdf8' }, // High-contrast border for important fields
-  optionalInput: { borderWidth: 1, borderColor: '#334155' },     // Normal subtle border for optional fields
+  mandatoryInput: { borderWidth: 1.5, borderColor: '#38bdf8' },
+  optionalInput: { borderWidth: 1, borderColor: '#334155' },
   btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  demoTriggerBtn: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12
+  },
+  demoTriggerText: {
+    color: '#f59e0b',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
   linkContainer: { marginTop: 16, alignItems: 'center' },
   linkText: { color: '#94a3b8', fontSize: 14 },
   linkHighlight: { color: '#10b981', fontWeight: 'bold' },

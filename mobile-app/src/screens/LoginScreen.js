@@ -141,6 +141,14 @@ export default function LoginScreen({ navigation }) {
             {loading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.btnText}>{t('signIn')}</Text>}
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            style={styles.demoTriggerBtn} 
+            onPress={() => navigation.navigate('DemoAdminDashboard')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.demoTriggerText}>{t('🚀 Try Demo Mode (No Login Required)')}</Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>{t('noAccount')} </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -149,6 +157,7 @@ export default function LoginScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
+
       <Modal
         visible={dropdownVisible}
         transparent={true}
@@ -235,6 +244,20 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#0f172a', color: '#fff', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: '#334155', marginBottom: 14, fontSize: 15 },
   btn: { backgroundColor: '#10b981', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 16 },
+  demoTriggerBtn: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1.5,
+    borderColor: '#f59e0b',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12
+  },
+  demoTriggerText: {
+    color: '#f59e0b',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
   footerText: { color: '#94a3b8', fontSize: 14 },
   registerText: { color: '#10b981', fontWeight: 'bold', fontSize: 14 },

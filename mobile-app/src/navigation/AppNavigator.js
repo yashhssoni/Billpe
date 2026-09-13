@@ -11,6 +11,21 @@ import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import AdminStack from './AdminStack';
 import EmployeeStack from './EmployeeStack';
 
+// --- Demo Mode Screens Import ---
+import DemoAdminDashboard from '../screens/demo/DemoAdminDashboard';
+import DemoEmployeeScreen from '../screens/demo/DemoEmployeeScreen';
+import DemoAdminScanner from '../screens/demo/DemoAdminScanner';
+import DemoAddEmployeeScreen from '../screens/demo/DemoAddEmployeeScreen';
+import DemoBarcodeGenerator from '../screens/demo/DemoBarcodeGenerator';
+import DemoManageDatabase from '../screens/demo/DemoManageDatabase';
+import DemoSoldItemsScreen from '../screens/demo/DemoSoldItemsScreen';
+import DemoSubscriptionScreen from '../screens/demo/DemoSubscriptionScreen';
+import DemoSettingsHubScreen from '../screens/demo/DemoSettingsHubScreen';
+import DemoSupportScreen from '../screens/demo/DemoSupportScreen';
+import DemoReviewScreen from '../screens/demo/DemoReviewScreen';
+import DemoFaqScreen from '../screens/demo/DemoFaqScreen';
+import DemoReturnStockScreen from '../screens/demo/DemoReturnStockScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -40,6 +55,21 @@ export default function AppNavigator() {
         ) : (
           <Stack.Screen name="EmployeeRoot" component={EmployeeStack} />
         )}
+
+       
+        <Stack.Screen name="DemoAdminDashboard" component={DemoAdminDashboard} />
+        <Stack.Screen name="DemoEmployeeScreen" component={DemoEmployeeScreen} />
+        <Stack.Screen name="DemoAdminScanner" component={DemoAdminScanner} />
+        <Stack.Screen name="DemoAddEmployeeScreen" component={DemoAddEmployeeScreen} />
+        <Stack.Screen name="DemoBarcodeGenerator" component={DemoBarcodeGenerator} />
+        <Stack.Screen name="DemoManageDatabase" component={DemoManageDatabase} />
+        <Stack.Screen name="DemoSoldItemsScreen" component={DemoSoldItemsScreen} />
+        <Stack.Screen name="DemoSubscriptionScreen" component={DemoSubscriptionScreen} />
+        <Stack.Screen name="DemoSettingsHubScreen" component={DemoSettingsHubScreen} />
+        <Stack.Screen name="DemoSupportScreen" component={DemoSupportScreen} />
+        <Stack.Screen name="DemoReviewScreen" component={DemoReviewScreen} />
+        <Stack.Screen name="DemoFaqScreen" component={DemoFaqScreen} />
+        <Stack.Screen name="DemoReturnStockScreen" component={DemoReturnStockScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
