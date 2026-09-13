@@ -6,11 +6,11 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LanguageContext } from '../../context/LanguageContext';
-import ScreenWrapper from '../../components/ScreenWrapper';
-import BackButton from '../../components/BackButton';
-import CustomDatePickerModal from '../../components/CustomDatePickerModal'; 
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
+import CustomDatePickerModal from '../components/CustomDatePickerModal'; 
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const DEMO_SOLD_LIMIT_KEY = 'billpe_demo_sold_action_count';
 const DEMO_SALES_HISTORY_KEY = 'billpe_demo_sales_history';

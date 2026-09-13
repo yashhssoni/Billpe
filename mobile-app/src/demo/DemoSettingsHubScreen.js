@@ -1,9 +1,9 @@
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { LanguageContext } from '../../context/LanguageContext';
-import ScreenWrapper from '../../components/ScreenWrapper';
-import BackButton from '../../components/BackButton';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function DemoSettingsHubScreen({ navigation }) {
   const { t } = useContext(LanguageContext);

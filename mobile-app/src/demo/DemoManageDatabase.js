@@ -7,10 +7,10 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LanguageContext } from '../../context/LanguageContext';
-import ScreenWrapper from '../../components/ScreenWrapper';
-import BackButton from '../../components/BackButton';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const DEMO_DB_LIMIT_KEY = 'billpe_demo_db_action_count';
 const DEMO_PRODUCTS_KEY = 'billpe_demo_local_products';

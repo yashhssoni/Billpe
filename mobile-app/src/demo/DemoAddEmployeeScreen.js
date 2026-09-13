@@ -2,10 +2,10 @@ import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, FlatList, StyleSheet, RefreshControl, Modal } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LanguageContext } from '../../context/LanguageContext';
-import ScreenWrapper from '../../components/ScreenWrapper';
-import BackButton from '../../components/BackButton';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const DEMO_EMP_LIMIT_KEY = 'billpe_demo_emp_action_count';
 const DEMO_EMPLOYEES_KEY = 'billpe_demo_local_employees';

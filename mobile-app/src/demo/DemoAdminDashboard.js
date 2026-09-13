@@ -5,9 +5,9 @@ import {
   Platform 
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContext } from '../../context/AuthContext';
-import { LanguageContext } from '../../context/LanguageContext';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { AuthContext } from '../context/AuthContext';
+import { LanguageContext } from '../context/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const DEMO_DASHBOARD_LIMIT_KEY = 'billpe_demo_dashboard_action_count';
 

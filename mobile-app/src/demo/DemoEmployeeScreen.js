@@ -7,9 +7,9 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LanguageContext } from '../../context/LanguageContext';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
-import BackButton from '../../components/BackButton';
+import { LanguageContext } from '../context/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import BackButton from '../components/BackButton';
 
 const DEMO_BILLING_LIMIT_KEY = 'billpe_demo_billing_action_count';
 
@@ -288,7 +288,7 @@ export default function DemoEmployeeScreen({ navigation, route }) {
   return (
     <View style={styles.container}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀🚀 {t('demoModeLabel')} | {t('actionsLeftLabel')}: {actionsLeft}/5</Text>
       </View>
 
       {isAdminSwitch && (

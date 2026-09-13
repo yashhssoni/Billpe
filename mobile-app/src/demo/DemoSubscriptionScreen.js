@@ -2,10 +2,10 @@ import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LanguageContext } from '../../context/LanguageContext';
-import ScreenWrapper from '../../components/ScreenWrapper';
-import BackButton from '../../components/BackButton';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
+import { LanguageContext } from '../context/LanguageContext';
+import ScreenWrapper from '../components/ScreenWrapper';
+import BackButton from '../components/BackButton';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const DEMO_SUBSCRIPTION_LIMIT_KEY = 'billpe_demo_sub_action_count';
 
