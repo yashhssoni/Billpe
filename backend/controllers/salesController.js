@@ -143,7 +143,13 @@ exports.processReturn = async (req, res, next) => {
     }
 
     soldRecord.returnedQuantity = (soldRecord.returnedQuantity || 0) + qtyToReturn;
-    soldRecord.lastReturnedAt = new Date(); // <-- Yeh track karega ki return kis date par execute hua hai
+    soldRecord.lastReturnedAt = new Date();
+    
+    
+    if (soldRecord.isArchived) {
+      soldRecord.isArchived = false;
+    }
+
     await soldRecord.save();
 
     const product = await Product.findOne({ _id: soldRecord.productId, storeId });
