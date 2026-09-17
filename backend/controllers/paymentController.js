@@ -8,7 +8,16 @@ exports.getQuotaStatus = async (req, res, next) => {
     
     let sub = await Subscription.findOne({ storeId });
     const now = new Date();
-    const isSubActive = Boolean(sub && sub.isActive && sub.expiryDate && now <= new Date(sub.expiryDate));
+    
+    let isSubActive = false;
+    if (sub && sub.isActive && sub.expiryDate) {
+      if (now <= new Date(sub.expiryDate)) {
+        isSubActive = true;
+      } else {
+        sub.isActive = false;
+        await sub.save();
+      }
+    }
 
     const history = await SubscriptionHistory.find({ storeId }).sort({ purchaseDate: -1 });
     const storeInfo = await Store.findOne({ _id: storeId }) || await Store.findOne({ storeId }) || {};
