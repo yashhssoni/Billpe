@@ -4,6 +4,7 @@ import {
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, 
   Platform 
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -17,6 +18,7 @@ export default function AdminDashboard({ navigation }) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [copiedId, setCopiedId] = useState(false);
   const scrollViewRef = useRef(null);
 
   const menuItems = [
@@ -67,6 +69,14 @@ export default function AdminDashboard({ navigation }) {
     }
   };
 
+  const handleCopyStoreId = async () => {
+    if (storeInfo?._id) {
+      await Clipboard.setStringAsync(storeInfo._id);
+      setCopiedId(true);
+      setTimeout(() => setCopiedId(false), 2000);
+    }
+  };
+
   const handleInputFocus = () => {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -85,14 +95,29 @@ export default function AdminDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header with store info on left, and original top row buttons on right with billing button right below them */}
-        <View style={styles.header}>
+      <View style={styles.header}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
             <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
               {storeInfo?.storeName || t('My Store')}
             </Text>
-            {storeInfo?._id && <Text style={styles.storeId}>{t('storeIdPrefix')} {storeInfo._id}</Text>}
+            
+            {storeInfo?._id && (
+              <View style={styles.storeIdRow}>
+                <Text style={styles.storeId} numberOfLines={1}>
+                  {t('storeIdPrefix')} {storeInfo._id}
+                </Text>
+                <TouchableOpacity 
+                  onPress={handleCopyStoreId} 
+                  style={styles.copyBtn}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.copyBtnText}>
+                    {copiedId ? '✓ Copied' : '📋 Copy'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.headerRightCol}>
@@ -116,7 +141,6 @@ export default function AdminDashboard({ navigation }) {
           </View>
         </View>
 
-        {/* Original 3x2 Grid */}
         <View style={styles.grid}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
@@ -134,8 +158,6 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Original Full-Width Settings Card */}
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsHubScreen')}
           style={styles.fullWidthCard}
@@ -240,7 +262,19 @@ const styles = StyleSheet.create({
 
   eyebrow: { color: '#94a3b8', fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
   storeName: { fontSize: 22, fontWeight: 'bold', color: '#fff', marginTop: 2, flexShrink: 1 },
-  storeId: { fontSize: 11, color: '#10b981', marginTop: 2, fontWeight: '500' },
+  
+  storeIdRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 },
+  storeId: { fontSize: 11, color: '#10b981', fontWeight: '500', flexShrink: 1 },
+  copyBtn: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  copyBtnText: { color: '#10b981', fontSize: 10, fontWeight: 'bold' },
+
   logoutBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
   logoutText: { color: '#ef4444', fontWeight: '600', fontSize: 12 },
   
