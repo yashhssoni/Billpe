@@ -10,7 +10,7 @@ export default function SupportScreen({ navigation }) {
   const SUPPORT_EMAIL = 'billpesupportservice@gmail.com';
 
   const handleWhatsApp = () => {
-    const text = encodeURIComponent('Hello BillPe Support, I need assistance regarding my Store details & account.');
+    const text = encodeURIComponent('Hello BillPe Support, I need assistance regarding my store details & account.');
     const url = `whatsapp://send?phone=${SUPPORT_PHONE}&text=${text}`;
     Linking.openURL(url).catch(() => {
       Alert.alert(t('error'), t('whatsAppNotInstalled'));

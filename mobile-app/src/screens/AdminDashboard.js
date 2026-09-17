@@ -2,9 +2,8 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { 
   View, Text, TouchableOpacity, ScrollView, StyleSheet, 
   TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, 
-  Platform 
+  Platform, Clipboard 
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { AuthContext } from '../context/AuthContext';
 import { LanguageContext } from '../context/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -69,9 +68,9 @@ export default function AdminDashboard({ navigation }) {
     }
   };
 
-  const handleCopyStoreId = async () => {
+  const handleCopyStoreId = () => {
     if (storeInfo?._id) {
-      await Clipboard.setStringAsync(storeInfo._id);
+      Clipboard.setString(storeInfo._id);
       setCopiedId(true);
       setTimeout(() => setCopiedId(false), 2000);
     }
@@ -95,7 +94,7 @@ export default function AdminDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-      <View style={styles.header}>
+        <View style={styles.header}>
           <View style={{ flex: 1, marginRight: 8 }}>
             <Text style={styles.eyebrow}>{t('adminDashboardTitle')}</Text>
             <Text style={styles.storeName} numberOfLines={1} ellipsizeMode="tail">
@@ -158,6 +157,7 @@ export default function AdminDashboard({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+        
         <TouchableOpacity
           onPress={() => navigation.navigate('SettingsHubScreen')}
           style={styles.fullWidthCard}
