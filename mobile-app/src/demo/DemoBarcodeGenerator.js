@@ -8,7 +8,8 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import BackButton from '../components/BackButton';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-const DEMO_BARCODE_LIMIT_KEY = 'billpe_demo_barcode_generated_count';
+const DEMO_ATTEMPTS_KEY = 'billpe_demo_generation_attempts_used';
+const MAX_ATTEMPTS = 5;
 
 export default function DemoBarcodeGenerator({ navigation }) {
   const { t } = useContext(LanguageContext);
@@ -16,22 +17,22 @@ export default function DemoBarcodeGenerator({ navigation }) {
   const [mode, setMode] = useState('unique'); 
   const [countInput, setCountInput] = useState('5');
   const [customBarcode, setCustomBarcode] = useState('');
-  const [barcodesLeft, setBarcodesLeft] = useState(5);
+  const [attemptsLeft, setAttemptsLeft] = useState(5);
 
   useFocusEffect(
     useCallback(() => {
-      loadDemoLimit();
+      loadDemoAttempts();
     }, [])
   );
 
-  const loadDemoLimit = async () => {
+  const loadDemoAttempts = async () => {
     try {
-      const savedCount = await AsyncStorage.getItem(DEMO_BARCODE_LIMIT_KEY);
-      const used = savedCount ? parseInt(savedCount, 10) : 0;
-      const remaining = 5 - used;
-      setBarcodesLeft(remaining > 0 ? remaining : 0);
+      const savedAttempts = await AsyncStorage.getItem(DEMO_ATTEMPTS_KEY);
+      const used = savedAttempts ? parseInt(savedAttempts, 10) : 0;
+      const remaining = MAX_ATTEMPTS - used;
+      setAttemptsLeft(remaining > 0 ? remaining : 0);
     } catch (e) {
-      console.log('Error loading limit:', e);
+      console.log('Error loading demo attempts:', e);
     }
   };
 
@@ -117,13 +118,13 @@ export default function DemoBarcodeGenerator({ navigation }) {
 
   const handleGeneratePrint = async () => {
     try {
-      const savedCount = await AsyncStorage.getItem(DEMO_BARCODE_LIMIT_KEY);
-      const used = savedCount ? parseInt(savedCount, 10) : 0;
+      const savedAttempts = await AsyncStorage.getItem(DEMO_ATTEMPTS_KEY);
+      const used = savedAttempts ? parseInt(savedAttempts, 10) : 0;
 
-      if (used >= 5) {
+      if (used >= MAX_ATTEMPTS) {
         Alert.alert(
           t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
-          t('demoLimitReachedMsg') || "आपने बारकोड जनरेशन की 5 की सीमा पूरी कर ली है।",
+          t('demoLimitReachedMsg') || "आपने बारकोड जनरेशन के सभी 5 फ्री मौके पूरे कर लिए हैं। आगे जारी रखने के लिए रजिस्टर करें।",
           [
             { text: t('cancel') || "Cancel", style: 'cancel' },
             { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
@@ -132,27 +133,17 @@ export default function DemoBarcodeGenerator({ navigation }) {
         return;
       }
 
-      const requestedCount = mode === 'unique' ? (parseInt(countInput, 10) || 1) : 5;
-      const allowedCount = Math.min(requestedCount, 5 - used);
-
-      if (allowedCount <= 0) {
-        Alert.alert(
-          t('demoLimitReachedTitle') || "🚀 Demo Limit Reached",
-          t('demoLimitReachedMsg') || "आपने 5 बारकोड की सीमा पूरी कर ली है।",
-          [
-            { text: t('cancel') || "Cancel", style: 'cancel' },
-            { text: t('registerNow') || "Register Now", onPress: () => navigation.replace('Register') }
-          ]
-        );
-        return;
-      }
+      const parsedCount = parseInt(countInput, 10) || 1;
+      
+      // Strict Check: 1 baar mein max 5 hi generate ho sakte hain!
+      const finalCount = mode === 'unique' ? Math.min(Math.max(parsedCount, 1), 5) : 5;
 
       let ids = [];
       if (mode === 'unique') {
-        ids = generateUniqueIds(allowedCount);
+        ids = generateUniqueIds(finalCount);
       } else {
         const singleCode = customBarcode.trim() || '89012345';
-        ids = Array(allowedCount).fill(singleCode);
+        ids = Array(5).fill(singleCode); // Similar copies mein fixed 5 copies
       }
 
       setLoading(true);
@@ -169,14 +160,14 @@ export default function DemoBarcodeGenerator({ navigation }) {
           </style>
         </head>
         <body>
-          <div class="header">BillPe Demo Barcode Stickers (${allowedCount} Barcodes Generated)</div>
+          <div class="header">BillPe Demo Barcode Stickers (${finalCount} Barcodes Generated)</div>
           <div class="grid">${boxesHtml}</div>
         </body>
       </html>`;
 
-      const nextUsed = used + allowedCount;
-      await AsyncStorage.setItem(DEMO_BARCODE_LIMIT_KEY, nextUsed.toString());
-      setBarcodesLeft(Math.max(0, 5 - nextUsed));
+      const nextUsed = used + 1;
+      await AsyncStorage.setItem(DEMO_ATTEMPTS_KEY, nextUsed.toString());
+      setAttemptsLeft(Math.max(0, MAX_ATTEMPTS - nextUsed));
 
       setLoading(false);
       await Print.printAsync({ html });
@@ -189,7 +180,7 @@ export default function DemoBarcodeGenerator({ navigation }) {
   return (
     <ScreenWrapper scrollable={true}>
       <View style={styles.demoBanner}>
-        <Text style={styles.demoBannerText}>🚀 DEMO MODE | Barcodes Left / शेष बारकोड: {barcodesLeft}/5</Text>
+        <Text style={styles.demoBannerText}>🚀 DEMO MODE | Free Generations Left / शेष मौके: {attemptsLeft}/5</Text>
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -204,7 +195,7 @@ export default function DemoBarcodeGenerator({ navigation }) {
         <View style={styles.quotaCard}>
           <Text style={styles.quotaTitle}>{t('subscriptionStatus')}</Text>
           <Text style={[styles.quotaCount, { color: '#10b981' }]}>
-            Demo Trial (Max 5 Barcodes Limit)
+            Demo Trial (Max 5 Barcodes per Generation | 5 Total Attempts)
           </Text>
         </View>
 
@@ -229,14 +220,19 @@ export default function DemoBarcodeGenerator({ navigation }) {
         <View style={styles.card}>
           {mode === 'unique' ? (
             <>
-              <Text style={styles.label}>Number of Barcodes to Generate (Max {barcodesLeft}):</Text>
+              <Text style={styles.label}>Number of Barcodes to Generate (Max 5):</Text>
               <TextInput
                 style={styles.input}
                 value={countInput}
-                onChangeText={setCountInput}
+                onChangeText={(val) => {
+                  const num = parseInt(val, 10);
+                  if (isNaN(num)) setCountInput('');
+                  else setCountInput(String(Math.min(num, 5))); // Input bhi 5 se upar nahi jaane dega
+                }}
                 keyboardType="numeric"
-                placeholder="e.g. 3"
+                placeholder="e.g. 5"
                 placeholderTextColor="#64748b"
+                maxLength={1}
               />
               <Text style={styles.infoLabel}>{t('uniqueBarcodesInfoText')}</Text>
             </>
@@ -250,7 +246,7 @@ export default function DemoBarcodeGenerator({ navigation }) {
                 placeholder={t('customBarcodePlaceholderText')}
                 placeholderTextColor="#64748b"
               />
-              <Text style={styles.infoLabel}>{t('similarCopiesInfoText')}</Text>
+              <Text style={styles.infoLabel}>Will generate 5 identical copies of this barcode.</Text>
             </>
           )}
 
