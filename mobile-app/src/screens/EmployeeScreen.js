@@ -64,7 +64,7 @@ export default function EmployeeScreen({ navigation, route }) {
     }
   }, [user]);
 
-  // Check if shift is enabled for employee in real-time
+  // Dual-Mode Shift & Auto-Schedule Status Check
   const checkShiftStatus = async () => {
     if (user?.role === 'employee') {
       try {
@@ -72,11 +72,24 @@ export default function EmployeeScreen({ navigation, route }) {
         if (online) {
           const { data } = await axiosInstance.get('/auth/employees');
           const currentEmp = data.employees?.find(e => e._id === user.id || e._id === user._id);
+          
+          let isLocked = false;
+
+          // 1. Check individual manual toggle first (if owner explicitly disabled this employee)
           if (currentEmp && currentEmp.isShiftEnabled === false) {
-            setShiftLocked(true);
-          } else {
-            setShiftLocked(false);
+            isLocked = true;
+          } 
+          // 2. Check Store Auto-Schedule Time Window if active
+          else if (data.storeSchedule && data.storeSchedule.active) {
+            const now = new Date();
+            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            if (currentTime < data.storeSchedule.start || currentTime > data.storeSchedule.end) {
+              isLocked = true; // Outside auto-schedule hours
+            }
           }
+
+          setShiftLocked(isLocked);
         }
       } catch (e) {
         console.log('Shift check error:', e.message);
@@ -153,9 +166,9 @@ export default function EmployeeScreen({ navigation, route }) {
     return (
       <View style={styles.center}>
         <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-        <Text style={[styles.infoText, { fontSize: 20, fontWeight: 'bold', color: '#ef4444' }]}>Shift Locked by Owner</Text>
+        <Text style={[styles.infoText, { fontSize: 20, fontWeight: 'bold', color: '#ef4444' }]}>Shift Locked / Off-Duty</Text>
         <Text style={{ textAlign: 'center', color: '#94a3b8', marginBottom: 20, paddingHorizontal: 20, fontSize: 14 }}>
-          Aapka shift abhi disable kar diya gaya hai. Aap abhi billing nahi kar sakte. Kripya dukan malik (Admin) se sampark karein.
+          Aapka shift abhi disable hai ya scheduled timing samapt ho chuki hai. Aap abhi billing nahi kar sakte.
         </Text>
         <TouchableOpacity onPress={() => typeof logout === 'function' && logout()} style={styles.btn}>
           <Text style={styles.btnText}>Logout</Text>

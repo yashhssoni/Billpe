@@ -324,12 +324,46 @@ exports.getStoreEmployees = async (req, res, next) => {
       return res.status(403).json({ success: false, message: "Only admin can view employees." });
     }
     
+    const store = await Store.findById(req.user.storeId);
     const employees = await User.find({ 
       storeId: req.user.storeId, 
       role: 'employee' 
     }).select('name email phone isShiftEnabled createdAt');
 
-    res.json({ success: true, employees });
+    res.json({ 
+      success: true, 
+      employees,
+      storeSchedule: {
+        active: store?.overallScheduleActive || false,
+        start: store?.scheduleStartTime || '09:00',
+        end: store?.scheduleEndTime || '21:00'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateStoreSchedule = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: "Only admin can update store schedule." });
+    }
+
+    const { overallScheduleActive, scheduleStartTime, scheduleEndTime } = req.body;
+    const store = await Store.findById(req.user.storeId);
+    
+    if (!store) {
+      return res.status(404).json({ success: false, message: "Store not found." });
+    }
+
+    if (overallScheduleActive !== undefined) store.overallScheduleActive = overallScheduleActive;
+    if (scheduleStartTime) store.scheduleStartTime = scheduleStartTime;
+    if (scheduleEndTime) store.scheduleEndTime = scheduleEndTime;
+
+    await store.save();
+
+    res.json({ success: true, message: "Store schedule updated successfully.", store });
   } catch (error) {
     next(error);
   }

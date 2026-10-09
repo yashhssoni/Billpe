@@ -8,6 +8,7 @@ const {
   login, 
   addEmployee, 
   getStoreEmployees, 
+  updateStoreSchedule, 
   forgotPassword, 
   resetPassword,
   deleteEmployee, 
@@ -31,6 +32,7 @@ router.get('/employees', protect, getStoreEmployees);
 router.put('/employees/:id', protect, updateEmployee);
 router.delete('/employees/:id', protect, deleteEmployee);
 
+router.patch('/store/schedule', protect, updateStoreSchedule);
 router.patch('/employees/:id/toggle-shift', protect, toggleEmployeeShift);
 router.get('/employees/:employeeId/shift-history', protect, getEmployeeShiftHistory);
 

@@ -16,6 +16,11 @@ export default function AddEmployeeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Auto-Schedule States
+  const [overallActive, setOverallActive] = useState(false);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('21:00');
+
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingEmp, setEditingEmp] = useState(null);
   const [updating, setUpdating] = useState(false);
@@ -31,6 +36,11 @@ export default function AddEmployeeScreen({ navigation }) {
       const { data } = await axiosInstance.get('/auth/employees');
       if (data.success) {
         setEmployees(data.employees);
+        if (data.storeSchedule) {
+          setOverallActive(data.storeSchedule.active);
+          setStartTime(data.storeSchedule.start);
+          setEndTime(data.storeSchedule.end);
+        }
       }
     } catch (err) {
       console.log('Error fetching employees:', err.response?.data || err.message);
@@ -71,6 +81,22 @@ export default function AddEmployeeScreen({ navigation }) {
     } catch (err) {
       setLoading(false);
       Alert.alert(t('error'), err.response?.data?.message || t('Failed to add employee.'));
+    }
+  };
+
+  const handleSaveStoreSchedule = async () => {
+    try {
+      const { data } = await axiosInstance.patch('/auth/store/schedule', {
+        overallScheduleActive: !overallActive,
+        scheduleStartTime: startTime,
+        scheduleEndTime: endTime
+      });
+      if (data.success) {
+        setOverallActive(!overallActive);
+        Alert.alert('Success', `Auto-Schedule is now ${!overallActive ? 'ACTIVE (Daily Timer On)' : 'DEACTIVATED'}!`);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update store schedule.');
     }
   };
 
@@ -170,6 +196,48 @@ export default function AddEmployeeScreen({ navigation }) {
 
       <Text style={styles.title}>{t('storeStaffTitle')}</Text>
       <Text style={styles.subtitle}>{t('manageStaffSubtitle')}</Text>
+
+      {/* Auto-Schedule Master Card */}
+      <View style={[styles.card, { borderColor: overallActive ? '#10b981' : '#334155', borderWidth: overallActive ? 1.5 : 1 }]}>
+        <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>
+          🤖 Auto-Schedule Mode (For Out of Town)
+        </Text>
+        <Text style={{ color: '#94a3b8', fontSize: 12, marginBottom: 12 }}>
+          Jab aap bahar hon, ise ON kar dein. Roz subah set time par app automatic ON aur raat ko OFF hoti rahegi!
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.inputLabel}>Start Time (HH:MM)</Text>
+            <TextInput 
+              style={styles.input} 
+              value={startTime} 
+              onChangeText={setStartTime} 
+              placeholder="09:00" 
+              placeholderTextColor="#64748b" 
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.inputLabel}>End Time (HH:MM)</Text>
+            <TextInput 
+              style={styles.input} 
+              value={endTime} 
+              onChangeText={setEndTime} 
+              placeholder="21:00" 
+              placeholderTextColor="#64748b" 
+            />
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.btn, { backgroundColor: overallActive ? '#ef4444' : '#10b981' }]} 
+          onPress={handleSaveStoreSchedule}
+        >
+          <Text style={styles.btnText}>
+            {overallActive ? '🔴 Disable Auto-Schedule (Switch to Manual)' : '🟢 Enable Auto-Schedule (9 AM - 9 PM)'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.card}>
         <TextInput 
