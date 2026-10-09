@@ -20,6 +20,12 @@ export default function AddEmployeeScreen({ navigation }) {
   const [editingEmp, setEditingEmp] = useState(null);
   const [updating, setUpdating] = useState(false);
 
+  // History Modal States
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [selectedEmpHistory, setSelectedEmpHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [currentHistoryEmpName, setCurrentHistoryEmpName] = useState('');
+
   const fetchEmployees = async () => {
     try {
       const { data } = await axiosInstance.get('/auth/employees');
@@ -65,6 +71,35 @@ export default function AddEmployeeScreen({ navigation }) {
     } catch (err) {
       setLoading(false);
       Alert.alert(t('error'), err.response?.data?.message || t('Failed to add employee.'));
+    }
+  };
+
+  const handleToggleShift = async (empId, currentStatus) => {
+    try {
+      const { data } = await axiosInstance.patch(`/auth/employees/${empId}/toggle-shift`, {
+        enable: !currentStatus
+      });
+      if (data.success) {
+        fetchEmployees();
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to update shift status.');
+    }
+  };
+
+  const handleOpenHistory = async (emp) => {
+    setCurrentHistoryEmpName(emp.name);
+    setLoadingHistory(true);
+    setHistoryModalVisible(true);
+    try {
+      const { data } = await axiosInstance.get(`/auth/employees/${emp._id}/shift-history`);
+      if (data.success) {
+        setSelectedEmpHistory(data.history);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to fetch shift history.');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -190,12 +225,27 @@ export default function AddEmployeeScreen({ navigation }) {
               <Text style={styles.empName}>{item.name || t('Unnamed Employee')}</Text>
               <Text style={styles.empEmail}>{item.email}</Text>
               {item.phone ? <Text style={styles.empPhone}>📞 {item.phone}</Text> : null}
+              <Text style={[styles.empStatus, { color: item.isShiftEnabled !== false ? '#10b981' : '#ef4444' }]}>
+                {item.isShiftEnabled !== false ? '🟢 Status: Active' : '🔴 Status: Locked'}
+              </Text>
             </View>
 
             <View style={styles.actionBtns}>
+              <TouchableOpacity onPress={() => handleOpenHistory(item)} style={[styles.actionBtn, { backgroundColor: '#3b82f6' }]}>
+                <Text style={styles.actionText}>History</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                onPress={() => handleToggleShift(item._id, item.isShiftEnabled !== false)} 
+                style={[styles.actionBtn, { backgroundColor: item.isShiftEnabled !== false ? '#ef4444' : '#10b981' }]}
+              >
+                <Text style={styles.actionText}>{item.isShiftEnabled !== false ? 'Disable' : 'Enable'}</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity onPress={() => handleOpenEdit(item)} style={styles.editBtn}>
                 <Text style={styles.editText}>{t('edit')}</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity onPress={() => handleDeleteEmployee(item._id, item.name)} style={styles.deleteBtn}>
                 <Text style={styles.deleteText}>{t('del')}</Text>
               </TouchableOpacity>
@@ -205,6 +255,45 @@ export default function AddEmployeeScreen({ navigation }) {
         ListEmptyComponent={<Text style={styles.emptyText}>{t('noEmployeesYet')}</Text>}
       />
 
+      {/* Shift History Modal */}
+      {historyModalVisible && (
+        <Modal visible={historyModalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { maxHeight: '80%' }]}>
+              <Text style={styles.modalTitle}>Shift History: {currentHistoryEmpName}</Text>
+              
+              {loadingHistory ? (
+                <ActivityIndicator size="large" color="#10b981" style={{ marginVertical: 20 }} />
+              ) : (
+                <FlatList
+                  data={selectedEmpHistory}
+                  keyExtractor={(item) => item._id}
+                  renderItem={({ item }) => (
+                    <View style={{ backgroundColor: '#0f172a', padding: 12, borderRadius: 10, marginBottom: 8, borderWidth: 1, borderColor: '#334155' }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: 13 }}>📅 {item.date}</Text>
+                        <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: 'bold' }}>{item.mode}</Text>
+                      </View>
+                      <Text style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 2 }}>🕒 {item.enabledAt} — {item.disabledAt}</Text>
+                      <Text style={{ color: '#10b981', fontSize: 13, fontWeight: 'bold' }}>⏳ Active Duration: {item.formattedDuration}</Text>
+                    </View>
+                  )}
+                  ListEmptyComponent={<Text style={styles.emptyText}>No shift history found.</Text>}
+                />
+              )}
+
+              <TouchableOpacity 
+                style={styles.cancelModalBtn} 
+                onPress={() => setHistoryModalVisible(false)}
+              >
+                <Text style={styles.cancelModalBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Edit Employee Modal */}
       {editingEmp && (
         <Modal visible={editModalVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
@@ -272,14 +361,17 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: '#10b981', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 4 },
   btnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 15 },
   listHeader: { color: '#cbd5e1', fontWeight: 'bold', fontSize: 15, marginBottom: 10 },
-  empCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  empCard: { backgroundColor: '#1e293b', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#334155', marginBottom: 10 },
   empName: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
   empEmail: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
   empPhone: { color: '#38bdf8', fontSize: 12, marginTop: 2, fontWeight: '600' },
-  actionBtns: { flexDirection: 'row', gap: 8 },
-  editBtn: { backgroundColor: '#3b82f6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  empStatus: { fontSize: 11, fontWeight: 'bold', marginTop: 4 },
+  actionBtns: { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
+  actionBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  actionText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
+  editBtn: { backgroundColor: '#3b82f6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
   editText: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
-  deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  deleteBtn: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
   deleteText: { color: '#ef4444', fontWeight: 'bold', fontSize: 11 },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 20, marginBottom: 20 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -288,6 +380,6 @@ const styles = StyleSheet.create({
   inputLabel: { color: '#cbd5e1', fontSize: 12, fontWeight: '600', marginBottom: 4 },
   saveModalBtn: { backgroundColor: '#10b981', paddingVertical: 13, borderRadius: 10, alignItems: 'center', marginTop: 8 },
   saveModalBtnText: { color: '#0f172a', fontWeight: 'bold', fontSize: 14 },
-  cancelModalBtn: { paddingVertical: 12, alignItems: 'center', marginTop: 4 },
-  cancelModalBtnText: { color: '#ef4444', fontWeight: 'bold', fontSize: 13 }
+  cancelModalBtn: { paddingVertical: 12, alignItems: 'center', marginTop: 8, backgroundColor: '#334155', borderRadius: 8 },
+  cancelModalBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 13 }
 });

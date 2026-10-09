@@ -21,6 +21,7 @@ export default function EmployeeScreen({ navigation, route }) {
   const { loading: salesLoading, processCheckout } = useSales();
 
   const isAdminSwitch = route?.params?.isAdminSwitch || false;
+  const [shiftLocked, setShiftLocked] = useState(false);
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanner, setScanner] = useState(false);
@@ -63,9 +64,30 @@ export default function EmployeeScreen({ navigation, route }) {
     }
   }, [user]);
 
+  // Check if shift is enabled for employee in real-time
+  const checkShiftStatus = async () => {
+    if (user?.role === 'employee') {
+      try {
+        const online = await isConnectedToInternet();
+        if (online) {
+          const { data } = await axiosInstance.get('/auth/employees');
+          const currentEmp = data.employees?.find(e => e._id === user.id || e._id === user._id);
+          if (currentEmp && currentEmp.isShiftEnabled === false) {
+            setShiftLocked(true);
+          } else {
+            setShiftLocked(false);
+          }
+        }
+      } catch (e) {
+        console.log('Shift check error:', e.message);
+      }
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchTodayLiveSales();
+      checkShiftStatus();
     }, [])
   );
 
@@ -98,8 +120,7 @@ export default function EmployeeScreen({ navigation, route }) {
             const returnedQty = Number(sale.returnedQuantity || 0);
 
             if (saleTime >= startOfDay) {
-              const grossAmount = unitPrice * totalQty;
-              soldSum += grossAmount;
+              soldSum += (unitPrice * totalQty);
             }
             if (returnedQty > 0 && lastReturnTime >= startOfDay) {
               returnSum += (unitPrice * returnedQty);
@@ -126,6 +147,22 @@ export default function EmployeeScreen({ navigation, route }) {
       console.log('Error fetching today sales:', e.message);
     }
   };
+
+  // Shift Locked Screen Guard UI
+  if (shiftLocked) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+        <Text style={[styles.infoText, { fontSize: 20, fontWeight: 'bold', color: '#ef4444' }]}>Shift Locked by Owner</Text>
+        <Text style={{ textAlign: 'center', color: '#94a3b8', marginBottom: 20, paddingHorizontal: 20, fontSize: 14 }}>
+          Aapka shift abhi disable kar diya gaya hai. Aap abhi billing nahi kar sakte. Kripya dukan malik (Admin) se sampark karein.
+        </Text>
+        <TouchableOpacity onPress={() => typeof logout === 'function' && logout()} style={styles.btn}>
+          <Text style={styles.btnText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (!permission) return <View />;
   if (!permission.granted) {
@@ -185,7 +222,7 @@ export default function EmployeeScreen({ navigation, route }) {
           return;
         }
 
-       if (found.stock <= 0 || found.sold === true) {
+        if (found.stock <= 0 || found.sold === true) {
           Alert.alert(
             t('⚠️ Item Out of Stock'),
             `${found.productName} ${t('has 0 stock remaining.\nIf customer is returning this item, please use "Return / Exchange Stock".')}`,
@@ -201,10 +238,10 @@ export default function EmployeeScreen({ navigation, route }) {
         const currentCartQty = existingCartItem ? existingCartItem.quantity : 0;
         const availableStock = found.stock - currentCartQty;
 
-       if (availableStock <= 0) {
-    Alert.alert(t('error'), `${t('All available units')} (${found.stock}) ${t('are already in your cart.')}`);
-    return;
-  }
+        if (availableStock <= 0) {
+          Alert.alert(t('error'), `${t('All available units')} (${found.stock}) ${t('are already in your cart.')}`);
+          return;
+        }
 
         if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
         setShowLowestRate(false);
@@ -266,9 +303,9 @@ export default function EmployeeScreen({ navigation, route }) {
     const minAllowed = parseFloat(currentScanned?.lowestRate ?? currentScanned?.price ?? 0);
 
     if (enteredPrice < minAllowed) {
-    Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
-    return;
-  }
+      Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
+      return;
+    }
 
     const qtyToAdd = parseInt(selectedQty, 10);
     if (isNaN(qtyToAdd) || qtyToAdd <= 0) {
@@ -348,7 +385,7 @@ export default function EmployeeScreen({ navigation, route }) {
     const newPrice = parseFloat(editPrice);
     const minAllowed = parseFloat(editingCartItem?.lowestRate ?? editingCartItem?.price ?? 0);
 
-   if (newPrice < minAllowed) {
+    if (newPrice < minAllowed) {
       Alert.alert(t('error'), `${t('Minimum allowed price is')} ₹${minAllowed}`);
       return;
     }
@@ -429,16 +466,8 @@ export default function EmployeeScreen({ navigation, route }) {
     if (online) {
       try {
         result = await processCheckout(
-          cart, 
-          grandTotalAmount, 
-          paymentMode, 
-          customerName, 
-          customerPhone, 
-          employeeName, 
-          customerAddress, 
-          invoiceNo,
-          finalCash,
-          finalOnline
+          cart, grandTotalAmount, paymentMode, customerName, customerPhone, 
+          employeeName, customerAddress, invoiceNo, finalCash, finalOnline
         );
       } catch (err) {
         result = { success: false, message: err.message };
@@ -525,7 +554,7 @@ export default function EmployeeScreen({ navigation, route }) {
                   <div style="font-size: 20px; font-weight: bold; color: #000;">₹${grandTotalAmount.toFixed(2)}</div>
                   ${paymentMode === 'Split' ? `
                     <div style="font-size: 11px; color: #444; margin-top: 4px;">
-                      Paid Cash: ₹${finalCash.toFixed(2)} | Paid Online: ₹${finalOnline.toFixed(2)}
+                      Paid Cash: ₹${finalCash.toFixed(2)} \vert{} Paid Online: ₹${finalOnline.toFixed(2)}
                     </div>
                   ` : ''}
                 </div>
@@ -746,6 +775,7 @@ export default function EmployeeScreen({ navigation, route }) {
           >
             <Text style={styles.returnNavBtnText}>🔄{t(' Return / Exchange Stock')}</Text>
           </TouchableOpacity>
+          
           <View style={styles.cardBox}>
             <Text style={styles.fieldHeading}>{t('billedByLabel')} ({t('roleEmployee')})</Text>
             <TextInput 
@@ -763,6 +793,7 @@ export default function EmployeeScreen({ navigation, route }) {
             <TextInput style={styles.input} placeholder="Customer Phone" placeholderTextColor="#64748b" value={customerPhone} onChangeText={setCustomerPhone} keyboardType="numeric" />
             <TextInput style={styles.input} placeholder="Customer Address" placeholderTextColor="#64748b" value={customerAddress} onChangeText={setCustomerAddress} />
           </View>
+
           <View style={styles.cartHeaderRow}>
             <Text style={styles.subHeader}>Current Cart ({cart.length} items)</Text>
 
@@ -809,6 +840,7 @@ export default function EmployeeScreen({ navigation, route }) {
               ))
             )}
           </View>
+
           {cart.length > 0 && (
             <View style={[styles.cardBox, { marginTop: 14 }]}>
               <Text style={styles.fieldHeading}>{t('SELECT PAYMENT MODE')}</Text>
@@ -841,6 +873,7 @@ export default function EmployeeScreen({ navigation, route }) {
                   <Text style={[styles.payModeText, paymentMode === 'Split' && styles.payModeTextActive]}>⚖️ {t('SPLIT')}</Text>
                 </TouchableOpacity>
               </View>
+
               {paymentMode === 'Split' && (
                 <View style={styles.splitBox}>
                   <Text style={styles.splitNote}>Total Bill: ₹{grandTotalAmount.toFixed(2)}</Text>
@@ -878,6 +911,7 @@ export default function EmployeeScreen({ navigation, route }) {
               )}
             </View>
           )}
+
           {cart.length > 0 && (
             <View style={styles.checkoutActionRow}>
               <TouchableOpacity 
@@ -901,6 +935,7 @@ export default function EmployeeScreen({ navigation, route }) {
           )}
         </ScrollView>
       )}
+
       <Modal visible={imageModalVisible} transparent={true} animationType="fade">
         <View style={styles.imageModalOverlay}>
           <TouchableOpacity style={styles.closeImageModal} onPress={() => setImageModalVisible(false)}>
@@ -911,6 +946,7 @@ export default function EmployeeScreen({ navigation, route }) {
           )}
         </View>
       </Modal>
+
       {editingCartItem && (
         <Modal visible={editModalVisible} animationType="slide" transparent={true}>
           <View style={styles.modalOverlay}>
@@ -973,7 +1009,7 @@ export default function EmployeeScreen({ navigation, route }) {
                 placeholderTextColor="#64748b" 
               />
 
-              <Text style={[styles.label, { marginTop: 6 }]}>{t('Quantity ')}(Max: {editingCartItem.stock})</Text>
+              <Text style={[styles.label, { marginTop: 6 }]}>{t('Quantity ')} (Max: {editingCartItem.stock})</Text>
               <TextInput 
                 style={styles.input} 
                 keyboardType="numeric" 

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Store = require('../models/Store');
 const Subscription = require('../models/Subscription');
+const ShiftLog = require('../models/ShiftLog');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -10,6 +11,14 @@ const pendingRegistrations = new Map();
 
 const generateToken = (id, role, storeId) => {
   return jwt.sign({ id, role, storeId }, process.env.JWT_SECRET, { expiresIn: '30d' });
+};
+
+// Helper to format total minutes into Exact Hours & Minutes
+const formatHoursAndMinutes = (totalMinutes) => {
+  if (!totalMinutes || totalMinutes <= 0) return "0 Hours 0 Minutes";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours} Hours ${minutes} Minutes`;
 };
 
 exports.sendRegisterOTP = async (req, res) => {
@@ -59,6 +68,7 @@ exports.sendRegisterOTP = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message || "Failed to send verification OTP." });
   }
 };
+
 exports.verifyRegisterOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -122,7 +132,8 @@ exports.verifyRegisterOTP = async (req, res) => {
       password: hashedPassword,
       phone,
       role: role || 'admin',
-      storeId: assignedStoreId
+      storeId: assignedStoreId,
+      isShiftEnabled: true
     });
 
     pendingRegistrations.delete(normalizedEmail);
@@ -133,7 +144,7 @@ exports.verifyRegisterOTP = async (req, res) => {
       success: true,
       message: "Account verified and registered successfully!",
       token,
-      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, isShiftEnabled: user.isShiftEnabled },
       storeInfo
     });
   } catch (error) {
@@ -203,7 +214,8 @@ exports.register = async (req, res, next) => {
       password: hashedPassword,
       phone: normalizedPhone,
       role: role || 'admin',
-      storeId: assignedStoreId
+      storeId: assignedStoreId,
+      isShiftEnabled: true
     });
 
     const token = generateToken(user._id, user.role, assignedStoreId);
@@ -211,7 +223,7 @@ exports.register = async (req, res, next) => {
     res.status(201).json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, isShiftEnabled: user.isShiftEnabled },
       storeInfo
     });
   } catch (error) {
@@ -252,7 +264,7 @@ exports.login = async (req, res, next) => {
     return res.json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, isShiftEnabled: user.isShiftEnabled },
       storeInfo: {
         ...(user.storeId ? user.storeId.toObject() : {}),
         isSubActive 
@@ -292,18 +304,20 @@ exports.addEmployee = async (req, res, next) => {
       password: hashedPassword,
       phone: normalizedPhone,
       role: 'employee',
-      storeId
+      storeId,
+      isShiftEnabled: true
     });
 
     res.status(201).json({
       success: true,
       message: "Employee registered successfully.",
-      employee: { id: employee._id, name: employee.name, email: employee.email, phone: employee.phone }
+      employee: { id: employee._id, name: employee.name, email: employee.email, phone: employee.phone, isShiftEnabled: employee.isShiftEnabled }
     });
   } catch (error) {
     next(error);
   }
 };
+
 exports.getStoreEmployees = async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
@@ -313,9 +327,86 @@ exports.getStoreEmployees = async (req, res, next) => {
     const employees = await User.find({ 
       storeId: req.user.storeId, 
       role: 'employee' 
-    }).select('name email phone createdAt');
+    }).select('name email phone isShiftEnabled createdAt');
 
     res.json({ success: true, employees });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.toggleEmployeeShift = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: "Only admin can toggle employee shifts." });
+    }
+
+    const { id } = req.params;
+    const { enable } = req.body; // true or false
+    const employee = await User.findOne({ _id: id, storeId: req.user.storeId, role: 'employee' });
+    
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found." });
+    }
+
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+
+    employee.isShiftEnabled = enable;
+    employee.shiftMode = 'manual';
+    await employee.save();
+
+    if (enable) {
+      // Start a new Shift Log entry for today
+      await ShiftLog.create({
+        storeId: req.user.storeId,
+        employeeId: employee._id,
+        date: dateStr,
+        mode: 'Manual',
+        enabledAt: now
+      });
+    } else {
+      // Close the active open Shift Log entry for today
+      const activeLog = await ShiftLog.findOne({
+        employeeId: employee._id,
+        date: dateStr,
+        disabledAt: null
+      }).sort({ createdAt: -1 });
+
+      if (activeLog) {
+        activeLog.disabledAt = now;
+        const diffMs = now - new Date(activeLog.enabledAt);
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        activeLog.totalActiveMinutes = diffMins;
+        await activeLog.save();
+      }
+    }
+
+    res.json({ success: true, message: `Employee shift ${enable ? 'enabled' : 'disabled'} successfully.`, employee });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getEmployeeShiftHistory = async (req, res, next) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: "Only admin can view shift history." });
+    }
+
+    const { employeeId } = req.params;
+    const logs = await ShiftLog.find({ storeId: req.user.storeId, employeeId }).sort({ createdAt: -1 });
+
+    const formattedLogs = logs.map(log => ({
+      _id: log._id,
+      date: log.date,
+      mode: log.mode,
+      enabledAt: log.enabledAt ? new Date(log.enabledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+      disabledAt: log.disabledAt ? new Date(log.disabledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'Active Now',
+      formattedDuration: formatHoursAndMinutes(log.totalActiveMinutes)
+    }));
+
+    res.json({ success: true, history: formattedLogs });
   } catch (error) {
     next(error);
   }
