@@ -330,6 +330,37 @@ exports.getStoreEmployees = async (req, res, next) => {
       role: 'employee' 
     }).select('name email phone isShiftEnabled createdAt');
 
+    // Auto-create ShiftLog for today if Overall Schedule is active and employee is enabled
+    if (store?.overallScheduleActive) {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0];
+
+      for (let emp of employees) {
+        if (emp.isShiftEnabled !== false) {
+          const existingLog = await ShiftLog.findOne({ employeeId: emp._id, date: dateStr });
+          if (!existingLog) {
+            const [startH, startM] = (store.scheduleStartTime || '09:00').split(':').map(Number);
+            const startTimeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startH, startM);
+            
+            // Calculate total expected minutes based on start and end time
+            const [endH, endM] = (store.scheduleEndTime || '21:00').split(':').map(Number);
+            const endTimeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endH, endM);
+            const totalMins = Math.floor((endTimeDate - startTimeDate) / (1000 * 60));
+
+            await ShiftLog.create({
+              storeId: req.user.storeId,
+              employeeId: emp._id,
+              date: dateStr,
+              mode: 'Overall Schedule',
+              enabledAt: startTimeDate <= now ? startTimeDate : now,
+              disabledAt: now >= endTimeDate ? endTimeDate : null,
+              totalActiveMinutes: now >= endTimeDate ? totalMins : 0
+            });
+          }
+        }
+      }
+    }
+
     res.json({ 
       success: true, 
       employees,

@@ -94,6 +94,7 @@ export default function AddEmployeeScreen({ navigation }) {
       if (data.success) {
         setOverallActive(!overallActive);
         Alert.alert('Success', `Auto-Schedule is now ${!overallActive ? 'ACTIVE (Daily Timer On)' : 'DEACTIVATED'}!`);
+        fetchEmployees();
       }
     } catch (err) {
       Alert.alert('Error', 'Failed to update store schedule.');
@@ -203,7 +204,7 @@ export default function AddEmployeeScreen({ navigation }) {
           🤖 Auto-Schedule Mode (For Out of Town)
         </Text>
         <Text style={{ color: '#94a3b8', fontSize: 12, marginBottom: 12 }}>
-          Jab aap bahar hon, ise ON kar dein. Roz subah set time par app automatic ON aur raat ko OFF hoti rahegi!
+          Jab aap bahar hon, ise ON kar dein. Roz subah set time par app automatic ON aur raat ko OFF hoti rahegi! (Absent employee ko yahan se Force Lock kar sakte hain).
         </Text>
 
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
@@ -293,8 +294,11 @@ export default function AddEmployeeScreen({ navigation }) {
               <Text style={styles.empName}>{item.name || t('Unnamed Employee')}</Text>
               <Text style={styles.empEmail}>{item.email}</Text>
               {item.phone ? <Text style={styles.empPhone}>📞 {item.phone}</Text> : null}
+              
               <Text style={[styles.empStatus, { color: item.isShiftEnabled !== false ? '#10b981' : '#ef4444' }]}>
-                {item.isShiftEnabled !== false ? '🟢 Status: Active' : '🔴 Status: Locked'}
+                {item.isShiftEnabled !== false 
+                  ? (overallActive ? '🟢 Auto-Schedule Active' : '🟢 Status: Active') 
+                  : '🔴 Force Locked / Absent'}
               </Text>
             </View>
 
@@ -307,7 +311,7 @@ export default function AddEmployeeScreen({ navigation }) {
                 onPress={() => handleToggleShift(item._id, item.isShiftEnabled !== false)} 
                 style={[styles.actionBtn, { backgroundColor: item.isShiftEnabled !== false ? '#ef4444' : '#10b981' }]}
               >
-                <Text style={styles.actionText}>{item.isShiftEnabled !== false ? 'Disable' : 'Enable'}</Text>
+                <Text style={styles.actionText}>{item.isShiftEnabled !== false ? 'Force Lock' : 'Unlock'}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => handleOpenEdit(item)} style={styles.editBtn}>
